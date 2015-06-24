@@ -120,6 +120,16 @@
                     }
                 },
                 {
+                    "id": "EXPORT_SELECTED",
+                    "shortcut": {
+                        "keyChar": "j",
+                        "modifiers": {
+                            "command": true,
+                            "shift": true
+                        }
+                    }
+                },
+                {
                     "id": "REVERT",
                     "shortcut": {
                         "keyCode": "KEY_F12"

@@ -100,6 +100,10 @@ define(function (require, exports, module) {
             TYPE_LEADING_CHANGED: "typeLeadingChanged",
             TYPE_ALIGNMENT_CHANGED: "typeAlignmentChanged"
         },
+        export: {
+            ASSET_CHANGED: "exportAssetChanged",
+            STATUS_RECEIVED: "exportStatusReceived"
+        },
         tool: {
             SELECT_TOOL: "selectTool",
             MODAL_STATE_CHANGE: "modalStateChange"

@@ -78,6 +78,10 @@
             },
             "$enable-rule": "have-document"
         },
+        "EXPORT_SELECTED": {
+            "$action": "export.exportSelected",
+            "$enable-rule": "layer-selected"
+        },
         "REVERT": {
             "$action": "history.revertCurrentDocument",
             "$payload": {

@@ -24,30 +24,26 @@
 define(function (require, exports, module) {
     "use strict";
 
-    // namespaced raw (unsynchronized) actions
-    module.exports = {
-        application: require("./application"),
-        dialog: require("./dialog"),
-        documents: require("./documents"),
-        edit: require("./edit"),
-        example: require("./example"),
-        export: require("./export"),
-        help: require("./help"),
-        history: require("./history"),
-        keyevents: require("./keyevents"),
-        layers: require("./layers"),
-        layerEffects: require("./layereffects"),
-        libraries: require("./libraries"),
-        menu: require("./menu"),
-        policy: require("./policy"),
-        preferences: require("./preferences"),
-        search: require("./search"),
-        shapes: require("./shapes"),
-        shortcuts: require("./shortcuts"),
-        superselect: require("./superselect"),
-        tools: require("./tools"),
-        transform: require("./transform"),
-        type: require("./type"),
-        ui: require("./ui")
-    };
+    var Immutable = require("immutable");
+
+    /**
+     * Internal representation of a document's various exports
+     * @private
+     * @constructor
+     */
+    var DocumentExports = Immutable.Record({
+        /**
+         * Map of export assets for a given document + layer
+         * @type {Immutable.Map<number, Immutable.Map<number, Immutable.List.<ExportAsset>>>}
+        */
+        rootExports: null,
+
+        /**
+         * Map of export assets for a given document + layer
+         * @type {Immutable.Map<number, Immutable.Map<number, Immutable.List.<ExportAsset>>>}
+         */
+        layerExportsMap: null
+    });
+   
+    module.exports = DocumentExports;
 });

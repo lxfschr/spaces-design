@@ -24,30 +24,46 @@
 define(function (require, exports, module) {
     "use strict";
 
-    // namespaced raw (unsynchronized) actions
-    module.exports = {
-        application: require("./application"),
-        dialog: require("./dialog"),
-        documents: require("./documents"),
-        edit: require("./edit"),
-        example: require("./example"),
-        export: require("./export"),
-        help: require("./help"),
-        history: require("./history"),
-        keyevents: require("./keyevents"),
-        layers: require("./layers"),
-        layerEffects: require("./layereffects"),
-        libraries: require("./libraries"),
-        menu: require("./menu"),
-        policy: require("./policy"),
-        preferences: require("./preferences"),
-        search: require("./search"),
-        shapes: require("./shapes"),
-        shortcuts: require("./shortcuts"),
-        superselect: require("./superselect"),
-        tools: require("./tools"),
-        transform: require("./transform"),
-        type: require("./type"),
-        ui: require("./ui")
+    var Immutable = require("immutable");
+
+    /**
+     * Possible statuses of exports asset in the state machine
+     *
+     * @enum {string}
+     */
+    var STATUS = {
+        NEW: "new",
+        REQUESTED: "requested",
+        STABLE: "stable"
     };
+
+    /**
+     * @constructor
+     * @param {object} model
+     */
+    var ExportAsset = Immutable.Record({
+        /**
+         * @type {string}
+         */
+        filePath: null,
+
+        /**
+         * @type {string}
+         */
+        scaleFactor: "1x",
+
+        /**
+         * @type {string}
+         */
+        type: "png",
+
+        /**
+         * The status of this asset in the state machine
+         * @type {string}
+         */
+        status: STATUS.NEW
+
+    });
+
+    module.exports = ExportAsset;
 });
