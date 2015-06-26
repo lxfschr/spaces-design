@@ -91,7 +91,8 @@ define(function (require, exports) {
         "artboardEnabled",
         "pathBounds",
         "smartObject",
-        "globalAngle"
+        "globalAngle",
+        "generatorSettings"
     ];
 
     /**
@@ -140,7 +141,15 @@ define(function (require, exports) {
         });
 
         return Promise.join(requiredPropertiesPromise, optionalPropertiesPromise, function (required, optional) {
-            return _.chain(required).zipWith(optional, _.merge).reverse().value();
+            var propArray = _.chain(required).zipWith(optional, _.merge).reverse().value();
+            
+            return Promise.map(propArray, function (layer) {
+                return descriptor.playObject(layerLib.getExtensionData(docRef, layer.layerID, "designSpace"))
+                    .then(function (extensionData) {
+                        _.merge(layer, extensionData.designSpace);
+                        return layer;
+                    });
+            });
         });
     };
 

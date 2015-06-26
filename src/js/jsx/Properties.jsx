@@ -35,7 +35,8 @@ define(function (require, exports, module) {
     var TransformPanel = require("jsx!./sections/transform/TransformPanel"),
         LibrariesPanel = require("jsx!./sections/libraries/LibrariesPanel"),
         StylePanel = require("jsx!./sections/style/StylePanel"),
-        LayersPanel = require("jsx!./sections/layers/LayersPanel");
+        LayersPanel = require("jsx!./sections/layers/LayersPanel"),
+        ExportsModal = require("jsx!js/jsx/sections/exports/ExportsModal");
         
     var Properties = React.createClass({
         mixins: [FluxMixin, StoreWatchMixin("document", "preferences")],
@@ -150,6 +151,8 @@ define(function (require, exports, module) {
                         visible={this.state.layersVisible}
                         visibleSibling={this.state.styleVisible}
                         onVisibilityToggle={this._handleVisibilityToggle.bind(this, true)} />
+                    <ExportsModal
+                            document={document} />
                 </div>
             );
         }

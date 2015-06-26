@@ -48,9 +48,9 @@ define(function (require, exports, module) {
         filePath: null,
 
         /**
-         * @type {string}
+         * @type {number}
          */
-        scaleFactor: "1x",
+        scale: 1,
 
         /**
          * @type {string}
@@ -65,5 +65,21 @@ define(function (require, exports, module) {
 
     });
 
+    /**
+     * This composite key helps us organize groups of assets within a given layer or document
+     * @return {string}
+     */
+    ExportAsset.prototype.getId = function () {
+        return this.type + "@" + this.scale;
+    };
+
+    ExportAsset.prototype.setStatusRequested = function () {
+        return this.set("status", STATUS.REQUESTED);
+    };
+
+    ExportAsset.prototype.setStatusStable = function () {
+        return this.set("status", STATUS.STABLE);
+    };
+    
     module.exports = ExportAsset;
 });

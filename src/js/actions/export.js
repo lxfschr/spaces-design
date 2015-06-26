@@ -26,11 +26,17 @@ define(function (require, exports) {
 
     var Promise = require("bluebird");
 
-    var events = require("js/events"),
+    var dialog = require("./dialog"),
+        events = require("js/events"),
         locks = require("js/locks"),
         log = require("js/util/log"),
         ExportService = require("js/util/exportservice"),
         ExportAsset = require("js/models/ExportAsset");
+
+    var descriptor = require("adapter/ps/descriptor"),
+        layerLib = require("adapter/lib/layer");
+
+    var EXTENSION_DATA_NAMESPACE = "designSpace";
 
     /**
      * Event handlers initialized in beforeStartup.
@@ -51,31 +57,73 @@ define(function (require, exports) {
     beforeStartup.reads = [];
     beforeStartup.writes = [];
 
-    var exportSelected = function () {
+    var openExportPanel = function () {
+        return this.transfer(dialog.openDialog, "exports-panel-dialog");
+    };
+    openExportPanel.reads = [];
+    openExportPanel.writes = [locks.JS_DIALOG];
+
+    var exportLayer = function (layer, scale) {
         var documentID = this.flux.stores.application.getCurrentDocumentID(),
-            payload = {
-                documentID: documentID,
-                documentExports: {
-                    rootExports: new ExportAsset().toJS()
-                }
-            },
-            firstDispatchPromise = this.dispatchAsync(events.export.ASSET_CHANGED, payload),
-            exportServicePromise = _exportService.sendMessage("quickExportSelection", "nope");
+            _scale = scale || 1,
+            exportAsset = new ExportAsset({ scale: _scale }),
+            assetID = exportAsset.getId(),
+            layerExports = new Map(),
+            layerExportsMap = new Map(),
+            payload;
+
+
+        layerExports.set(assetID, exportAsset.toJS());
+        layerExportsMap.set(layer.id, layerExports);
+
+        payload = {
+            documentID: documentID,
+            documentExports: {
+                layerExportsMap: layerExportsMap
+            }
+        };
+
+        var firstDispatchPromise = this.dispatchAsync(events.export.ASSET_CHANGED, payload),
+            openDialogPromise = this.transfer(openExportPanel),
+            exportServicePromise = _exportService.sendMessage("exportLayer", { layer: layer, scale: _scale });
 
         log.debug("initiating export...");
-        return Promise.join(exportServicePromise, firstDispatchPromise, function (exportResponse) {
+        return Promise.join(exportServicePromise, openDialogPromise, firstDispatchPromise, function (exportResponse) {
+                // TODO we should inspect the response a little more closely, for export errors
                 if (exportResponse && Array.isArray(exportResponse.result)) {
-                    payload.documentExports.rootExports.filePath = exportResponse.result[0];
+                    exportAsset = exportAsset.set("filePath", exportResponse.result[0]).setStatusStable();
+                    layerExports.set(assetID, exportAsset.toJS());
                     log.debug("finalizing export...");
-                    return this.dispatchAsync(events.export.ASSET_CHANGED, payload);    
+                    this.dispatch(events.export.ASSET_CHANGED, payload);
+
+                    var documentExports = this.flux.stores.export.getDocumentExports(documentID),
+                        layerExportsArray = documentExports && documentExports.layerExportsArray(layer.id);
+
+                    return _updateLayerExportMetadata(documentID, layer.id, layerExportsArray);
                 }
             }.bind(this));
     };
-    exportSelected.reads = [locks.PS_DOC];
-    exportSelected.writes = [locks.JS_DOC];
+    exportLayer.reads = [locks.PS_GENERATOR];
+    exportLayer.writes = [locks.JS_DOC, locks.JS_DIALOG];
+
+    /**
+     * TODO THIS IS OLD AND STUFF
+     *
+     * @return {[type]} [description]
+     */
+    var resetCurrentDocumentExports = function () {
+        var documentID = this.flux.stores.application.getCurrentDocumentID(),
+            exportServicePromise = _exportService.sendMessage("docinfo", "nope");
+
+        return exportServicePromise.then(function (docinfo) {
+            log.debug("Fetched %s docinfo: %s", documentID, JSON.stringify(docinfo, null, "  "));
+        });
+    };
+    resetCurrentDocumentExports.reads = [locks.PS_GENERATOR];
+    resetCurrentDocumentExports.writes = [locks.JS_DOC];
 
     var onReset = function () {
-        _exportService.close().then(function () {
+        return _exportService.close().then(function () {
             _exportService = null;
             return Promise.resolve();
         });
@@ -83,7 +131,15 @@ define(function (require, exports) {
     onReset.reads = [];
     onReset.writes = [];
 
-    exports.exportSelected = exportSelected;
+    var _updateLayerExportMetadata = function (documentID, layerID, layerExports) {
+        var playObject = layerLib.setExtensionData(documentID,
+            layerID, EXTENSION_DATA_NAMESPACE, "assetExports", layerExports);
+        return descriptor.playObject(playObject);
+    };
+
+    exports.openExportPanel = openExportPanel;
+    exports.exportLayer = exportLayer;
+    exports.resetCurrentDocumentExports = resetCurrentDocumentExports;
     exports.beforeStartup = beforeStartup;
     exports.onReset = onReset;
 });

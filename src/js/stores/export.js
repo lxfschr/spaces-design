@@ -48,7 +48,8 @@ define(function (require, exports, module) {
             // TODO listen for delete doc/layer?
             this.bindActions(
                 events.RESET, this._deleteExports,
-                events.export.ASSET_CHANGED, this._assetUpdated
+                events.export.ASSET_CHANGED, this._assetUpdated,
+                events.document.DOCUMENT_UPDATED, this._documentUpdated
             );
         },
 
@@ -58,6 +59,13 @@ define(function (require, exports, module) {
 
         getDocumentExports: function (documentID) {
             return this._documentExportsMap.get(documentID);
+        },
+
+        _documentUpdated: function (payload) {
+            var documentID = payload.doc.documentID,
+                documentExports = DocumentExports.fromDescriptors(payload);
+
+            this._documentExportsMap = this._documentExportsMap.set(documentID, documentExports);
         },
 
         /**
@@ -78,8 +86,14 @@ define(function (require, exports, module) {
                 throw new Error ("Can not update an asset without a valid documentExports: %O", documentExports);
             }
 
+            var rootExports = Immutable.Map(documentExports.rootExports),
+                layerExportsMap = Immutable.Map(documentExports.layerExportsMap);
+
             var curDocumentExports = this.getDocumentExports(documentID) || new DocumentExports(),
-                nextDocumentExports = curDocumentExports.merge(documentExports);
+                nextDocumentExports = curDocumentExports.merge({
+                    rootExports: rootExports,
+                    layerExportsMap: layerExportsMap
+                });
 
             if (!curDocumentExports.equals(nextDocumentExports)) {
                 this._documentExportsMap = this._documentExportsMap.set(documentID, nextDocumentExports);
@@ -89,7 +103,6 @@ define(function (require, exports, module) {
 
         _deleteExports: function () {
             this._documentExportsMap = new Immutable.Map();
-            this._layerExports = new Immutable.Map();
         }
     });
 

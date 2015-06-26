@@ -50,7 +50,8 @@ define(function (require, exports, module) {
         JS_PREF: "jsPref",
         JS_HISTORY: "jsHistory",
         JS_LIBRARIES: "jsLibraries",
-        CC_LIBRARIES: "ccLibraries"
+        CC_LIBRARIES: "ccLibraries",
+        PS_GENERATOR: "psGenerator"
     };
 
     /**
