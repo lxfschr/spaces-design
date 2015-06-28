@@ -29,7 +29,8 @@ define(function (require, exports, module) {
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React),
         StoreWatchMixin = Fluxxor.StoreWatchMixin,
-        Immutable = require("immutable");
+        Immutable = require("immutable"),
+        classnames = require("classnames");
 
     var Properties = require("jsx!./Properties"),
         RecentFiles = require("jsx!./sections/nodoc/RecentFiles"),
@@ -87,14 +88,13 @@ define(function (require, exports, module) {
         },
 
         _renderProperties: function (documentID, current) {
-            var style = {};
-
-            if (!current) {
-                style.display = "none";
-            }
+            var className = classnames({
+                "panel__element": true,
+                "panel__element__hidden": !current
+            });
 
             return (
-                <div style={style} key={documentID}>
+                <div className={className} key={documentID}>
                     <Properties
                         documentID={documentID}
                         current={current} />
