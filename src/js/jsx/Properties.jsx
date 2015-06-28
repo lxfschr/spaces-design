@@ -29,35 +29,32 @@ define(function (require, exports, module) {
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React),
         StoreWatchMixin = Fluxxor.StoreWatchMixin,
-        Immutable = require("immutable");
+        Immutable = require("immutable"),
+        classnames = require("classnames");
 
     var TransformPanel = require("jsx!./sections/transform/TransformPanel"),
         StylePanel = require("jsx!./sections/style/StylePanel"),
-        PagesPanel = require("jsx!./sections/pages/PagesPanel"),
-        RecentFiles = require("jsx!./sections/nodoc/RecentFiles"),
-        ArtboardPresets = require("jsx!./sections/nodoc/ArtboardPresets");
+        PagesPanel = require("jsx!./sections/pages/PagesPanel");
         
     var Properties = React.createClass({
-        mixins: [FluxMixin, StoreWatchMixin("document", "application", "preferences", "draganddrop")],
+        mixins: [FluxMixin, StoreWatchMixin("document", "preferences", "draganddrop")],
 
         /**
          * Get the active document from flux and add it to the state.
          */
         getStateFromFlux: function () {
-            var applicationStore = this.getFlux().store("application"),
-                document = applicationStore.getCurrentDocument(),
-                disabled = document && document.unsupported,
-                preferencesStore = this.getFlux().store("preferences"),
+            var flux = this.getFlux(),
+                documentStore = flux.store("document"),
+                preferencesStore = flux.store("preferences"),
+                dragAndDropStore = flux.store("draganddrop"),
+                document = documentStore.getDocument(this.props.documentID),
+                disabled = document.unsupported,
                 preferences = preferencesStore.getState(),
                 styleVisible = !disabled && preferences.get("styleVisible", true),
                 pagesVisible = disabled || preferences.get("pagesVisible", true),
-                dragAndDropStore = this.getFlux().store("draganddrop"),
                 dragAndDropState = dragAndDropStore.getState();
 
             return {
-                activeDocumentInitialized: applicationStore.getState().activeDocumentInitialized,
-                recentFilesInitialized: applicationStore.getState().recentFilesInitialized,
-                recentFiles: applicationStore.getRecentFiles(),
                 document: document,
                 disabled: disabled,
                 styleVisible: styleVisible,
@@ -70,28 +67,16 @@ define(function (require, exports, module) {
         },
 
         shouldComponentUpdate: function (nextProps, nextState) {
-            // Don't re-render if we're just going temporarily inactive so that
-            // the UI doesn't blink unnecessarily.
-            if (this.props.active && !nextProps.active) {
-                return false;
-            }
-
-            // Don't re-render until either the active document or recent files
-            // are initialized.
-            if (!nextState.activeDocumentInitialized ||
-                (!this.state.document && !nextState.recentFilesInitialized)) {
+            if (!nextState.current) {
                 return false;
             }
 
             return this.state.styleVisible !== nextState.styleVisible ||
                 this.state.pagesVisible !== nextState.pagesVisible ||
-                this.state.activeDocumentInitialized !== nextState.activeDocumentInitialized ||
-                this.state.recentFilesInitialized !== nextState.recentFilesInitialized ||
                 this.state.dragTarget !== nextState.dragTarget ||
                 this.state.dropTarget !== nextState.dropTarget ||
                 this.state.dragPosition !== nextState.dragPosition ||
-                !Immutable.is(this.state.document, nextState.document) ||
-                (!nextState.document && !Immutable.is(this.state.recentFiles, nextState.recentFiles));
+                !Immutable.is(this.state.document, nextState.document);
         },
 
         /**
@@ -121,47 +106,42 @@ define(function (require, exports, module) {
         },
         
         render: function () {
-            var document = this.state.document,
-                disabled = this.state.disabled;
-
-            if (this.state.activeDocumentInitialized && document) {
-                return (
-                    <div className="properties">
-                        <TransformPanel
-                            disabled={disabled}
-                            document={document} />
-                        <StylePanel
-                            disabled={disabled}
-                            document={document}
-                            visible={this.state.styleVisible}
-                            visibleSibling={this.state.pagesVisible}
-                            onVisibilityToggle={this._handleVisibilityToggle.bind(this, false)} />
-                        <PagesPanel
-                            disabled={disabled}
-                            document={document}
-                            visible={this.state.pagesVisible}
-                            visibleSibling={this.state.styleVisible}
-                            onVisibilityToggle={this._handleVisibilityToggle.bind(this, true)}
-                            dragTarget={this.state.dragTarget}
-                            dropTarget={this.state.dropTarget}
-                            dragPosition={this.state.dragPosition}
-                            pastDragTarget={this.state.pastDragTarget} />
-                    </div>
-                );
-            } else if (this.state.recentFilesInitialized) {
-                return (
-                    <div className="properties">
-                        <RecentFiles recentFiles={this.state.recentFiles || []} />
-                        <ArtboardPresets />
-                    </div>
-                );
-            } else {
-                return (
-                    <div className="properties"></div>
-                );
+            // Do not render inactive documents on mount
+            if (!this.props.current) {
+                return null;
             }
-        }
 
+            var document = this.state.document,
+                disabled = this.state.disabled,
+                className = classnames({
+                    "properties": true,
+                    "properties__hidden": !this.props.current
+                });
+
+            return (
+                <div className={className}>
+                    <TransformPanel
+                        disabled={disabled}
+                        document={document} />
+                    <StylePanel
+                        disabled={disabled}
+                        document={document}
+                        visible={this.state.styleVisible}
+                        visibleSibling={this.state.pagesVisible}
+                        onVisibilityToggle={this._handleVisibilityToggle.bind(this, false)} />
+                    <PagesPanel
+                        disabled={disabled}
+                        document={document}
+                        visible={this.state.pagesVisible}
+                        visibleSibling={this.state.styleVisible}
+                        onVisibilityToggle={this._handleVisibilityToggle.bind(this, true)}
+                        dragTarget={this.state.dragTarget}
+                        dropTarget={this.state.dropTarget}
+                        dragPosition={this.state.dragPosition}
+                        pastDragTarget={this.state.pastDragTarget} />
+                </div>
+            );
+        }
     });
 
     module.exports = Properties;
