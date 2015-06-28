@@ -33,10 +33,13 @@ define(function (require, exports, module) {
 
     var Properties = require("jsx!./Properties"),
         RecentFiles = require("jsx!./sections/nodoc/RecentFiles"),
-        ArtboardPresets = require("jsx!./sections/nodoc/ArtboardPresets");
+        ArtboardPresets = require("jsx!./sections/nodoc/ArtboardPresets"),
+        collection = require("js/util/collection");
         
     var Panel = React.createClass({
         mixins: [FluxMixin, StoreWatchMixin("application")],
+
+        _mountedDocumentIDs: Immutable.Set(),
 
         /**
          * Get the active document from flux and add it to the state.
@@ -50,6 +53,10 @@ define(function (require, exports, module) {
                 activeDocumentInitialized = applicationState.activeDocumentInitialized,
                 recentFilesInitialized = applicationState.recentFilesInitialized,
                 recentFiles = applicationState.recentFiles;
+
+            this._mountedDocumentIDs = collection.intersection(documentIDs, this._mountedDocumentIDs)
+                .push(activeDocumentID)
+                .toSet();
 
             return {
                 activeDocumentInitialized: activeDocumentInitialized,
@@ -80,27 +87,35 @@ define(function (require, exports, module) {
                 (!nextState.documentIDs.size && !Immutable.is(this.state.recentFiles, nextState.recentFiles));
         },
 
+        _renderProperties: function (documentID, current) {
+            var style = {};
+
+            if (!current) {
+                style.display = "none";
+            }
+
+            return (
+                <div style={style} key={documentID}>
+                    <Properties
+                        documentID={documentID}
+                        current={current} />
+                </div>
+            );
+        },
+
         render: function () {
             var documentIDs = this.state.documentIDs;
 
             if (this.state.activeDocumentInitialized && documentIDs.size) {
                 var activeDocumentID = this.state.activeDocumentID,
-                    documentProperties = documentIDs.map(function (documentID) {
-                        var current = activeDocumentID === documentID,
-                            style = {};
-
-                        if (!current) {
-                            style.display = "none";
+                    activeDocumentProperties = this._renderProperties(activeDocumentID, true),
+                    documentProperties = this._mountedDocumentIDs.reduce(function (allProperties, documentID) {
+                        if (documentID !== activeDocumentID) {
+                            allProperties.push(this._renderProperties(documentID));
                         }
 
-                        return (
-                            <div style={style} key={documentID}>
-                                <Properties
-                                    documentID={documentID}
-                                    current={current} />
-                            </div>
-                        );
-                    });
+                        return allProperties;
+                    }, [activeDocumentProperties], this);
                 return (
                     <div className="panel">
                         {documentProperties}

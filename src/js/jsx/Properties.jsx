@@ -67,7 +67,7 @@ define(function (require, exports, module) {
         },
 
         shouldComponentUpdate: function (nextProps, nextState) {
-            if (!nextState.current) {
+            if (!nextProps.current) {
                 return false;
             }
 
@@ -106,11 +106,6 @@ define(function (require, exports, module) {
         },
         
         render: function () {
-            // Do not render inactive documents on mount
-            if (!this.props.current) {
-                return null;
-            }
-
             var document = this.state.document,
                 disabled = this.state.disabled,
                 className = classnames({

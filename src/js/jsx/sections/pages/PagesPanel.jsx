@@ -156,9 +156,9 @@ define(function (require, exports, module) {
                 return true;
             }
 
-            if (!this.props.visible && !nextProps.visible) {
-                return false;
-            }
+            // if (!this.props.visible && !nextProps.visible) {
+            //     return false;
+            // }
 
             if (this.props.visible !== nextProps.visible) {
                 return true;
@@ -421,7 +421,7 @@ define(function (require, exports, module) {
                 dragTarget = this.props.pastDragTarget;
             }
 
-            if (!doc || !this.props.visible) {
+            if (!doc) {
                 layerCount = null;
                 childComponents = null;
             } else {
