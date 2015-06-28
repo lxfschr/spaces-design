@@ -34,7 +34,7 @@ define(function (require, exports, module) {
 
     var TransformPanel = require("jsx!./sections/transform/TransformPanel"),
         StylePanel = require("jsx!./sections/style/StylePanel"),
-        PagesPanel = require("jsx!./sections/pages/PagesPanel");
+        LayersPanel = require("jsx!./sections/layers/LayersPanel");
         
     var Properties = React.createClass({
         mixins: [FluxMixin, StoreWatchMixin("document", "preferences", "draganddrop")],
@@ -48,7 +48,7 @@ define(function (require, exports, module) {
                 preferencesStore = flux.store("preferences"),
                 dragAndDropStore = flux.store("draganddrop"),
                 document = documentStore.getDocument(this.props.documentID),
-                disabled = document.unsupported,
+                disabled = document && document.unsupported,
                 preferences = preferencesStore.getState(),
                 styleVisible = !disabled && preferences.get("styleVisible", true),
                 pagesVisible = disabled || preferences.get("pagesVisible", true),
@@ -67,7 +67,13 @@ define(function (require, exports, module) {
         },
 
         shouldComponentUpdate: function (nextProps, nextState) {
+            // The document is inactive
             if (!nextProps.current) {
+                return false;
+            }
+
+            // The document has been closed and the panel will be unmounted shortly
+            if (!nextState.document) {
                 return false;
             }
 
@@ -124,7 +130,7 @@ define(function (require, exports, module) {
                         visible={this.state.styleVisible}
                         visibleSibling={this.state.pagesVisible}
                         onVisibilityToggle={this._handleVisibilityToggle.bind(this, false)} />
-                    <PagesPanel
+                    <LayersPanel
                         disabled={disabled}
                         document={document}
                         visible={this.state.pagesVisible}

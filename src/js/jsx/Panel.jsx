@@ -39,8 +39,6 @@ define(function (require, exports, module) {
     var Panel = React.createClass({
         mixins: [FluxMixin, StoreWatchMixin("application")],
 
-        _mountedDocumentIDs: Immutable.Set(),
-
         /**
          * Get the active document from flux and add it to the state.
          */
@@ -52,18 +50,19 @@ define(function (require, exports, module) {
                 activeDocumentID = applicationState.selectedDocumentID,
                 activeDocumentInitialized = applicationState.activeDocumentInitialized,
                 recentFilesInitialized = applicationState.recentFilesInitialized,
-                recentFiles = applicationState.recentFiles;
-
-            this._mountedDocumentIDs = collection.intersection(documentIDs, this._mountedDocumentIDs)
-                .push(activeDocumentID)
-                .toSet();
+                recentFiles = applicationState.recentFiles,
+                currentlyMountedDocumentIDs = this.state ? this.state.mountedDocumentIDs : Immutable.Set(),
+                mountedDocumentIDs = collection.intersection(documentIDs, currentlyMountedDocumentIDs)
+                    .push(activeDocumentID)
+                    .toSet();
 
             return {
                 activeDocumentInitialized: activeDocumentInitialized,
                 recentFilesInitialized: recentFilesInitialized,
                 recentFiles: recentFiles,
                 activeDocumentID: activeDocumentID,
-                documentIDs: documentIDs
+                documentIDs: documentIDs,
+                mountedDocumentIDs: mountedDocumentIDs
             };
         },
 
@@ -109,7 +108,7 @@ define(function (require, exports, module) {
             if (this.state.activeDocumentInitialized && documentIDs.size) {
                 var activeDocumentID = this.state.activeDocumentID,
                     activeDocumentProperties = this._renderProperties(activeDocumentID, true),
-                    documentProperties = this._mountedDocumentIDs.reduce(function (allProperties, documentID) {
+                    documentProperties = this.state.mountedDocumentIDs.reduce(function (allProperties, documentID) {
                         if (documentID !== activeDocumentID) {
                             allProperties.push(this._renderProperties(documentID));
                         }

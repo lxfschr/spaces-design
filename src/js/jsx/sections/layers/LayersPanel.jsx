@@ -59,7 +59,7 @@ define(function (require, exports, module) {
         return collection.pluck(layers, "face");
     };
 
-    var PagesPanel = React.createClass({
+    var LayersPanel = React.createClass({
         mixins: [FluxMixin],
 
         /**
@@ -507,5 +507,5 @@ define(function (require, exports, module) {
         }
     });
 
-    module.exports = PagesPanel;
+    module.exports = LayersPanel;
 });
