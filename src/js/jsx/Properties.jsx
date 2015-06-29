@@ -116,7 +116,7 @@ define(function (require, exports, module) {
                 disabled = this.state.disabled,
                 className = classnames({
                     "properties": true,
-                    "properties__hidden": !this.props.current
+                    "properties__active": this.props.current
                 });
 
             return (

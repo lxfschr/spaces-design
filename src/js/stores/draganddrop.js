@@ -224,7 +224,6 @@ define(function (require, exports, module) {
 
                 if ((potentialDropTarget &&
                         potentialDropTarget.validate(this._dragTarget, point, this._currentBounds))) {
-                    potentialDropTarget.b = this._currentBounds;
                     this._dropTarget = potentialDropTarget;
                 } else {
                     this._dropTarget = null;

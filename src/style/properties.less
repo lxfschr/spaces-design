@@ -50,14 +50,11 @@
 
 .panel__element {
     height: 100%;
-}
-
-.panel__element__hidden {
     display: none;
 }
 
-.properties__hidden {
-    display: none;
+.panel__element__active {
+    display: block;
 }
 
 .properties {
@@ -67,10 +64,14 @@
     min-height: 100%;
     flex-direction: column;
     justify-content: flex-start;
-    display: flex;
     flex-wrap: nowrap;
     align-items: stretch;
     flex-shrink: 0;
+    display: none;
+}
+
+.properties__active {
+    display: flex;
 }
 
 .formline {

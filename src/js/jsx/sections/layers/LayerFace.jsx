@@ -358,7 +358,7 @@ define(function (require, exports, module) {
     *
     * isEqual is equality checker for Droppable key objects
     */
-    var draggedVersion = Draggable.createWithComponent(LayerFace, function (props) { return props.layer;}, "y"),
+    var draggedVersion = Draggable.createWithComponent(LayerFace, function (props) { return props.layer; }, "y"),
         isEqual = function (layerA, layerB) {
             return layerA.key === layerB.key;
         },
@@ -372,5 +372,4 @@ define(function (require, exports, module) {
         };
 
     module.exports = Droppable.createWithComponent(draggedVersion, droppableSettings, isEqual, shouldComponentUpdate);
-    // module.exports = LayerFace;
 });

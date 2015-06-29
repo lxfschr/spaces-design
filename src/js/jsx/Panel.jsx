@@ -96,7 +96,7 @@ define(function (require, exports, module) {
                         var current = documentID === activeDocumentID,
                             className = classnames({
                                 "panel__element": true,
-                                "panel__element__hidden": !current
+                                "panel__element__active": current
                             });
 
                         return (
