@@ -52,10 +52,10 @@ define(function (require, exports, module) {
                     options = getProps(this.props),
                     key = options.key,
                     keyObject = options.keyObject,
-                    validate = options.validate,
+                    isValid = options.isValid,
                     handleDrop = options.handleDrop;
 
-                this.getFlux().actions.draganddrop.registerDroppable(node, key, validate, handleDrop, keyObject);
+                this.getFlux().actions.draganddrop.registerDroppable(node, key, isValid, handleDrop, keyObject);
             },
 
             shouldComponentUpdate: shouldUpdate,
@@ -78,7 +78,7 @@ define(function (require, exports, module) {
 
                 return [options.key, {
                     node: React.findDOMNode(this),
-                    validate: options.validate,
+                    isValid: options.isValid,
                     onDrop: options.handleDrop,
                     keyObject: options.keyObject
                 }];

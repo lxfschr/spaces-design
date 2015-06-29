@@ -37,11 +37,11 @@ define(function (require, exports) {
     * @param {Object} keyObject Model object which is represented by this node
     * @return {Promise}
     */
-    var registerDroppable = function (dropTarget, key, validateDrop, onDrop, keyObject) {
+    var registerDroppable = function (dropTarget, key, isValid, onDrop, keyObject) {
         var payload = {
             node: dropTarget,
             key: key,
-            validate: validateDrop,
+            isValid: isValid,
             onDrop: onDrop,
             keyObject: keyObject
         };

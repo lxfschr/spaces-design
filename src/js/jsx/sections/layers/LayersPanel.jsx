@@ -148,7 +148,7 @@ define(function (require, exports, module) {
                 return true;
             }
 
-            if (this.props.dragTarget || nextProps.dragTarget) {
+            if (this.props.dragTargets || nextProps.dragTargets) {
                 return true;
             }
 
@@ -220,33 +220,60 @@ define(function (require, exports, module) {
         /**
          * Tests to make sure drop target is not a child of any of the dragged layers
          *
-         * @param {Layer} target Layer that the mouse is overing on as potential drop target
+         * @param {object} dropInfo
          * @param {Immutable.List.<Layer>} draggedLayers Currently dragged layers
          * @param {object} point Point where drop event occurred 
-         * @param {object} bounds Bounds of target drop area
          * @return {boolean} Whether the selection can be reordered to the given layer or not
          */
-        _validDropTarget: function (target, draggedLayers, point, bounds) {
-            var dropAbove = false;
+        _validDropTarget: function (dropInfo, draggedLayers, point) {
+            var target = dropInfo.keyObject,
+                targetDocumentID = target.documentID;
+            if (targetDocumentID !== this.props.document.id) {
+                return {
+                    valid: false,
+                    compatible: false,
+                    distance: Number.POSITIVE_INFINITY
+                };
+            }
 
+            var dropNode = dropInfo.node,
+                bounds = dropNode.getBoundingClientRect(),
+                xCenter = bounds.left + (bounds.width / 2),
+                yCenter = bounds.top + (bounds.height / 2),
+                xDist = point.x - xCenter,
+                yDist = point.y - yCenter,
+                distance = Math.sqrt((xDist * xDist) + (yDist * yDist));
+
+            if (point.y < bounds.top || point.y > bounds.bottom ||
+                point.x < bounds.left || point.y > bounds.right) {
+                return {
+                    valid: false,
+                    compatible: false,
+                    distance: distance
+                };
+            }
+
+            var dropAbove = false;
             if (point && bounds) {
-                if ((bounds.height / 2) < bounds.bottom - point.y) {
+                if ((bounds.height / 2) < (bounds.bottom - point.y)) {
                     dropAbove = true;
                 }
             }
 
-            var doc = this.props.document,
-                child;
-
             // Do not let drop below background
             if (target.isBackground && !dropAbove) {
-                return false;
+                return {
+                    valid: false,
+                    compatible: true,
+                    distance: distance
+                };
             }
 
             // Do not let reorder exceed nesting limit
             // When we drag artboards, this limit is 1
             // because we can't nest artboards in any layers
-            var targetDepth = doc.layers.depth(target),
+            var doc = this.props.document,
+                targetDepth = doc.layers.depth(target),
                 draggingArtboard = draggedLayers
                     .some(function (layer) {
                         return layer.isArtboard;
@@ -262,31 +289,51 @@ define(function (require, exports, module) {
                 });
 
             if (nestLimitExceeded) {
-                return false;
+                return {
+                    valid: false,
+                    compatible: true,
+                    distance: distance
+                };
             }
+
+            var child;
 
             while (!draggedLayers.isEmpty()) {
                 child = draggedLayers.first();
                 draggedLayers = draggedLayers.shift();
 
                 if (target === child) {
-                    return false;
+                    return {
+                        valid: false,
+                        compatible: true,
+                        distance: distance
+                    };
                 }
 
                 // The special case of dragging a group below itself
                 if (child.kind === child.layerKinds.GROUPEND &&
                     dropAbove && doc.layers.indexOf(child) - doc.layers.indexOf(target) === 1) {
-                    return false;
+                    return {
+                        valid: false,
+                        compatible: true,
+                        distance: distance
+                    };
                 }
 
                 draggedLayers = draggedLayers.concat(doc.layers.children(child));
             }
 
-            this.setState({
-                dropAbove: dropAbove
-            });
+            if (this.state.dropAbove !== dropAbove) {
+                this.setState({
+                    dropAbove: dropAbove
+                });
+            }
 
-            return true;
+            return {
+                valid: true,
+                compatible: true,
+                distance: distance
+            };
         },
         /**
          * Tests to make sure drop target index is not a child of any of the dragged layers
@@ -361,7 +408,7 @@ define(function (require, exports, module) {
          *
          */
         _handleStop: function () {
-            if (this.props.dragTarget) {
+            if (this.props.dragTargets) {
                 var flux = this.getFlux(),
                     doc = this.props.document,
                     above = this.state.dropAbove,
@@ -371,7 +418,7 @@ define(function (require, exports, module) {
                     futureReorder: true
                 });
 
-                var dragSource = collection.pluck(this.props.dragTarget, "id");
+                var dragSource = collection.pluck(this.props.dragTargets, "id");
 
                 flux.actions.layers.reorder(doc, dragSource, dropIndex)
                     .bind(this)
@@ -410,11 +457,11 @@ define(function (require, exports, module) {
                 layerCount,
                 layerComponents,
                 childComponents,
-                dragTarget = this.props.dragTarget,
+                dragTargets = this.props.dragTargets,
                 dropTarget = this.props.dropTarget;
 
             if (this.state.futureReorder) {
-                dragTarget = this.props.pastDragTarget;
+                dragTargets = this.props.pastDragTargets;
             }
 
             if (!doc) {
@@ -423,7 +470,7 @@ define(function (require, exports, module) {
             } else {
                 layerComponents = doc.layers.allVisibleReversed
                     .map(function (layer, visibleIndex) {
-                        var isDragTarget = !!(dragTarget && dragTarget.indexOf(layer) !== -1),
+                        var isDragTarget = !!(dragTargets && dragTargets.indexOf(layer) !== -1),
                             isDropTarget = !!(dropTarget && dropTarget.keyObject.key === layer.key);
 
                         return (
@@ -438,7 +485,7 @@ define(function (require, exports, module) {
                                     axis="y"
                                     visibleLayerIndex={visibleIndex}
                                     dragPlaceholderClass="face__placeholder"
-                                    validateDrop={this._validDropTarget}
+                                    isValid={this._validDropTarget}
                                     onDragStop={this._handleStop}
                                     getDragItems={this._getDraggingLayers}
                                     dragTarget={isDragTarget}
@@ -451,7 +498,7 @@ define(function (require, exports, module) {
 
                 var layerListClasses = classnames({
                     "layer-list": true,
-                    "layer-list__dragging": dragTarget
+                    "layer-list__dragging": !!dragTargets
                 });
 
                 childComponents = (

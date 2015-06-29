@@ -366,7 +366,7 @@ define(function (require, exports, module) {
             return {
                 key: props.layer.key,
                 keyObject: props.layer,
-                validate: _.curry(props.validateDrop)(props.layer),
+                isValid: props.isValid,
                 handleDrop: props.onDragStop
             };
         };

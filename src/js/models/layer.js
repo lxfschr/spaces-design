@@ -42,6 +42,7 @@ define(function (require, exports, module) {
      * @constructor
      */
     var Layer = Immutable.Record({
+        documentID: null,
         /**
          * Id of layer
          * @type {number} 
@@ -365,6 +366,7 @@ define(function (require, exports, module) {
         }
 
         var model = {
+            documentID: documentID,
             id: id,
             key: documentID + "." + id,
             name: layerDescriptor.name,

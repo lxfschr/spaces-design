@@ -39,13 +39,14 @@ define(function (require, exports, module) {
          * All available drop targets
          * 
          * @private
-         * @type {Immutable.OrderedMap<{b: bounds, 
-         *                              node: DOMNode, 
+         * @type {Immutable.OrderedMap<{node: DOMNode, 
          *                              keyObject: object, 
          *                              validate: function, 
          *                              onDrop: function}>}  
          */
         _dropTargets: new Immutable.OrderedMap(),
+
+        _dropTargetDistances: null,
 
         /**
          * Currently Active drag targets
@@ -69,7 +70,7 @@ define(function (require, exports, module) {
          * @private
          * @type {Object} 
          */
-        _pastDragTarget: null,
+        _pastDragTargets: null,
 
         /**
          * Bounds for current drop target
@@ -90,23 +91,21 @@ define(function (require, exports, module) {
                 events.droppable.MOVE_AND_CHECK_BOUNDS, this.moveAndCheckBounds,
                 events.droppable.RESET_DROPPABLES, this._handleResetDroppables
             );
+
+            this._dropTargetDistances = new Map();
         },
 
         getState: function () {
             return {
-                dragTarget: this._dragTarget,
+                dragTargets: this._dragTargets,
                 dropTarget: this._dropTarget,
                 dragPosition: this._dragPosition,
-                pastDragTarget: this._pastDragTarget
+                pastDragTargets: this._pastDragTargets
             };
         },
 
-        _inBounds: function (bounds, point) {
-            return bounds.top < point.y && bounds.bottom > point.y && bounds.left < point.x && bounds.right > point.x;
-        },
-
         _handleStartDragging: function (payload) {
-            this._dragTarget = payload;
+            this._dragTargets = payload;
             this.emit("change");
         },
 
@@ -115,9 +114,9 @@ define(function (require, exports, module) {
                 this._dropTarget.onDrop(this._dropTarget.keyObject);
                 this._dropTarget = null;
             }
-            this._pastDragTarget = this._dragTarget;
+            this._pastDragTargets = this._dragTargets;
             this._currentBounds = null;
-            this._dragTarget = null;
+            this._dragTargets = null;
             this._dragPosition = null; // Removing this causes an offset
             this.emit("change");
         },
@@ -129,10 +128,9 @@ define(function (require, exports, module) {
          */
         _handleRegisterDroppable: function (payload) {
             this._handleBatchRegisterDroppables([[payload.key, {
-                b: payload.bounds,
                 node: payload.node,
                 keyObject: payload.keyObject,
-                validate: payload.validate,
+                isValid: payload.isValid,
                 onDrop: payload.onDrop
             }]]);
         },
@@ -204,31 +202,46 @@ define(function (require, exports, module) {
          *
          */
         checkBounds: function (point) {
-            var dragTarget = this._dragTarget,
-                potentialDropTarget = this._dropTarget;
-
-            if (dragTarget) {
-                // Check against the last bounds first instead of looking in the list every time
-                if (!this._currentBounds || !(this._inBounds(this._currentBounds, point))) {
-                    potentialDropTarget = this._dropTargets.find(function (obj) {
-                        if (dragTarget.indexOf(obj.keyObject) === -1) {
-                            var bound = obj.node.getBoundingClientRect(); // Only place we use getBoundingClientRect
-                            if (this._inBounds(bound, point)) {
-                                this._currentBounds = bound;
-                                return true;
-                            }
-                        }
-                        return false;
-                    }.bind(this));
-                }
-
-                if ((potentialDropTarget &&
-                        potentialDropTarget.validate(this._dragTarget, point, this._currentBounds))) {
-                    this._dropTarget = potentialDropTarget;
-                } else {
-                    this._dropTarget = null;
-                }
+            var dragTargets = this._dragTargets;
+            if (!dragTargets) {
+                return;
             }
+
+            this._dropTargets.some(function (dropTarget) {
+                var validationInfo = dropTarget.isValid(dropTarget, dragTargets, point),
+                    distance = validationInfo.distance,
+                    compatible = validationInfo.compatible,
+                    valid = validationInfo.valid;
+
+                this._dropTargetDistances.set(dropTarget, distance);
+
+                if (!compatible) {
+                    return false;
+                }
+
+                if (valid) {
+                    this._dropTarget = dropTarget;
+                }
+
+                return true;
+            }, this);
+
+            this._dropTargets = this._dropTargets.sort(function (a, b) {
+                var aDist = this._dropTargetDistances.get(a, Number.POSITIVE_INFINITY),
+                    bDist = this._dropTargetDistances.get(b, Number.POSITIVE_INFINITY);
+
+                if (Number.isFinite(aDist)) {
+                    if (Number.isFinite(bDist)) {
+                        return aDist - bDist > 0 ? 1 : (aDist === bDist ? 0 : -1);
+                    } else {
+                        return 1;
+                    }
+                } else if (Number.isFinite(bDist)) {
+                    return -1;
+                } else {
+                    return 0;
+                }
+            }.bind(this));
         }
     });
 

@@ -59,10 +59,10 @@ define(function (require, exports, module) {
                 disabled: disabled,
                 styleVisible: styleVisible,
                 pagesVisible: pagesVisible,
-                dragTarget: dragAndDropState.dragTarget,
+                dragTargets: dragAndDropState.dragTargets,
                 dropTarget: dragAndDropState.dropTarget,
                 dragPosition: dragAndDropState.dragPosition,
-                pastDragTarget: dragAndDropState.pastDragTarget
+                pastDragTargets: dragAndDropState.pastDragTargets
             };
         },
 
@@ -136,10 +136,10 @@ define(function (require, exports, module) {
                         visible={this.state.pagesVisible}
                         visibleSibling={this.state.styleVisible}
                         onVisibilityToggle={this._handleVisibilityToggle.bind(this, true)}
-                        dragTarget={this.state.dragTarget}
+                        dragTargets={this.state.dragTargets}
                         dropTarget={this.state.dropTarget}
                         dragPosition={this.state.dragPosition}
-                        pastDragTarget={this.state.pastDragTarget} />
+                        pastDragTargets={this.state.pastDragTargets} />
                 </div>
             );
         }
