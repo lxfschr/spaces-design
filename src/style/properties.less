@@ -41,24 +41,11 @@
 
 /* -- PROPERTIES -- */
 
-.properties {
-    height: 100%;
-    width: @properties-width;
-    overflow: hidden;
-    min-height: 100%;
-    // .background-transparency(@warm-gray, .9);
-    background-color: @properties-background;    
-    flex-direction: column;
-    justify-content: flex-start;
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    flex-shrink: 0;
-    z-index: 1;
-}
-
 .panel {
     height: 100%;
+    width: @properties-width;    
+    background-color: @properties-background;        
+    z-index: 1;
 }
 
 .panel__element {
@@ -71,6 +58,19 @@
 
 .properties__hidden {
     display: none;
+}
+
+.properties {
+    height: 100%;
+    width: @properties-width;
+    overflow: hidden;
+    min-height: 100%;
+    flex-direction: column;
+    justify-content: flex-start;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    flex-shrink: 0;
 }
 
 .formline {

@@ -87,34 +87,26 @@ define(function (require, exports, module) {
                 (!nextState.documentIDs.size && !Immutable.is(this.state.recentFiles, nextState.recentFiles));
         },
 
-        _renderProperties: function (documentID, current) {
-            var className = classnames({
-                "panel__element": true,
-                "panel__element__hidden": !current
-            });
-
-            return (
-                <div className={className} key={documentID}>
-                    <Properties
-                        documentID={documentID}
-                        current={current} />
-                </div>
-            );
-        },
-
         render: function () {
             var documentIDs = this.state.documentIDs;
 
             if (this.state.activeDocumentInitialized && documentIDs.size) {
                 var activeDocumentID = this.state.activeDocumentID,
-                    activeDocumentProperties = this._renderProperties(activeDocumentID, true),
-                    documentProperties = this.state.mountedDocumentIDs.reduce(function (allProperties, documentID) {
-                        if (documentID !== activeDocumentID) {
-                            allProperties.push(this._renderProperties(documentID));
-                        }
+                    documentProperties = this.state.mountedDocumentIDs.map(function (documentID) {
+                        var current = documentID === activeDocumentID,
+                            className = classnames({
+                                "panel__element": true,
+                                "panel__element__hidden": !current
+                            });
 
-                        return allProperties;
-                    }, [activeDocumentProperties], this);
+                        return (
+                            <div className={className} key={documentID}>
+                                <Properties
+                                    documentID={documentID}
+                                    current={current} />
+                            </div>
+                        );
+                    }, this);
                 return (
                     <div className="panel">
                         {documentProperties}

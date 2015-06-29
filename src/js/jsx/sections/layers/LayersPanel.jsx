@@ -156,10 +156,6 @@ define(function (require, exports, module) {
                 return true;
             }
 
-            // if (!this.props.visible && !nextProps.visible) {
-            //     return false;
-            // }
-
             if (this.props.visible !== nextProps.visible) {
                 return true;
             }
