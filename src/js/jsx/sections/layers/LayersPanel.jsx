@@ -27,6 +27,7 @@ define(function (require, exports, module) {
     var React = require("react"),
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React),
+        StoreWatchMixin = Fluxxor.StoreWatchMixin,
         Immutable = require("immutable"),
         classnames = require("classnames");
 
@@ -60,7 +61,7 @@ define(function (require, exports, module) {
     };
 
     var LayersPanel = React.createClass({
-        mixins: [FluxMixin],
+        mixins: [FluxMixin, StoreWatchMixin("draganddrop")],
 
         /**
          * A throttled version of os.setTooltip
@@ -75,6 +76,19 @@ define(function (require, exports, module) {
          * @type {Number}
          */
         _bottomNodeBounds: null,
+
+        getStateFromFlux: function () {
+            var flux = this.getFlux(),
+                dragAndDropStore = flux.store("draganddrop"),
+                dragAndDropState = dragAndDropStore.getState();
+
+            return {
+                dragTargets: dragAndDropState.dragTargets,
+                dropTarget: dragAndDropState.dropTarget,
+                dragPosition: dragAndDropState.dragPosition,
+                pastDragTargets: dragAndDropState.pastDragTargets
+            };
+        },
 
         componentWillMount: function () {
             this._setTooltipThrottled = synchronization.throttle(os.setTooltip, os, 500);
@@ -164,7 +178,10 @@ define(function (require, exports, module) {
                 return true;
             }
 
-            return !Immutable.is(_getFaces(this.props), _getFaces(nextProps));
+            return this.state.dragTargets !== nextState.dragTargets ||
+                this.state.dropTarget !== nextState.dropTarget ||
+                this.state.dragPosition !== nextState.dragPosition ||
+                !Immutable.is(_getFaces(this.props), _getFaces(nextProps));
         },
 
         /* Set initial state
@@ -412,13 +429,13 @@ define(function (require, exports, module) {
                 var flux = this.getFlux(),
                     doc = this.props.document,
                     above = this.state.dropAbove,
-                    dropIndex = doc.layers.indexOf(this.props.dropTarget.keyObject) - (above ? 0 : 1);
+                    dropIndex = doc.layers.indexOf(this.state.dropTarget.keyObject) - (above ? 0 : 1);
 
                 this.setState({
                     futureReorder: true
                 });
 
-                var dragSource = collection.pluck(this.props.dragTargets, "id");
+                var dragSource = collection.pluck(this.state.dragTargets, "id");
 
                 flux.actions.layers.reorder(doc, dragSource, dropIndex)
                     .bind(this)
@@ -457,11 +474,11 @@ define(function (require, exports, module) {
                 layerCount,
                 layerComponents,
                 childComponents,
-                dragTargets = this.props.dragTargets,
-                dropTarget = this.props.dropTarget;
+                dragTargets = this.state.dragTargets,
+                dropTarget = this.state.dropTarget;
 
             if (this.state.futureReorder) {
-                dragTargets = this.props.pastDragTargets;
+                dragTargets = this.state.pastDragTargets;
             }
 
             if (!doc) {
@@ -490,7 +507,7 @@ define(function (require, exports, module) {
                                     getDragItems={this._getDraggingLayers}
                                     dragTarget={isDragTarget}
                                     dragPosition={(isDropTarget || isDragTarget) &&
-                                        this.props.dragPosition}
+                                        this.state.dragPosition}
                                     dropTarget={isDropTarget}
                                     dropAbove={!!(isDropTarget && this.state.dropAbove)} />
                         );

@@ -37,7 +37,7 @@ define(function (require, exports, module) {
         LayersPanel = require("jsx!./sections/layers/LayersPanel");
         
     var Properties = React.createClass({
-        mixins: [FluxMixin, StoreWatchMixin("document", "preferences", "draganddrop")],
+        mixins: [FluxMixin, StoreWatchMixin("document", "preferences")],
 
         /**
          * Get the active document from flux and add it to the state.
@@ -46,23 +46,17 @@ define(function (require, exports, module) {
             var flux = this.getFlux(),
                 documentStore = flux.store("document"),
                 preferencesStore = flux.store("preferences"),
-                dragAndDropStore = flux.store("draganddrop"),
                 document = documentStore.getDocument(this.props.documentID),
                 disabled = document && document.unsupported,
                 preferences = preferencesStore.getState(),
                 styleVisible = !disabled && preferences.get("styleVisible", true),
-                pagesVisible = disabled || preferences.get("pagesVisible", true),
-                dragAndDropState = dragAndDropStore.getState();
+                pagesVisible = disabled || preferences.get("pagesVisible", true);
 
             return {
                 document: document,
                 disabled: disabled,
                 styleVisible: styleVisible,
-                pagesVisible: pagesVisible,
-                dragTargets: dragAndDropState.dragTargets,
-                dropTarget: dragAndDropState.dropTarget,
-                dragPosition: dragAndDropState.dragPosition,
-                pastDragTargets: dragAndDropState.pastDragTargets
+                pagesVisible: pagesVisible
             };
         },
 
@@ -79,9 +73,6 @@ define(function (require, exports, module) {
 
             return this.state.styleVisible !== nextState.styleVisible ||
                 this.state.pagesVisible !== nextState.pagesVisible ||
-                this.state.dragTarget !== nextState.dragTarget ||
-                this.state.dropTarget !== nextState.dropTarget ||
-                this.state.dragPosition !== nextState.dragPosition ||
                 !Immutable.is(this.state.document, nextState.document);
         },
 
@@ -135,11 +126,7 @@ define(function (require, exports, module) {
                         document={document}
                         visible={this.state.pagesVisible}
                         visibleSibling={this.state.styleVisible}
-                        onVisibilityToggle={this._handleVisibilityToggle.bind(this, true)}
-                        dragTargets={this.state.dragTargets}
-                        dropTarget={this.state.dropTarget}
-                        dragPosition={this.state.dragPosition}
-                        pastDragTargets={this.state.pastDragTargets} />
+                        onVisibilityToggle={this._handleVisibilityToggle.bind(this, true)} />
                 </div>
             );
         }
