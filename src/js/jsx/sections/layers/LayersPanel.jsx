@@ -123,36 +123,43 @@ define(function (require, exports, module) {
             }, this),
                 mappedBatchRegistrationInformation = Immutable.OrderedMap(batchRegistrationInformation);
 
-            this.getFlux().actions.draganddrop.batchRegisterDroppables(mappedBatchRegistrationInformation);
+            var zone = this.props.document.id,
+                flux = this.getFlux();
+
+            flux.actions.draganddrop.batchRegisterDroppables(zone, mappedBatchRegistrationInformation);
         },
 
         componentDidUpdate: function (prevProps) {
-            if (this.props.document) {
-                var nextSelected = this.props.document.layers.selected,
-                    prevSelected = prevProps.document ? prevProps.document.layers.selected : Immutable.List(),
-                    newSelection = collection.difference(nextSelected, prevSelected);
+            if (!this.props.document) {
+                return;
+            }
 
-                this._scrollToSelection(newSelection);
+            var nextSelected = this.props.document.layers.selected,
+                prevSelected = prevProps.document ? prevProps.document.layers.selected : Immutable.List(),
+                newSelection = collection.difference(nextSelected, prevSelected),
+                flux = this.getFlux(),
+                zone = this.props.document.id;
 
-                if (prevProps.document.id !== this.props.document.id) {
-                    // For all layer refs, ask for their registration info and add to list
-                    var batchRegistrationInformation = [];
+            this._scrollToSelection(newSelection);
 
-                    this.props.document.layers.allVisible.forEach(function (i) {
-                        batchRegistrationInformation.push(this.refs[i.key].getRegistration());
-                    }.bind(this));
+            if (prevProps.document.id !== this.props.document.id) {
+                // For all layer refs, ask for their registration info and add to list
+                var batchRegistrationInformation = [];
 
-                    this.getFlux().actions.draganddrop.resetDroppables(batchRegistrationInformation);
-                }
+                this.props.document.layers.allVisible.forEach(function (i) {
+                    batchRegistrationInformation.push(this.refs[i.key].getRegistration());
+                }.bind(this));
 
-                if (!Immutable.is(this.props.document.layers.index, prevProps.document.layers.index)) {
-                    var pastLayerKeys = collection.pluck(prevProps.document.layers.all, "key"),
-                        currentLayerKeys = collection.pluck(this.props.document.layers.all, "key"),
-                        removedLayerKeys = collection.difference(pastLayerKeys, currentLayerKeys);
+                flux.actions.draganddrop.resetDroppables(zone, batchRegistrationInformation);
+            }
 
-                    if (removedLayerKeys.size > 0) {
-                        this.getFlux().actions.draganddrop.batchDeregisterDroppables(removedLayerKeys);
-                    }
+            if (!Immutable.is(this.props.document.layers.index, prevProps.document.layers.index)) {
+                var pastLayerKeys = collection.pluck(prevProps.document.layers.all, "key"),
+                    currentLayerKeys = collection.pluck(this.props.document.layers.all, "key"),
+                    removedLayerKeys = collection.difference(pastLayerKeys, currentLayerKeys);
+
+                if (removedLayerKeys.size > 0) {
+                    flux.actions.draganddrop.batchDeregisterDroppables(zone, removedLayerKeys);
                 }
             }
         },
@@ -162,15 +169,15 @@ define(function (require, exports, module) {
                 return true;
             }
 
-            if (this.props.dragTargets || nextProps.dragTargets) {
-                return true;
-            }
-
-            if (this.props.dropTarget || nextProps.dropTarget) {
-                return true;
-            }
-
             if (this.props.visible !== nextProps.visible) {
+                return true;
+            }
+
+            if (this.state.dragTargets || nextState.dragTargets) {
+                return true;
+            }
+
+            if (this.state.dropTarget || nextState.dropTarget) {
                 return true;
             }
 
@@ -243,16 +250,6 @@ define(function (require, exports, module) {
          * @return {boolean} Whether the selection can be reordered to the given layer or not
          */
         _validDropTarget: function (dropInfo, draggedLayers, point) {
-            var target = dropInfo.keyObject,
-                targetDocumentID = target.documentID;
-            if (targetDocumentID !== this.props.document.id) {
-                return {
-                    valid: false,
-                    compatible: false,
-                    distance: Number.POSITIVE_INFINITY
-                };
-            }
-
             var dropNode = dropInfo.node,
                 bounds = dropNode.getBoundingClientRect(),
                 xCenter = bounds.left + (bounds.width / 2),
@@ -278,6 +275,7 @@ define(function (require, exports, module) {
             }
 
             // Do not let drop below background
+            var target = dropInfo.keyObject;
             if (target.isBackground && !dropAbove) {
                 return {
                     valid: false,
@@ -404,13 +402,14 @@ define(function (require, exports, module) {
          * Photoshop logic is, if we drag a selected layers, all selected layers are being reordered
          * If we drag an unselected layer, only that layer will be reordered
          *
-         * @param {Layer} dragLayer Layer the user is dragging
+         * @param {ReactElement} dragComponent Layer the user is dragging
          * @return {Immutable.List.<Layer>}
          */
-        _getDraggingLayers: function (dragLayer) {
-            var doc = this.props.document;
+        _getDraggingLayers: function (dragComponent) {
+            var dragLayer = dragComponent.props.layer;
 
             if (dragLayer.selected) {
+                var doc = this.props.document;
                 return doc.layers.selected.filter(function (layer) {
                     return this._validDragTarget(layer);
                 }, this);
@@ -425,7 +424,7 @@ define(function (require, exports, module) {
          *
          */
         _handleStop: function () {
-            if (this.props.dragTargets) {
+            if (this.state.dragTargets) {
                 var flux = this.getFlux(),
                     doc = this.props.document,
                     above = this.state.dropAbove,
@@ -496,12 +495,13 @@ define(function (require, exports, module) {
                                     ref={layer.key}
                                     disabled={this.props.disabled}
                                     registerOnMount={!this.state.batchRegister}
-                                    deregisterOnUnmount={false}
+                                    deregisterOnUnmount={true}
                                     document={doc}
                                     layer={layer}
                                     axis="y"
                                     visibleLayerIndex={visibleIndex}
                                     dragPlaceholderClass="face__placeholder"
+                                    zone={doc.id}
                                     isValid={this._validDropTarget}
                                     onDragStop={this._handleStop}
                                     getDragItems={this._getDraggingLayers}

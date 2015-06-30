@@ -50,12 +50,13 @@ define(function (require, exports, module) {
             _register: function () {
                 var node = React.findDOMNode(this),
                     options = getProps(this.props),
+                    zone = options.zone,
                     key = options.key,
                     keyObject = options.keyObject,
                     isValid = options.isValid,
                     handleDrop = options.handleDrop;
 
-                this.getFlux().actions.draganddrop.registerDroppable(node, key, isValid, handleDrop, keyObject);
+                this.getFlux().actions.draganddrop.registerDroppable(zone, node, key, isValid, handleDrop, keyObject);
             },
 
             shouldComponentUpdate: shouldUpdate,
@@ -91,8 +92,9 @@ define(function (require, exports, module) {
             },
 
             componentWillUnmount: function () {
+                var options = getProps(this.props);
                 if (this.props.deregisterOnUnmount) {
-                    this.getFlux().actions.draganddrop.deregisterDroppable(getProps(this.props).key);
+                    this.getFlux().actions.draganddrop.deregisterDroppable(options.zone, options.key);
                 }
             },
 

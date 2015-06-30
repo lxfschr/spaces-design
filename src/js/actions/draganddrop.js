@@ -26,25 +26,30 @@ define(function (require, exports) {
 
     var events = require("../events");
 
-    /*
-    * Register a droppable target node
-    * Keep a reference to the DOM node as well as the object that DOM node displays
-    *
-    * @param {Node} dropTarget HTML Node of drop target
-    * @param {string} key Unique key for drop target
-    * @param {function} validateDrop Function for validating drop 
-    * @param {function} onDrop Handler for drop operation
-    * @param {Object} keyObject Model object which is represented by this node
-    * @return {Promise}
-    */
-    var registerDroppable = function (dropTarget, key, isValid, onDrop, keyObject) {
+    /**
+     * Register a droppable target node
+     * Keep a reference to the DOM node as well as the object that DOM node displays
+     *
+     * @param {*} zone Key used to partition the set of dropTargets
+     * @param {Node} dropTarget HTML Node of drop target
+     * @param {string} key Unique key for drop target
+     * @param {function} isValid Function for validating drop 
+     * @param {function} onDrop Handler for drop operation
+     * @param {Object} keyObject Model object which is represented by this node
+     * @return {Promise}
+     */
+    var registerDroppable = function (zone, dropTarget, key, isValid, onDrop, keyObject) {
         var payload = {
-            node: dropTarget,
-            key: key,
-            isValid: isValid,
-            onDrop: onDrop,
-            keyObject: keyObject
-        };
+                zone: zone,
+                droppable: {
+                    node: dropTarget,
+                    key: key,
+                    isValid: isValid,
+                    onDrop: onDrop,
+                    keyObject: keyObject
+                }
+            };
+
 
         return this.dispatchAsync(events.droppable.REGISTER_DROPPABLE, payload);
     };
@@ -52,58 +57,82 @@ define(function (require, exports) {
     registerDroppable.writes = [];
 
     /**
-    * Add many droppables at once
-    *
-    * @param {Immutable.Iterable.<object>} list List of droppable registration information
-    * @return {Promise}    
-    */
-    var batchRegisterDroppables = function (list) {
-        return this.dispatchAsync(events.droppable.BATCH_REGISTER_DROPPABLES, list);
+     * Add many droppables at once
+     *
+     * @param {*} zone Key used to partition the set of dropTargets
+     * @param {Immutable.Iterable.<object>} droppables List of droppable registration information
+     * @return {Promise}    
+     */
+    var batchRegisterDroppables = function (zone, droppables) {
+        var payload = {
+            zone: zone,
+            droppables: droppables
+        };
+
+        return this.dispatchAsync(events.droppable.BATCH_REGISTER_DROPPABLES, payload);
     };
     batchRegisterDroppables.reads = [];
     batchRegisterDroppables.writes = [];
 
     /**
-    * Remove a drop target by key
-    *
-    * @param {string} key Unique key for droppable
-    * @return {Promise}
-    */
-    var deregisterDroppable = function (key) {
-        return this.dispatchAsync(events.droppable.DEREGISTER_DROPPABLE, key);
+     * Remove a drop target by key
+     *
+     * @param {*} zone Key used to partition the set of dropTargets
+     * @param {string} key Unique key for droppable
+     * @return {Promise}
+     */
+    var deregisterDroppable = function (zone, key) {
+        var payload = {
+            zone: zone,
+            key: key
+        };
+
+        return this.dispatchAsync(events.droppable.DEREGISTER_DROPPABLE, payload);
     };
     deregisterDroppable.reads = [];
     deregisterDroppable.writes = [];
 
     /**
-    * Remove many drop targets by a list of keys a drop target by key
-    *
-    * @param {Immutable.Iterable.<object>} keys List of keys to remove
-    * @return {Promise}
-    */
-    var batchDeregisterDroppables = function (keys) {
-        return this.dispatchAsync(events.droppable.DEREGISTER_DROPPABLE, keys);
+     * Remove many drop targets by a list of keys a drop target by key
+     *
+     * @param {*} zone Key used to partition the set of dropTargets
+     * @param {Immutable.Iterable.<object>} keys List of keys to remove
+     * @return {Promise}
+     */
+    var batchDeregisterDroppables = function (zone, keys) {
+        var payload = {
+            zone: zone,
+            keys: keys
+        };
+
+        return this.dispatchAsync(events.droppable.DEREGISTER_DROPPABLE, payload);
     };
     batchDeregisterDroppables.reads = [];
     batchDeregisterDroppables.writes = [];
 
     /**
-    * Fire event that dragging started
-    *
-    * @param {Immutable.Iterable.<object>} dragTarget List of currently dragging items
-    * @return {Promise}
-    */
-    var registerDragging = function (dragTarget) {
-        return this.dispatchAsync(events.droppable.REGISTER_DRAGGING, dragTarget);
+     * Fire event that dragging started
+     *
+     * @param {*} zone Key used to partition the set of dropTargets
+     * @param {Immutable.Iterable.<object>} dragTargets List of currently dragging items
+     * @return {Promise}
+     */
+    var registerDragging = function (zone, dragTargets) {
+        var payload = {
+            zone: zone,
+            dragTargets: dragTargets
+        };
+
+        return this.dispatchAsync(events.droppable.REGISTER_DRAGGING, payload);
     };
     registerDragging.reads = [];
     registerDragging.writes = [];
 
     /**
-    * Fire event that dragging stopped
-    *
-    * @return {Promise}    
-    */
+     * Fire event that dragging stopped
+     *
+     * @return {Promise}    
+     */
     var stopDragging = function () {
         return this.dispatchAsync(events.droppable.STOP_DRAGGING);
     };
@@ -111,25 +140,19 @@ define(function (require, exports) {
     registerDragging.writes = [];
 
     /**
-    * Check the intersection of the current dragTarget and available drop targets
-    *
-    * @param {{x: number, y: number}}>} point Point from event
-    * @return {Promise}    
-    */
-    var moveAndCheckBounds = function (point) {
-        return this.dispatchAsync(events.droppable.MOVE_AND_CHECK_BOUNDS, point);
-    };
-    moveAndCheckBounds.reads = [];
-    moveAndCheckBounds.writes = [];
+     * Reset all droppables (clear current list, add passed information)
+     *
+     * @param {*} zone Key used to partition the set of dropTargets
+     * @param {Iterable.List} droppables of droppable registration information
+     * @return {Promise}    
+     */
+    var resetDroppables = function (zone, droppables) {
+        var payload = {
+            zone: zone,
+            droppables: droppables
+        };
 
-    /**
-    * Reset all droppables (clear current list, add passed information)
-    *
-    * @param {Iterable.List} list of droppable registration information
-    * @return {Promise}    
-    */
-    var resetDroppables = function (list) {
-        return this.dispatchAsync(events.droppable.RESET_DROPPABLES, list);
+        return this.dispatchAsync(events.droppable.RESET_DROPPABLES, payload);
     };
 
     resetDroppables.reads = [];
@@ -139,7 +162,6 @@ define(function (require, exports) {
     exports.deregisterDroppable = deregisterDroppable;
     exports.registerDragging = registerDragging;
     exports.stopDragging = stopDragging;
-    exports.moveAndCheckBounds = moveAndCheckBounds;
     exports.batchRegisterDroppables = batchRegisterDroppables;
     exports.batchDeregisterDroppables = batchDeregisterDroppables;
     exports.resetDroppables = resetDroppables;

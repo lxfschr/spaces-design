@@ -44,7 +44,7 @@ define(function (require, exports, module) {
          *                              validate: function, 
          *                              onDrop: function}>}  
          */
-        _dropTargets: new Immutable.OrderedMap(),
+        _dropTargetZones: null,
 
         _dropTargetDistances: null,
 
@@ -72,14 +72,6 @@ define(function (require, exports, module) {
          */
         _pastDragTargets: null,
 
-        /**
-         * Bounds for current drop target
-         *
-         * @private
-         * @type {{top: number, bottom: number, left: number, right: number}} 
-         */
-        _currentBounds: null,
-
         initialize: function () {
             this.bindActions(
                 events.droppable.REGISTER_DROPPABLE, this._handleRegisterDroppable,
@@ -92,7 +84,7 @@ define(function (require, exports, module) {
                 events.droppable.RESET_DROPPABLES, this._handleResetDroppables
             );
 
-            this._dropTargetDistances = new Map();
+            this._dropTargetZones = new Map();
         },
 
         getState: function () {
@@ -105,7 +97,8 @@ define(function (require, exports, module) {
         },
 
         _handleStartDragging: function (payload) {
-            this._dragTargets = payload;
+            this._dragTargets = payload.dragTargets;
+            this._dropTargetDistances = new Map();
             this.emit("change");
         },
 
@@ -114,11 +107,31 @@ define(function (require, exports, module) {
                 this._dropTarget.onDrop(this._dropTarget.keyObject);
                 this._dropTarget = null;
             }
+            this._dropTargetDistances = null;
             this._pastDragTargets = this._dragTargets;
-            this._currentBounds = null;
             this._dragTargets = null;
             this._dragPosition = null; // Removing this causes an offset
             this.emit("change");
+        },
+
+        _addDroppables: function (zone, droppables) {
+            var dropTargets = this._dropTargetZones.get(zone);
+            if (!dropTargets) {
+                dropTargets = Immutable.Map();
+            }
+
+            var nextDropTargets = dropTargets.merge(droppables);
+            this._dropTargetZones.set(zone, nextDropTargets);
+        },
+
+        _removeDroppables: function (zone, keys) {
+            var dropTargets = this._dropTargetZones.get(zone);
+            if (!dropTargets) {
+                throw new Error("Unable to remove droppables from an empty drop target zone");
+            }
+
+            var nextDropTargets = dropTargets.deleteIn(keys);
+            this._dropTargetZones.set(zone, nextDropTargets);
         },
 
         /**
@@ -127,12 +140,10 @@ define(function (require, exports, module) {
          * @param {object} payload
          */
         _handleRegisterDroppable: function (payload) {
-            this._handleBatchRegisterDroppables([[payload.key, {
-                node: payload.node,
-                keyObject: payload.keyObject,
-                isValid: payload.isValid,
-                onDrop: payload.onDrop
-            }]]);
+            var zone = payload.zone,
+                droppable = payload.droppable;
+
+            this._addDroppables(zone, [[droppable.key, droppable]]);
         },
         
         /**
@@ -141,25 +152,34 @@ define(function (require, exports, module) {
          * @param {Immutable.Iterable.OrderedMap<object>} payload list of registration infromation
          */
         _handleBatchRegisterDroppables: function (payload) {
-            this._dropTargets = this._dropTargets.merge(payload);
+            var zone = payload.zone,
+                droppables = payload.droppables;
+
+            this._dropTargets = this._addDroppables(zone, droppables);
         },
 
         /**
          * Removes droppable area from list
          *
-         * @param {string} key
+         * @param {string} payload
          */
-        _handleDeregisterDroppable: function (key) {
-            this._handleBatchDeregisterDroppables(Immutable.List.of(key));
+        _handleDeregisterDroppable: function (payload) {
+            var zone = payload.zone,
+                key = payload.key;
+
+            this._removeDroppables(zone, Immutable.List.of(key));
         },
         
         /**
          * Removes many droppable areas
          *
-         * @param {Immutable.Iterable.List<string>} keys
+         * @param {Immutable.Iterable.List<string>} payload
          */
-        _handleBatchDeregisterDroppables: function (keys) {
-            this._dropTargets = this._dropTargets.deleteIn(keys);
+        _handleBatchDeregisterDroppables: function (payload) {
+            var zone = payload.zone,
+                keys = payload.keys;
+
+            this._removeDroppables(zone, keys);
         },
 
         /**
@@ -168,10 +188,11 @@ define(function (require, exports, module) {
          * @param {object} payload list of registration information
          */
         _handleResetDroppables: function (payload) {
-            this.dropTargets = new Immutable.OrderedMap();
-            payload.forEach(function (p) {
-                this._handleRegisterDroppable(p);
-            }, this);
+            var zone = payload.zone,
+                droppables = payload.droppables;
+
+            this._dropTargetZones.delete(zone);
+            this._addDroppables(zone, droppables);
         },
         
         /**
@@ -179,17 +200,18 @@ define(function (require, exports, module) {
          * Sets _dragPosition which is used for moving dragged object on screen 
          * Emits change event which causes re-render
          *
+         * @param {*} zone
          * @param {{x: number, y: number}} point Point where event occurred
          */
-        moveAndCheckBounds: function (point) {
-            this.checkBounds(point);
+        moveAndCheckBounds: function (zone, point) {
+            this.checkBounds(zone, point);
             this._dragPosition = point;
             this.emit("change");
         },
 
         /**
          * Checks the bounds of all the drop targets for this point
-         * Sets this._currentBounds and this._dropTarget if an intersection and valid target are found
+         * Sets this._dropTarget if an intersection and valid target are found
          *
          * For speed, first checks the last bounds to see if we are still within them
          *
@@ -198,22 +220,25 @@ define(function (require, exports, module) {
          * - Somehow cache getBoundingClientRect to make this faster
          * - Could consider using throttle here to stop some wasted calls - throttle around 16ms for 60fps
          *
+         * @param {*} zone
          * @param {{x: number, y: number}} point Point were event occurred
-         *
          */
-        checkBounds: function (point) {
+        checkBounds: function (zone, point) {
             var dragTargets = this._dragTargets;
             if (!dragTargets) {
                 return;
             }
 
-            this._dropTargets.some(function (dropTarget) {
+            var dropTargets = this._dropTargetZones.get(zone),
+                dropTargetDistances = this._dropTargetDistances;
+
+            dropTargets.some(function (dropTarget) {
                 var validationInfo = dropTarget.isValid(dropTarget, dragTargets, point),
                     distance = validationInfo.distance,
                     compatible = validationInfo.compatible,
                     valid = validationInfo.valid;
 
-                this._dropTargetDistances.set(dropTarget, distance);
+                dropTargetDistances.set(dropTarget, distance);
 
                 if (!compatible) {
                     return false;
@@ -226,9 +251,9 @@ define(function (require, exports, module) {
                 return true;
             }, this);
 
-            this._dropTargets = this._dropTargets.sort(function (a, b) {
-                var aDist = this._dropTargetDistances.get(a, Number.POSITIVE_INFINITY),
-                    bDist = this._dropTargetDistances.get(b, Number.POSITIVE_INFINITY);
+            dropTargets = dropTargets.sort(function (a, b) {
+                var aDist = dropTargetDistances.get(a, Number.POSITIVE_INFINITY),
+                    bDist = dropTargetDistances.get(b, Number.POSITIVE_INFINITY);
 
                 if (Number.isFinite(aDist)) {
                     if (Number.isFinite(bDist)) {
@@ -241,7 +266,7 @@ define(function (require, exports, module) {
                 } else {
                     return 0;
                 }
-            }.bind(this));
+            });
         }
     });
 
