@@ -89,8 +89,7 @@
     "requirePaddingNewLinesAfterUseStrict": true,
     "requirePaddingNewlinesBeforeKeywords": [
         "do",
-        "for",
-        "while"
+        "for"
     ],
     "requireParenthesesAroundIIFE": true,
     "requireSemicolons": true,

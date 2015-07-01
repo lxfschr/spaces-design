@@ -256,7 +256,6 @@ define(function (require, exports, module) {
                 this._dropTarget = null;
             }
 
-
             // Move this drop target to the front of the list for the next search
             if (foundDropTargetIndex > -1) {
                 dropTargets = dropTargets

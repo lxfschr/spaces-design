@@ -79,6 +79,10 @@ define(function (require, exports, module) {
 
         _boundingClientRectCache: null,
 
+        _validDropTargetBelowCache: null,
+
+        _validDropTargetAboveCache: null,
+
         getStateFromFlux: function () {
             var flux = this.getFlux(),
                 dragAndDropStore = flux.store("draganddrop"),
@@ -94,7 +98,6 @@ define(function (require, exports, module) {
 
         componentWillMount: function () {
             this._setTooltipThrottled = synchronization.throttle(os.setTooltip, os, 500);
-            this._boundingClientRectCache = new Map();
         },
         
         componentWillReceiveProps: function (nextProps) {
@@ -251,40 +254,10 @@ define(function (require, exports, module) {
             return rect;
         },
 
-        /**
-         * Tests to make sure drop target is not a child of any of the dragged layers
-         *
-         * @param {object} dropInfo
-         * @param {Immutable.List.<Layer>} draggedLayers Currently dragged layers
-         * @param {object} point Point where drop event occurred 
-         * @return {boolean} Whether the selection can be reordered to the given layer or not
-         */
-        _validDropTarget: function (dropInfo, draggedLayers, point) {
-            var dropNode = dropInfo.node,
-                bounds = this._getBoundingClientRectFromCache(dropNode);
-
-            if (point.y < bounds.top || point.y > bounds.bottom ||
-                point.x < bounds.left || point.y > bounds.right) {
-                return {
-                    valid: false,
-                    compatible: false
-                };
-            }
-
-            var dropAbove = false;
-            if (point && bounds) {
-                if ((bounds.height / 2) < (bounds.bottom - point.y)) {
-                    dropAbove = true;
-                }
-            }
-
+        _validCompatibleDropTargetHelper: function (target, draggedLayers, dropAbove) {
             // Do not let drop below background
-            var target = dropInfo.keyObject;
             if (target.isBackground && !dropAbove) {
-                return {
-                    valid: false,
-                    compatible: true
-                };
+                return false;
             }
 
             // Do not let reorder exceed nesting limit
@@ -307,46 +280,86 @@ define(function (require, exports, module) {
                 });
 
             if (nestLimitExceeded) {
-                return {
-                    valid: false,
-                    compatible: true
-                };
+                return false;
             }
 
             var child;
-
             while (!draggedLayers.isEmpty()) {
                 child = draggedLayers.first();
                 draggedLayers = draggedLayers.shift();
 
                 if (target === child) {
-                    return {
-                        valid: false,
-                        compatible: true
-                    };
+                    return false;
                 }
 
                 // The special case of dragging a group below itself
                 if (child.kind === child.layerKinds.GROUPEND &&
                     dropAbove && doc.layers.indexOf(child) - doc.layers.indexOf(target) === 1) {
-                    return {
-                        valid: false,
-                        compatible: true
-                    };
+                    return false;
                 }
 
                 draggedLayers = draggedLayers.concat(doc.layers.children(child));
             }
 
-            if (this.state.dropAbove !== dropAbove) {
+            return true;
+        },
+
+        _validCompatibleDropTarget: function (target, draggedLayers, dropAbove) {
+            var cache = dropAbove ?
+                this._validDropTargetAboveCache :
+                this._validDropTargetBelowCache;
+
+            // The validDropCache is cleared after each drag operation, so it is
+            // always specific to the current set of dragged layers
+            var valid = cache.get(target);
+
+            if (valid === undefined) {
+                valid = this._validCompatibleDropTargetHelper(target, draggedLayers, dropAbove);
+                cache.set(target, valid);
+            }
+
+            return valid;
+        },
+
+        /**
+         * Tests to make sure drop target is not a child of any of the dragged layers
+         *
+         * @param {object} dropInfo
+         * @param {Immutable.List.<Layer>} draggedLayers Currently dragged layers
+         * @param {object} point Point where drop event occurred 
+         * @return {boolean} Whether the selection can be reordered to the given layer or not
+         */
+        _validDropTarget: function (dropInfo, draggedLayers, point) {
+            var dropNode = dropInfo.node,
+                bounds = this._getBoundingClientRectFromCache(dropNode);
+
+            if (point.y < bounds.top || point.y > bounds.bottom ||
+                point.x < bounds.left || point.y > bounds.right) {
+                return {
+                    compatible: false,
+                    valid: false
+                };
+            }
+
+            var dropAbove = false;
+            if (point && bounds) {
+                if ((bounds.height / 2) < (bounds.bottom - point.y)) {
+                    dropAbove = true;
+                }
+            }
+
+            var target = dropInfo.keyObject,
+                valid = this._validCompatibleDropTarget(target, draggedLayers, dropAbove);
+
+            if (valid && this.state.dropAbove !== dropAbove) {
                 this.setState({
                     dropAbove: dropAbove
                 });
             }
 
             return {
-                valid: true,
-                compatible: true
+                compatible: true,
+                valid: valid
             };
         },
         /**
@@ -417,6 +430,12 @@ define(function (require, exports, module) {
             }
         },
 
+        _handleStart: function () {
+            this._boundingClientRectCache = new Map();
+            this._validDropTargetAboveCache = new Map();
+            this._validDropTargetBelowCache = new Map();
+        },
+
         /**
          * Custom drag finish handler. Calculates the drop index through the target,
          * removes drop target properties, and calls the reorder action.
@@ -448,6 +467,10 @@ define(function (require, exports, module) {
                     dropAbove: null
                 });
             }
+
+            this._boundingClientRectCache = null;
+            this._validDropTargetBelowCache = null;
+            this._validDropTargetAboveCache = null;
         },
 
         /**
@@ -465,7 +488,7 @@ define(function (require, exports, module) {
          */
         _handleScroll: function () {
             this._setTooltipThrottled("");
-            this._boundingClientRectCache = new Map();
+            this._boundingClientRectCache = this.state.dragTargets ? new Map() : null;
         },
 
         render: function () {
@@ -503,6 +526,7 @@ define(function (require, exports, module) {
                                     dragPlaceholderClass="face__placeholder"
                                     zone={doc.id}
                                     isValid={this._validDropTarget}
+                                    onDragStart={this._handleStart}
                                     onDragStop={this._handleStop}
                                     getDragItems={this._getDraggingLayers}
                                     dragTarget={isDragTarget}

@@ -174,6 +174,10 @@ define(function (require, exports, module) {
                         dragging: true
                     });
 
+                    if (this.props.onDragStart) {
+                        this.props.onDragStart();
+                    }
+
                     var dragItems = this.props.getDragItems(this);
                     flux.actions.draganddrop.registerDragging(zone, dragItems);
                 } else {
