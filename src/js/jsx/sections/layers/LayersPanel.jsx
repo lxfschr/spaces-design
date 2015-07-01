@@ -112,10 +112,6 @@ define(function (require, exports, module) {
         },
 
         componentDidMount: function () {
-            if (!this.props.document) {
-                return;
-            }
-
             this._scrollToSelection(this.props.document.layers.selected);
             this._bottomNodeBounds = 0;
             
@@ -131,10 +127,6 @@ define(function (require, exports, module) {
         },
 
         componentDidUpdate: function (prevProps) {
-            if (!this.props.document) {
-                return;
-            }
-
             var nextSelected = this.props.document.layers.selected,
                 prevSelected = prevProps.document ? prevProps.document.layers.selected : Immutable.List(),
                 newSelection = collection.difference(nextSelected, prevSelected),
@@ -161,6 +153,13 @@ define(function (require, exports, module) {
                     flux.actions.draganddrop.batchDeregisterDroppables(zone, removedLayerKeys);
                 }
             }
+        },
+
+        componentWillUnmount: function () {
+            var flux = this.getFlux(),
+                zone = this.props.document.id;
+
+            flux.actions.draganddrop.batchDeregisterDroppables(zone);
         },
 
         shouldComponentUpdate: function (nextProps, nextState) {
@@ -500,7 +499,7 @@ define(function (require, exports, module) {
                                     ref={layer.key}
                                     disabled={this.props.disabled}
                                     registerOnMount={!this.state.batchRegister}
-                                    deregisterOnUnmount={true}
+                                    deregisterOnUnmount={false}
                                     document={doc}
                                     layer={layer}
                                     axis="y"

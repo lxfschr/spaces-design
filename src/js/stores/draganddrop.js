@@ -30,6 +30,7 @@ define(function (require, exports, module) {
     var events = require("js/events");
 
     /**
+     * Holds global state needed by view components to implement drag-and-drop.
      *
      * @constructor
      */
@@ -39,10 +40,11 @@ define(function (require, exports, module) {
          * All available drop targets
          * 
          * @private
-         * @type {Immutable.OrderedMap<{node: DOMNode, 
-         *                              keyObject: object, 
-         *                              validate: function, 
-         *                              onDrop: function}>}  
+         * @type {Immutable.List.<{node: DOMNode,
+         *      key: number,
+         *      keyObject: object, 
+         *      validate: function, 
+         *      onDrop: function}>}
          */
         _dropTargetZones: null,
 
@@ -134,6 +136,10 @@ define(function (require, exports, module) {
             this._dropTargetZones.set(zone, nextDropTargets);
         },
 
+        _clearDroppables: function (zone) {
+            this._dropTargetZones.delete(zone);
+        },
+
         /**
          * Adds node to list of drop targets
          *
@@ -179,7 +185,11 @@ define(function (require, exports, module) {
             var zone = payload.zone,
                 keys = payload.keys;
 
-            this._removeDroppables(zone, keys);
+            if (keys) {
+                this._removeDroppables(zone, keys);
+            } else {
+                this._clearDroppables(zone);
+            }
         },
 
         /**
@@ -191,7 +201,7 @@ define(function (require, exports, module) {
             var zone = payload.zone,
                 droppables = payload.droppables;
 
-            this._dropTargetZones.delete(zone);
+            this._clearDroppables(zone);
             this._addDroppables(zone, droppables);
         },
         
