@@ -77,6 +77,8 @@ define(function (require, exports, module) {
          */
         _bottomNodeBounds: null,
 
+        _boundingClientRectCache: null,
+
         getStateFromFlux: function () {
             var flux = this.getFlux(),
                 dragAndDropStore = flux.store("draganddrop"),
@@ -92,6 +94,7 @@ define(function (require, exports, module) {
 
         componentWillMount: function () {
             this._setTooltipThrottled = synchronization.throttle(os.setTooltip, os, 500);
+            this._boundingClientRectCache = new Map();
         },
         
         componentWillReceiveProps: function (nextProps) {
@@ -120,13 +123,12 @@ define(function (require, exports, module) {
             // For all layer refs, ask for their registration info and add to list
             var batchRegistrationInformation = this.props.document.layers.allVisible.map(function (i) {
                 return this.refs[i.key].getRegistration();
-            }, this),
-                mappedBatchRegistrationInformation = Immutable.OrderedMap(batchRegistrationInformation);
+            }, this);
 
             var zone = this.props.document.id,
                 flux = this.getFlux();
 
-            flux.actions.draganddrop.batchRegisterDroppables(zone, mappedBatchRegistrationInformation);
+            flux.actions.draganddrop.batchRegisterDroppables(zone, batchRegistrationInformation);
         },
 
         componentDidUpdate: function (prevProps) {
@@ -144,10 +146,8 @@ define(function (require, exports, module) {
 
             if (prevProps.document.id !== this.props.document.id) {
                 // For all layer refs, ask for their registration info and add to list
-                var batchRegistrationInformation = [];
-
-                this.props.document.layers.allVisible.forEach(function (i) {
-                    batchRegistrationInformation.push(this.refs[i.key].getRegistration());
+                var batchRegistrationInformation = this.props.document.layers.allVisible.map(function (i) {
+                    return this.refs[i.key].getRegistration();
                 }.bind(this));
 
                 flux.actions.draganddrop.resetDroppables(zone, batchRegistrationInformation);
@@ -241,6 +241,16 @@ define(function (require, exports, module) {
             }
         },
 
+        _getBoundingClientRectFromCache: function (node) {
+            var rect = this._boundingClientRectCache.get(node);
+            if (!rect) {
+                rect = node.getBoundingClientRect();
+                this._boundingClientRectCache.set(node, rect);
+            }
+
+            return rect;
+        },
+
         /**
          * Tests to make sure drop target is not a child of any of the dragged layers
          *
@@ -251,19 +261,13 @@ define(function (require, exports, module) {
          */
         _validDropTarget: function (dropInfo, draggedLayers, point) {
             var dropNode = dropInfo.node,
-                bounds = dropNode.getBoundingClientRect(),
-                xCenter = bounds.left + (bounds.width / 2),
-                yCenter = bounds.top + (bounds.height / 2),
-                xDist = point.x - xCenter,
-                yDist = point.y - yCenter,
-                distance = Math.sqrt((xDist * xDist) + (yDist * yDist));
+                bounds = this._getBoundingClientRectFromCache(dropNode);
 
             if (point.y < bounds.top || point.y > bounds.bottom ||
                 point.x < bounds.left || point.y > bounds.right) {
                 return {
                     valid: false,
-                    compatible: false,
-                    distance: distance
+                    compatible: false
                 };
             }
 
@@ -279,8 +283,7 @@ define(function (require, exports, module) {
             if (target.isBackground && !dropAbove) {
                 return {
                     valid: false,
-                    compatible: true,
-                    distance: distance
+                    compatible: true
                 };
             }
 
@@ -306,8 +309,7 @@ define(function (require, exports, module) {
             if (nestLimitExceeded) {
                 return {
                     valid: false,
-                    compatible: true,
-                    distance: distance
+                    compatible: true
                 };
             }
 
@@ -320,8 +322,7 @@ define(function (require, exports, module) {
                 if (target === child) {
                     return {
                         valid: false,
-                        compatible: true,
-                        distance: distance
+                        compatible: true
                     };
                 }
 
@@ -330,8 +331,7 @@ define(function (require, exports, module) {
                     dropAbove && doc.layers.indexOf(child) - doc.layers.indexOf(target) === 1) {
                     return {
                         valid: false,
-                        compatible: true,
-                        distance: distance
+                        compatible: true
                     };
                 }
 
@@ -346,8 +346,7 @@ define(function (require, exports, module) {
 
             return {
                 valid: true,
-                compatible: true,
-                distance: distance
+                compatible: true
             };
         },
         /**
@@ -466,6 +465,7 @@ define(function (require, exports, module) {
          */
         _handleScroll: function () {
             this._setTooltipThrottled("");
+            this._boundingClientRectCache = new Map();
         },
 
         render: function () {
@@ -487,7 +487,7 @@ define(function (require, exports, module) {
                 layerComponents = doc.layers.allVisibleReversed
                     .map(function (layer, visibleIndex) {
                         var isDragTarget = !!(dragTargets && dragTargets.indexOf(layer) !== -1),
-                            isDropTarget = !!(dropTarget && dropTarget.keyObject.key === layer.key);
+                            isDropTarget = !!(dropTarget && dropTarget.key === layer.key);
 
                         return (
                                 <LayerFace

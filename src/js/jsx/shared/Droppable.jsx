@@ -77,12 +77,13 @@ define(function (require, exports, module) {
             getRegistration: function () {
                 var options = getProps(this.props);
 
-                return [options.key, {
+                return {
+                    key: options.key,
                     node: React.findDOMNode(this),
                     isValid: options.isValid,
                     onDrop: options.handleDrop,
                     keyObject: options.keyObject
-                }];
+                };
             },
 
             componentDidMount: function () {

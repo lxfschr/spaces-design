@@ -46,8 +46,6 @@ define(function (require, exports, module) {
          */
         _dropTargetZones: null,
 
-        _dropTargetDistances: null,
-
         /**
          * Currently Active drag targets
          * 
@@ -98,7 +96,6 @@ define(function (require, exports, module) {
 
         _handleStartDragging: function (payload) {
             this._dragTargets = payload.dragTargets;
-            this._dropTargetDistances = new Map();
             this.emit("change");
         },
 
@@ -107,7 +104,6 @@ define(function (require, exports, module) {
                 this._dropTarget.onDrop(this._dropTarget.keyObject);
                 this._dropTarget = null;
             }
-            this._dropTargetDistances = null;
             this._pastDragTargets = this._dragTargets;
             this._dragTargets = null;
             this._dragPosition = null; // Removing this causes an offset
@@ -117,10 +113,10 @@ define(function (require, exports, module) {
         _addDroppables: function (zone, droppables) {
             var dropTargets = this._dropTargetZones.get(zone);
             if (!dropTargets) {
-                dropTargets = Immutable.Map();
+                dropTargets = Immutable.List();
             }
 
-            var nextDropTargets = dropTargets.merge(droppables);
+            var nextDropTargets = dropTargets.concat(droppables);
             this._dropTargetZones.set(zone, nextDropTargets);
         },
 
@@ -130,7 +126,11 @@ define(function (require, exports, module) {
                 throw new Error("Unable to remove droppables from an empty drop target zone");
             }
 
-            var nextDropTargets = dropTargets.deleteIn(keys);
+            var nextDropTargets = dropTargets;
+            keys.forEach(function (key) {
+                nextDropTargets = nextDropTargets.delete(key);
+            });
+
             this._dropTargetZones.set(zone, nextDropTargets);
         },
 
@@ -143,7 +143,7 @@ define(function (require, exports, module) {
             var zone = payload.zone,
                 droppable = payload.droppable;
 
-            this._addDroppables(zone, [[droppable.key, droppable]]);
+            this._addDroppables(zone, [droppable]);
         },
         
         /**
@@ -167,7 +167,7 @@ define(function (require, exports, module) {
             var zone = payload.zone,
                 key = payload.key;
 
-            this._removeDroppables(zone, Immutable.List.of(key));
+            this._removeDroppables(zone, [key]);
         },
         
         /**
@@ -230,43 +230,41 @@ define(function (require, exports, module) {
             }
 
             var dropTargets = this._dropTargetZones.get(zone),
-                dropTargetDistances = this._dropTargetDistances;
+                foundDropTargetIndex = -1,
+                foundDropTargetValid;
 
-            dropTargets.some(function (dropTarget) {
+            var foundDropTarget = dropTargets.find(function (dropTarget, index) {
                 var validationInfo = dropTarget.isValid(dropTarget, dragTargets, point),
-                    distance = validationInfo.distance,
                     compatible = validationInfo.compatible,
                     valid = validationInfo.valid;
-
-                dropTargetDistances.set(dropTarget, distance);
 
                 if (!compatible) {
                     return false;
                 }
 
+                foundDropTargetIndex = index;
                 if (valid) {
-                    this._dropTarget = dropTarget;
+                    foundDropTargetValid = true;
                 }
 
                 return true;
             }, this);
 
-            dropTargets = dropTargets.sort(function (a, b) {
-                var aDist = dropTargetDistances.get(a, Number.POSITIVE_INFINITY),
-                    bDist = dropTargetDistances.get(b, Number.POSITIVE_INFINITY);
+            if (foundDropTargetValid) {
+                this._dropTarget = foundDropTarget;
+            } else {
+                this._dropTarget = null;
+            }
 
-                if (Number.isFinite(aDist)) {
-                    if (Number.isFinite(bDist)) {
-                        return aDist - bDist > 0 ? 1 : (aDist === bDist ? 0 : -1);
-                    } else {
-                        return 1;
-                    }
-                } else if (Number.isFinite(bDist)) {
-                    return -1;
-                } else {
-                    return 0;
-                }
-            });
+
+            // Move this drop target to the front of the list for the next search
+            if (foundDropTargetIndex > -1) {
+                dropTargets = dropTargets
+                    .delete(foundDropTargetIndex)
+                    .unshift(foundDropTarget);
+
+                this._dropTargetZones.set(zone, dropTargets);
+            }
         }
     });
 
