@@ -50,13 +50,13 @@ define(function (require, exports, module) {
                 disabled = document && document.unsupported,
                 preferences = preferencesStore.getState(),
                 styleVisible = !disabled && preferences.get("styleVisible", true),
-                pagesVisible = disabled || preferences.get("pagesVisible", true);
+                layersVisible = disabled || preferences.get("layersVisible", true);
 
             return {
                 document: document,
                 disabled: disabled,
                 styleVisible: styleVisible,
-                pagesVisible: pagesVisible
+                layersVisible: layersVisible
             };
         },
 
@@ -72,23 +72,23 @@ define(function (require, exports, module) {
             }
 
             return this.state.styleVisible !== nextState.styleVisible ||
-                this.state.pagesVisible !== nextState.pagesVisible ||
+                this.state.layersVisible !== nextState.layersVisible ||
                 !Immutable.is(this.state.document, nextState.document);
         },
 
         /**
-         * Toggle visibility of either the pages or the style section.
+         * Toggle visibility of either the layers or the style section.
          *
          * @private
-         * @param {boolean} pages Whether the pages or style section is being toggled
+         * @param {boolean} layers Whether the layers or style section is being toggled
          */
-        _handleVisibilityToggle: function (pages) {
+        _handleVisibilityToggle: function (layers) {
             if (this.state.disabled) {
                 return;
             }
 
-            var primary = pages ? "pagesVisible" : "styleVisible",
-                secondary = pages ? "styleVisible" : "pagesVisible",
+            var primary = layers ? "layersVisible" : "styleVisible",
+                secondary = layers ? "styleVisible" : "layersVisible",
                 nextState = {};
 
             if (this.state[primary]) {
@@ -119,12 +119,12 @@ define(function (require, exports, module) {
                         disabled={disabled}
                         document={document}
                         visible={this.state.styleVisible}
-                        visibleSibling={this.state.pagesVisible}
+                        visibleSibling={this.state.layersVisible}
                         onVisibilityToggle={this._handleVisibilityToggle.bind(this, false)} />
                     <LayersPanel
                         disabled={disabled}
                         document={document}
-                        visible={this.state.pagesVisible}
+                        visible={this.state.layersVisible}
                         visibleSibling={this.state.styleVisible}
                         onVisibilityToggle={this._handleVisibilityToggle.bind(this, true)} />
                 </div>

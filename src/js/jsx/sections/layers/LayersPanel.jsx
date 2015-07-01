@@ -331,6 +331,11 @@ define(function (require, exports, module) {
                 valid = this._validCompatibleDropTarget(target, draggedLayers, dropAbove);
 
             if (valid && this.state.dropAbove !== dropAbove) {
+                // For performance reasons, it's important that this NOT cause a virtual
+                // render. Instead, we should just wait until the dropPosition changes and
+                // render then; otherwise, we'll render twice in one trip around the
+                // mousemove handler. This is accomplished by making shouldComponentUpdate oblivious
+                // to the dropAbove state.
                 this.setState({
                     dropAbove: dropAbove
                 });
@@ -540,7 +545,7 @@ define(function (require, exports, module) {
             });
 
             var sectionClasses = classnames({
-                "pages": true,
+                "layers": true,
                 "section": true,
                 "section__sibling-collapsed": !this.props.visibleSibling
             });
@@ -548,7 +553,6 @@ define(function (require, exports, module) {
             return (
                 <section
                     className={sectionClasses}
-                    ref="pagesSection"
                     onScroll={this._handleScroll}>
                     <TitleHeader
                         title={strings.TITLE_PAGES}
