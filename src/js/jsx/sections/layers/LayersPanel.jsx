@@ -79,10 +79,6 @@ define(function (require, exports, module) {
 
         _boundingClientRectCache: null,
 
-        _validDropTargetBelowCache: null,
-
-        _validDropTargetAboveCache: null,
-
         getStateFromFlux: function () {
             var flux = this.getFlux(),
                 dragAndDropStore = flux.store("draganddrop"),
@@ -176,11 +172,11 @@ define(function (require, exports, module) {
                 return true;
             }
 
-            if (this.state.dragTargets || nextState.dragTargets) {
+            if (this.state.dragTargets !== nextState.dragTargets) {
                 return true;
             }
 
-            if (this.state.dropTarget || nextState.dropTarget) {
+            if (this.state.dropTarget !== nextState.dropTarget) {
                 return true;
             }
 
@@ -254,7 +250,7 @@ define(function (require, exports, module) {
             return rect;
         },
 
-        _validCompatibleDropTargetHelper: function (target, draggedLayers, dropAbove) {
+        _validCompatibleDropTarget: function (target, draggedLayers, dropAbove) {
             // Do not let drop below background
             if (target.isBackground && !dropAbove) {
                 return false;
@@ -302,23 +298,6 @@ define(function (require, exports, module) {
             }
 
             return true;
-        },
-
-        _validCompatibleDropTarget: function (target, draggedLayers, dropAbove) {
-            var cache = dropAbove ?
-                this._validDropTargetAboveCache :
-                this._validDropTargetBelowCache;
-
-            // The validDropCache is cleared after each drag operation, so it is
-            // always specific to the current set of dragged layers
-            var valid = cache.get(target);
-
-            if (valid === undefined) {
-                valid = this._validCompatibleDropTargetHelper(target, draggedLayers, dropAbove);
-                cache.set(target, valid);
-            }
-
-            return valid;
         },
 
         /**
@@ -432,8 +411,6 @@ define(function (require, exports, module) {
 
         _handleStart: function () {
             this._boundingClientRectCache = new Map();
-            this._validDropTargetAboveCache = new Map();
-            this._validDropTargetBelowCache = new Map();
         },
 
         /**
@@ -469,8 +446,6 @@ define(function (require, exports, module) {
             }
 
             this._boundingClientRectCache = null;
-            this._validDropTargetBelowCache = null;
-            this._validDropTargetAboveCache = null;
         },
 
         /**
@@ -507,9 +482,11 @@ define(function (require, exports, module) {
                 layerCount = null;
                 childComponents = null;
             } else {
+                var dragTargetSet = dragTargets && dragTargets.toSet();
+
                 layerComponents = doc.layers.allVisibleReversed
                     .map(function (layer, visibleIndex) {
-                        var isDragTarget = !!(dragTargets && dragTargets.indexOf(layer) !== -1),
+                        var isDragTarget = !!(dragTargets && dragTargetSet.has(layer)),
                             isDropTarget = !!(dropTarget && dropTarget.key === layer.key);
 
                         return (
