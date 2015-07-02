@@ -93,6 +93,20 @@ define(function (require, exports, module) {
         });
     };
 
+    LayerStructure.prototype.updateLayerProperties = function (layerDescriptors, previousDocument) {
+        var nextLayers = layerDescriptors.reduce(function (nextLayers, layerDescriptor, index) {
+            var layerID = this.index.get(index),
+                layer = this.byID(layerID),
+                nextLayer = layer.updateFromDescriptor(layerDescriptor, previousDocument);
+
+            return nextLayers.set(layerID, nextLayer);
+        }.bind(this), new Map());
+
+        return this.merge({
+            layers: Immutable.Map(nextLayers)
+        });
+    };
+
     /**
      * Helper function for getSelectableLayers
      * For one layer, adds all siblings of it's parents, all the way up the tree

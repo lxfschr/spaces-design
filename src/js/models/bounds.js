@@ -170,6 +170,10 @@ define(function (require, exports, module) {
                     break;
             }
 
+            if (!boundsObject) {
+                return null;
+            }
+
             var model = {};
 
             model.top = boundsObject.top._value;

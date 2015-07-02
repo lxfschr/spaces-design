@@ -328,6 +328,43 @@ define(function (require, exports) {
     close.lockUI = true;
     close.post = [_verifyActiveDocument, _verifyOpenDocuments];
 
+    var _initDocument = function (docRef, current) {
+        var documentPromise = _getDocumentByRef(docRef),
+            historyPromise;
+
+        if (current) {
+            historyPromise = this.transfer(historyActions.queryCurrentHistory, true);
+        } else {
+            historyPromise = Promise.resolve();
+        }
+
+        return Promise.join(documentPromise, historyPromise, function (doc, history) {
+            var docRef = documentLib.referenceBy.id(doc.documentID),
+                startIndex = (doc.hasBackgroundLayer ? 0 : 1);
+
+            return layerActions._getLayersForDocumentRef(docRef, startIndex)
+                .bind(this)
+                .then(function (requiredLayerProperties) {
+                    this.dispatch(events.document.DOCUMENT_UPDATED, {
+                        document: doc,
+                        layers: requiredLayerProperties,
+                        current: current,
+                        history: current ? history : null,
+                        partial: true
+                    });
+
+                    return layerActions._getLazyLayerPropertiesForDocumentRef(docRef, startIndex);
+                })
+                .then(function (optionalLayerProperties) {
+                    this.dispatch(events.document.DOCUMENT_UPDATED_LAZY, {
+                        documentID: doc.documentID,
+                        layers: optionalLayerProperties
+                    });
+                })
+                .return({ document: doc });
+        }.bind(this));
+    };
+
     /**
      * Initialize document and layer state, emitting DOCUMENT_UPDATED events, for
      * all the inactive documents.
@@ -341,15 +378,8 @@ define(function (require, exports) {
             .filter(function (index) {
                 return index !== currentIndex;
             })
-            .map(function (index) {
-                var indexRef = documentLib.referenceBy.index(index);
-                return _getDocumentByRef(indexRef)
-                    .bind(this)
-                    .then(_getLayersForDocument)
-                    .then(function (payload) {
-                        this.dispatch(events.document.DOCUMENT_UPDATED, payload);
-                    });
-            }, this);
+            .map(documentLib.referenceBy.index)
+            .map(_initDocument.bind(this));
 
         return Promise.all(otherDocPromises);
     };
@@ -372,31 +402,18 @@ define(function (require, exports) {
                     return;
                 }
 
-                var currentRef = documentLib.referenceBy.current;
-                return _getDocumentByRef(currentRef)
-                    .bind(this)
-                    .then(function (currentDoc) {
-                        var currentDocLayersPromise = _getLayersForDocument(currentDoc),
-                            historyPromise = this.transfer(historyActions.queryCurrentHistory,
-                                currentDoc.documentID, true),
-                            deselectPromise = descriptor.playObject(selectionLib.deselectAll());
+                var currentRef = documentLib.referenceBy.current,
+                    documentPromise = _initDocument.call(this, currentRef, true),
+                    deselectPromise = descriptor.playObject(selectionLib.deselectAll());
 
-                        return Promise.join(currentDocLayersPromise,
-                            historyPromise,
-                            deselectPromise,
-                            function (payload, historyPayload) {
-                                payload.current = true;
-                                payload.history = historyPayload;
-                                this.dispatch(events.document.DOCUMENT_UPDATED, payload);
-                                this.dispatch(events.application.INITIALIZED, { item: "activeDocument" });
-                            }.bind(this))
-                            .then(function () {
-                                return {
-                                    currentIndex: currentDoc.itemIndex,
-                                    docCount: docCount
-                                };
-                            });
-                    });
+                return Promise.join(documentPromise, deselectPromise, function (payload) {
+                    this.dispatch(events.application.INITIALIZED, { item: "activeDocument" });
+
+                    return {
+                        currentIndex: payload.document.itemIndex,
+                        docCount: docCount
+                    };
+                }.bind(this));
             });
     };
     initActiveDocument.reads = [locks.PS_DOC];

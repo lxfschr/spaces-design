@@ -40,17 +40,15 @@ define(function (require, exports) {
     /**
      * Query the current history state for the current document
      *
-     * @param {number} documentID document for which to query history
      * @param {boolean=} quiet If true, this will not dispatch a history event
      * @return {Promise}
      */
-    var queryCurrentHistory = function (documentID, quiet) {
+    var queryCurrentHistory = function (quiet) {
         return descriptor.get("historyState")
             .bind(this)
             .then(function (historyState) {
                 var payload = {
                     source: "query",
-                    documentID: documentID,
                     id: historyState.ID,
                     name: historyState.name,
                     totalStates: historyState.count,

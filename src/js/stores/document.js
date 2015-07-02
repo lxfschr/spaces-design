@@ -43,6 +43,7 @@ define(function (require, exports, module) {
             this.bindActions(
                 events.RESET, this._handleReset,
                 events.document.DOCUMENT_UPDATED, this._documentUpdated,
+                events.document.DOCUMENT_UPDATED_LAZY, this._documentUpdatedLazy,
                 events.document.SAVE_DOCUMENT, this._handleDocumentSaved,
                 events.document.DOCUMENT_RENAMED, this._handleDocumentRenamed,
                 events.document.CLOSE_DOCUMENT, this._closeDocument,
@@ -168,6 +169,16 @@ define(function (require, exports, module) {
             var doc = this._makeDocument(payload);
 
             this.setDocument(doc);
+        },
+
+        _documentUpdatedLazy: function (payload) {
+            var documentID = payload.documentID,
+                layers = payload.layers,
+                document = this._openDocuments[documentID],
+                nextLayers = document.layers.updateLayerProperties(layers, document),
+                nextDocument = document.set("layers", nextLayers);
+
+            this.setDocument(nextDocument);
         },
 
         /**

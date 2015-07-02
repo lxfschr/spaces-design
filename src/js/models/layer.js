@@ -269,10 +269,11 @@ define(function (require, exports, module) {
     var _extractLocked = function (layerDescriptor) {
         var value = layerDescriptor.layerLocking;
         
-        return value.protectAll ||
+        return value &&
+            (value.protectAll ||
             value.protectComposite ||
             value.protectPosition ||
-            value.protectTransparency;
+            value.protectTransparency);
     };
 
     /**
@@ -426,6 +427,39 @@ define(function (require, exports, module) {
                 isArtboard: layerDescriptor.artboardEnabled
             };
 
+        object.assignIf(model, "blendMode", _extractBlendMode(layerDescriptor));
+        object.assignIf(model, "isLinked", _extractIsLinked(layerDescriptor));
+        object.assignIf(model, "hasLayerEffect", _extractHasLayerEffect(layerDescriptor));
+        
+        return this.merge(model);
+    };
+
+    /**
+     * Reset this layer model using the given Photoshop layer descriptor.
+     *
+     * @param {object} layerDescriptor
+     * @param {Document} previousDocument
+     * @return {Layer}
+     */
+    Layer.prototype.updateFromDescriptor = function (layerDescriptor, previousDocument) {
+        var resolution = previousDocument.resolution,
+            model = {};
+
+        object.assignIf(model, "name", layerDescriptor.name);
+        object.assignIf(model, "kind", layerDescriptor.layerKind);
+        object.assignIf(model, "visible", layerDescriptor.visible);
+        object.assignIf(model, "locked", _extractLocked(layerDescriptor));
+        object.assignIf(model, "isBackground", layerDescriptor.background);
+        object.assignIf(model, "isArtboard", layerDescriptor.artboardEnabled);
+        object.assignIf(model, "opacity", _extractOpacity(layerDescriptor));
+        object.assignIf(model, "bounds", Bounds.fromLayerDescriptor(layerDescriptor));
+        object.assignIf(model, "proportionalScaling", layerDescriptor.proportionalScaling);
+        object.assignIf(model, "radii", Radii.fromLayerDescriptor(layerDescriptor));
+        object.assignIf(model, "strokes", Stroke.fromLayerDescriptor(layerDescriptor));
+        object.assignIf(model, "fills", Fill.fromLayerDescriptor(layerDescriptor));
+        object.assignIf(model, "dropShadows", Shadow.fromLayerDescriptor(layerDescriptor, "dropShadow"));
+        object.assignIf(model, "innerShadows", Shadow.fromLayerDescriptor(layerDescriptor, "innerShadow"));
+        object.assignIf(model, "text", Text.fromLayerDescriptor(resolution, layerDescriptor));
         object.assignIf(model, "blendMode", _extractBlendMode(layerDescriptor));
         object.assignIf(model, "isLinked", _extractIsLinked(layerDescriptor));
         object.assignIf(model, "hasLayerEffect", _extractHasLayerEffect(layerDescriptor));

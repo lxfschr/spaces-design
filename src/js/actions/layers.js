@@ -63,9 +63,8 @@ define(function (require, exports) {
         "itemIndex",
         "background",
         "boundsNoEffects",
-        "opacity",
-        "layerFXVisible",
-        "mode"
+        "mode",
+        "layerKind"
     ];
 
     /**
@@ -76,20 +75,28 @@ define(function (require, exports) {
      * @type {Array.<string>} 
      */
     var _optionalLayerProperties = [
-        "adjustment",
-        "AGMStrokeStyleInfo",
-        "textKey",
         "boundingBox",
         "layerKind",
-        "keyOriginType",
-        "fillEnabled",
-        "fillOpacity",
-        "layerEffects",
-        "proportionalScaling",
         "artboard",
         "artboardEnabled",
         "pathBounds",
-        "smartObject",
+        "smartObject"
+    ];
+
+    var _lazyLayerProperties = [
+        "opacity",
+        "layerFXVisible"
+    ];
+
+    var _lazyOptionalLayerProperties = [
+        "keyOriginType",
+        "proportionalScaling",
+        "adjustment",
+        "AGMStrokeStyleInfo",
+        "textKey",
+        "fillEnabled",
+        "fillOpacity",
+        "layerEffects",
         "globalAngle"
     ];
 
@@ -135,6 +142,26 @@ define(function (require, exports) {
         });
 
         var optionalPropertiesPromise = descriptor.getPropertiesRange(docRef, rangeOpts, _optionalLayerProperties, {
+            failOnMissingProperty: false
+        });
+
+        return Promise.join(requiredPropertiesPromise, optionalPropertiesPromise, function (required, optional) {
+            return _.chain(required).zipWith(optional, _.merge).reverse().value();
+        });
+    };
+
+    var _getLazyLayerPropertiesForDocumentRef = function (docRef, startIndex) {
+        var rangeOpts = {
+            range: "layer",
+            index: startIndex,
+            count: -1
+        };
+
+        var requiredPropertiesPromise = descriptor.getPropertiesRange(docRef, rangeOpts, _lazyLayerProperties, {
+            failOnMissingProperty: true
+        });
+
+        var optionalPropertiesPromise = descriptor.getPropertiesRange(docRef, rangeOpts, _lazyOptionalLayerProperties, {
             failOnMissingProperty: false
         });
 
@@ -1633,6 +1660,7 @@ define(function (require, exports) {
     exports.onReset = onReset;
 
     exports._getLayersForDocumentRef = _getLayersForDocumentRef;
+    exports._getLazyLayerPropertiesForDocumentRef = _getLazyLayerPropertiesForDocumentRef;
     exports._verifyLayerSelection = _verifyLayerSelection;
     exports._verifyLayerIndex = _verifyLayerIndex;
 });

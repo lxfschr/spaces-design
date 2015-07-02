@@ -89,6 +89,7 @@ define(function (require, exports, module) {
             CLOSE_DOCUMENT: "closeDocument",
             DOCUMENT_RENAMED: "renameDocument",
             DOCUMENT_UPDATED: "updateDocument",
+            DOCUMENT_UPDATED_LAZY: "updateDocumentLazy",
             // The following stroke/type events rely on subsequent bounds fetch
             STROKE_ENABLED_CHANGED: "strokeEnabledChanged",
             STROKE_WIDTH_CHANGED: "strokeWidthChanged",
