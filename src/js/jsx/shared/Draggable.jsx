@@ -76,6 +76,7 @@ define(function (require, exports, module) {
 
         var Draggable = React.createClass({
             mixins: [FluxMixin],
+
             componentWillUnmount: function () {
                 // Remove any leftover event handlers
                 window.removeEventListener("mousemove", this._handleDragMove, true);
@@ -140,7 +141,6 @@ define(function (require, exports, module) {
             /**
              * Handles the start of a dragging operation by setting up initial position
              * and adding event listeners to the window
-             *
              */
             _handleDragStart: function () {
                 window.addEventListener("mousemove", this._handleDragMove, true);
@@ -166,8 +166,7 @@ define(function (require, exports, module) {
              * @param {Event} event
              */
             _handleDragMove: function (event) {
-                var flux = this.getFlux(),
-                    zone = this.props.zone;
+                var flux = this.getFlux();
 
                 if (!this.state.dragging) {
                     this.setState({
@@ -179,9 +178,9 @@ define(function (require, exports, module) {
                     }
 
                     var dragItems = this.props.getDragItems(this);
-                    flux.actions.draganddrop.registerDragging(zone, dragItems);
+                    flux.store("draganddrop").startDrag(dragItems);
                 } else {
-                    flux.store("draganddrop").moveAndCheckBounds(zone, {
+                    flux.store("draganddrop").updateDrag(this.props.zone, {
                         x: event.clientX,
                         y: event.clientY
                     });
@@ -209,7 +208,7 @@ define(function (require, exports, module) {
                     offsetX: null
                 });
 
-                this.getFlux().actions.draganddrop.stopDragging();
+                this.getFlux().store("draganddrop").stopDrag();
             },
 
             render: function () {

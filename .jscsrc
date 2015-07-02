@@ -87,10 +87,6 @@
         "<="
     ],
     "requirePaddingNewLinesAfterUseStrict": true,
-    "requirePaddingNewlinesBeforeKeywords": [
-        "do",
-        "for"
-    ],
     "requireParenthesesAroundIIFE": true,
     "requireSemicolons": true,
     "requireSpaceAfterBinaryOperators": true,

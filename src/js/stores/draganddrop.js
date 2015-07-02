@@ -24,10 +24,7 @@
 define(function (require, exports, module) {
     "use strict";
 
-    var Fluxxor = require("fluxxor"),
-        Immutable = require("immutable");
-
-    var events = require("js/events");
+    var Fluxxor = require("fluxxor");
 
     /**
      * Holds global state needed by view components to implement drag-and-drop.
@@ -37,22 +34,33 @@ define(function (require, exports, module) {
     var DragAndDropStore = Fluxxor.createStore({
 
         /**
-         * All available drop targets
+         * All available drop targets, mapped by key, categorized by zone.
+         *
+         * Drop targets are described by a droppable data structure: {
+         *  key: number,
+         *  keyObject: object,
+         *  validate: function:
+         *  onDrop: function
+         * }
          * 
          * @private
-         * @type {Immutable.List.<{node: DOMNode,
-         *      key: number,
-         *      keyObject: object, 
-         *      validate: function, 
-         *      onDrop: function}>}
+         * @type {Map.<number, Map.<number, object>>}
          */
-        _dropTargetZones: null,
+        _dropTargetsByZone: null,
+
+        /**
+         * Drop target keys, orderized by recency, categorized by zone.
+         * 
+         * @private
+         * @type {Map.<number, Array.<number>>}
+         */
+        _dropTargetOrderingsByZone: null,
 
         /**
          * Currently Active drag targets
          * 
          * @private
-         * @type {List} 
+         * @type {Immutable.Iterable.<object>} 
          */
         _dragTargets: null,
 
@@ -72,21 +80,17 @@ define(function (require, exports, module) {
          */
         _pastDragTargets: null,
 
+        /**
+         * Initializes the by-zone maps.
+         */
         initialize: function () {
-            this.bindActions(
-                events.droppable.REGISTER_DROPPABLE, this._handleRegisterDroppable,
-                events.droppable.BATCH_REGISTER_DROPPABLES, this._handleBatchRegisterDroppables,
-                events.droppable.REGISTER_DRAGGING, this._handleStartDragging,
-                events.droppable.DEREGISTER_DROPPABLE, this._handleDeregisterDroppable,
-                events.droppable.BATCH_DEREGISTER_DROPPABLES, this._handleBatchDeregisterDroppables,
-                events.droppable.STOP_DRAGGING, this._handleStopDragging,
-                events.droppable.MOVE_AND_CHECK_BOUNDS, this.moveAndCheckBounds,
-                events.droppable.RESET_DROPPABLES, this._handleResetDroppables
-            );
-
-            this._dropTargetZones = new Map();
+            this._dropTargetsByZone = new Map();
+            this._dropTargetOrderingsByZone = new Map();
         },
 
+        /**
+         * @return {object}
+         */
         getState: function () {
             return {
                 dragTargets: this._dragTargets,
@@ -96,12 +100,139 @@ define(function (require, exports, module) {
             };
         },
 
-        _handleStartDragging: function (payload) {
-            this._dragTargets = payload.dragTargets;
+        /**
+         * Add a list of droppables to the given zone.
+         * 
+         * @private
+         * @param {number} zone
+         * @param {Array.<object>} droppables
+         */
+        _addDroppables: function (zone, droppables) {
+            var dropTargets = this._dropTargetsByZone.get(zone);
+            if (!dropTargets) {
+                dropTargets = new Map();
+                this._dropTargetsByZone.set(zone, dropTargets);
+            }
+
+            var dropTargetOrderings = this._dropTargetOrderingsByZone.get(zone);
+            if (!dropTargetOrderings) {
+                dropTargetOrderings = [];
+                this._dropTargetOrderingsByZone.set(zone, dropTargetOrderings);
+            }
+
+            droppables.forEach(function (droppable) {
+                var key = droppable.key;
+                dropTargets.set(key, droppable);
+                dropTargetOrderings.push(key);
+            });
+        },
+
+        /**
+         * Remove a list of droppables from the given zone.
+         * 
+         * @private
+         * @param {number} zone
+         * @param {Array.<number>} keys
+         */
+        _removeDroppables: function (zone, keys) {
+            var dropTargets = this._dropTargetsByZone.get(zone),
+                dropTargetOrderings = this._dropTargetOrderingsByZone.get(zone);
+
+            if (!dropTargets || !dropTargetOrderings) {
+                throw new Error("Unable to remove droppables from an empty drop target zone");
+            }
+
+            keys.forEach(function (key) {
+                dropTargets.delete(key);
+
+                var index = dropTargetOrderings.indexOf(key);
+                if (index > -1) {
+                    dropTargetOrderings.splice(index, 1);
+                }
+            });
+        },
+
+        /**
+         * Clear all droppables from the given zone.
+         * 
+         * @private
+         * @param {number} zone
+         */
+        _clearDroppables: function (zone) {
+            this._dropTargetsByZones.delete(zone);
+            this._dropTargetOrderingsByZones.delete(zone);
+        },
+
+        /**
+         * Add a drop target to the given drop zone.
+         *
+         * @param {number} zone
+         * @param {object} droppable
+         */
+        registerDroppable: function (zone, droppable) {
+            this._addDroppables(zone, [droppable]);
+        },
+        
+        /**
+         * Add a list of drop targets to the given drop zone.
+         *
+         * @param {number} zone
+         * @param {Array.<object>} droppables
+         */
+        batchRegisterDroppables: function (zone, droppables) {
+            this._dropTargets = this._addDroppables(zone, droppables);
+        },
+
+        /**
+         * Remove a drop target (by key) from the given drop zone.
+         *
+         * @param {number} zone
+         * @param {number} key
+         */
+        deregisterDroppable: function (zone, key) {
+            this._removeDroppables(zone, [key]);
+        },
+        
+        /**
+         * Remove a list of drop targets (by key) from the given drop zone.
+         * If no key list is provided, all droppables are removed from the zone.
+         *
+         * @param {number} zone
+         * @param {Array.<number>=} keys
+         */
+        batchDeregisterDroppables: function (zone, keys) {
+            if (keys) {
+                this._removeDroppables(zone, keys);
+            } else {
+                this._clearDroppables(zone);
+            }
+        },
+
+        /**
+         * Remove all drop targets from the given zone and replace them.
+         *
+         * @param {number} zone
+         * @param {Array.<object>} droppables
+         */
+        resetDroppables: function (zone, droppables) {
+            this._clearDroppables(zone);
+            this._addDroppables(zone, droppables);
+        },
+        
+        /**
+         * Begin a drag operation with the given drag targets.
+         *
+         * @param {Immutalbe.Iterable.<object>} dragTargets
+         */
+        startDrag: function (dragTargets) {
+            this._dragTargets = dragTargets;
             this.emit("change");
         },
 
-        _handleStopDragging: function () {
+        /**
+         * End the current drag operation.
+         */
+        stopDrag: function () {
             if (this._dropTarget) {
                 this._dropTarget.onDrop(this._dropTarget.keyObject);
                 this._dropTarget = null;
@@ -112,139 +243,28 @@ define(function (require, exports, module) {
             this.emit("change");
         },
 
-        _addDroppables: function (zone, droppables) {
-            var dropTargets = this._dropTargetZones.get(zone);
-            if (!dropTargets) {
-                dropTargets = Immutable.List();
-            }
-
-            var nextDropTargets = dropTargets.concat(droppables);
-            this._dropTargetZones.set(zone, nextDropTargets);
-        },
-
-        _removeDroppables: function (zone, keys) {
-            var dropTargets = this._dropTargetZones.get(zone);
-            if (!dropTargets) {
-                throw new Error("Unable to remove droppables from an empty drop target zone");
-            }
-
-            var nextDropTargets = dropTargets;
-            keys.forEach(function (key) {
-                nextDropTargets = nextDropTargets.delete(key);
-            });
-
-            this._dropTargetZones.set(zone, nextDropTargets);
-        },
-
-        _clearDroppables: function (zone) {
-            this._dropTargetZones.delete(zone);
-        },
-
-        /**
-         * Adds node to list of drop targets
-         *
-         * @param {object} payload
-         */
-        _handleRegisterDroppable: function (payload) {
-            var zone = payload.zone,
-                droppable = payload.droppable;
-
-            this._addDroppables(zone, [droppable]);
-        },
-        
-        /**
-         * Adds many nodes to list of drop targets
-         *
-         * @param {Immutable.Iterable.OrderedMap<object>} payload list of registration infromation
-         */
-        _handleBatchRegisterDroppables: function (payload) {
-            var zone = payload.zone,
-                droppables = payload.droppables;
-
-            this._dropTargets = this._addDroppables(zone, droppables);
-        },
-
-        /**
-         * Removes droppable area from list
-         *
-         * @param {string} payload
-         */
-        _handleDeregisterDroppable: function (payload) {
-            var zone = payload.zone,
-                key = payload.key;
-
-            this._removeDroppables(zone, [key]);
-        },
-        
-        /**
-         * Removes many droppable areas
-         *
-         * @param {Immutable.Iterable.List<string>} payload
-         */
-        _handleBatchDeregisterDroppables: function (payload) {
-            var zone = payload.zone,
-                keys = payload.keys;
-
-            if (keys) {
-                this._removeDroppables(zone, keys);
-            } else {
-                this._clearDroppables(zone);
-            }
-        },
-
-        /**
-         * Removes all current drop targets and adds a batch of new ones
-         *
-         * @param {object} payload list of registration information
-         */
-        _handleResetDroppables: function (payload) {
-            var zone = payload.zone,
-                droppables = payload.droppables;
-
-            this._clearDroppables(zone);
-            this._addDroppables(zone, droppables);
-        },
-        
-        /**
-         * Calls checkBounds to 
-         * Sets _dragPosition which is used for moving dragged object on screen 
-         * Emits change event which causes re-render
-         *
-         * @param {*} zone
-         * @param {{x: number, y: number}} point Point where event occurred
-         */
-        moveAndCheckBounds: function (zone, point) {
-            this.checkBounds(zone, point);
-            this._dragPosition = point;
-            this.emit("change");
-        },
-
         /**
          * Checks the bounds of all the drop targets for this point
          * Sets this._dropTarget if an intersection and valid target are found
+         * Sets _dragPosition which is used for moving dragged object on screen 
+         * Emits change event which causes re-render
          *
-         * For speed, first checks the last bounds to see if we are still within them
-         *
-         * Potential things to consider for the future
-         * - More actively manage the drop targets, thus making the list smaller
-         * - Somehow cache getBoundingClientRect to make this faster
-         * - Could consider using throttle here to stop some wasted calls - throttle around 16ms for 60fps
-         *
-         * @param {*} zone
+         * @param {number} zone
          * @param {{x: number, y: number}} point Point were event occurred
          */
-        checkBounds: function (zone, point) {
+        updateDrag: function (zone, point) {
             var dragTargets = this._dragTargets;
             if (!dragTargets) {
                 return;
             }
 
-            var dropTargets = this._dropTargetZones.get(zone),
-                foundDropTargetIndex = -1,
-                foundDropTargetValid;
+            var dropTargets = this._dropTargetsByZone.get(zone),
+                dropTargetOrderings = this._dropTargetOrderingsByZone.get(zone),
+                foundDropTargetIndex = -1;
 
-            var foundDropTarget = dropTargets.find(function (dropTarget, index) {
-                var validationInfo = dropTarget.isValid(dropTarget, dragTargets, point),
+            dropTargetOrderings.some(function (key, index) {
+                var dropTarget = dropTargets.get(key),
+                    validationInfo = dropTarget.isValid(dropTarget, dragTargets, point),
                     compatible = validationInfo.compatible,
                     valid = validationInfo.valid;
 
@@ -254,26 +274,20 @@ define(function (require, exports, module) {
 
                 foundDropTargetIndex = index;
                 if (valid) {
-                    foundDropTargetValid = true;
+                    this._dropTarget = dropTarget;
                 }
 
                 return true;
             }, this);
 
-            if (foundDropTargetValid) {
-                this._dropTarget = foundDropTarget;
-            } else {
-                this._dropTarget = null;
-            }
-
             // Move this drop target to the front of the list for the next search
             if (foundDropTargetIndex > -1) {
-                dropTargets = dropTargets
-                    .delete(foundDropTargetIndex)
-                    .unshift(foundDropTarget);
-
-                this._dropTargetZones.set(zone, dropTargets);
+                var removedKeys = dropTargetOrderings.splice(foundDropTargetIndex, 1);
+                dropTargetOrderings.unshift(removedKeys[0]);
             }
+
+            this._dragPosition = point;
+            this.emit("change");
         }
     });
 

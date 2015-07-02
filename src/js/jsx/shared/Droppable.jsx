@@ -47,33 +47,40 @@ define(function (require, exports, module) {
     var createWithComponent = function (Component, getProps, isEqual, shouldUpdate) {
         var Droppable = React.createClass({
             mixins: [FluxMixin],
+
+            /**
+             * Register the droppable component with the draganddrop store.
+             */
             _register: function () {
-                var node = React.findDOMNode(this),
+                var flux = this.getFlux(),
                     options = getProps(this.props),
                     zone = options.zone,
-                    key = options.key,
-                    keyObject = options.keyObject,
-                    isValid = options.isValid,
-                    handleDrop = options.handleDrop;
+                    droppable = {
+                        node: React.findDOMNode(this),
+                        key: options.key,
+                        keyObject: options.keyObject,
+                        isValid: options.isValid,
+                        handleDrop: options.handleDrop
+                    };
 
-                this.getFlux().actions.draganddrop.registerDroppable(zone, node, key, isValid, handleDrop, keyObject);
+                flux.store("draganddrop").registerDroppable(zone, droppable);
             },
 
             shouldComponentUpdate: shouldUpdate,
 
-            /*
-            * Returns the registration information (possibly for use in a batch register)
-            *
-            * Returned object has properties:
-            *     key: (Unique key for this droppable),
-            *     keyObject: (Object that is being dropped on),
-            *     validate: (Function that accepts an argument of 
-            *         object being dropped on this keyObject, returns a boolean),
-            *     handleDrop: (Function to handle dropping of object on this droppable)
-            *
-            * @return {Array [k,v]} with information about registration for easy ingestion into OrderedMap
-            *
-            */
+            /**
+             * Get the droppable's registration information.
+             *
+             * Returned object has properties:
+             *     key: (Unique key for this droppable),
+             *     keyObject: (Object that is being dropped on),
+             *     node: (DOM element for this droppable),
+             *     isValid: (Function that accepts an argument of 
+             *         object being dropped on this keyObject, returns a boolean),
+             *     handleDrop: (Function to handle dropping of object on this droppable)
+             *
+             * @return {Array.<object>} with information about registration for easy ingestion into OrderedMap
+             */
             getRegistration: function () {
                 var options = getProps(this.props);
 
@@ -95,7 +102,9 @@ define(function (require, exports, module) {
             componentWillUnmount: function () {
                 var options = getProps(this.props);
                 if (this.props.deregisterOnUnmount) {
-                    this.getFlux().actions.draganddrop.deregisterDroppable(options.zone, options.key);
+                    var flux = this.getFlux();
+
+                    flux.store("draganddrop").deregisterDroppable(options.zone, options.key);
                 }
             },
 
