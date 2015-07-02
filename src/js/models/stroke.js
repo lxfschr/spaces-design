@@ -168,7 +168,7 @@ define(function (require, exports, module) {
             }
         }
 
-        return Immutable.List();
+        return null;
     };
 
     /**

@@ -110,7 +110,7 @@ define(function (require, exports, module) {
             }
         }
 
-        return Immutable.List();
+        return null;
     };
 
     /**
@@ -120,9 +120,12 @@ define(function (require, exports, module) {
      * @return {Fill}
      */
     Fill.fromSetDescriptor = function (setDescriptor) {
-        var rawColor = objUtil.getPath(setDescriptor, "to.fillContents.color"),
-            rawType = objUtil.getPath(setDescriptor, "to.fillContents._obj");
+        var rawType = objUtil.getPath(setDescriptor, "to.fillContents._obj");
+        if (!rawType) {
+            return null;
+        }
 
+        var rawColor = objUtil.getPath(setDescriptor, "to.fillContents.color");
         return new Fill({
             color: Color.fromPhotoshopColorObj(rawColor),
             type: rawType
