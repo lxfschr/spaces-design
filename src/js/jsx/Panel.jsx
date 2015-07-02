@@ -84,13 +84,13 @@ define(function (require, exports, module) {
             return this.state.activeDocumentID !== nextState.activeDocumentID ||
                 this.state.activeDocumentInitialized !== nextState.activeDocumentInitialized ||
                 this.state.recentFilesInitialized !== nextState.recentFilesInitialized ||
-                (!nextState.documentIDs.size && !Immutable.is(this.state.recentFiles, nextState.recentFiles));
+                (nextState.documentIDs.size === 0 && !Immutable.is(this.state.recentFiles, nextState.recentFiles));
         },
 
         render: function () {
             var documentIDs = this.state.documentIDs;
 
-            if (this.state.activeDocumentInitialized && documentIDs.size) {
+            if (this.state.activeDocumentInitialized && documentIDs.size > 0) {
                 var activeDocumentID = this.state.activeDocumentID,
                     documentProperties = this.state.mountedDocumentIDs.map(function (documentID) {
                         var current = documentID === activeDocumentID,
