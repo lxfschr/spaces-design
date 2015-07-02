@@ -100,6 +100,9 @@ define(function (require, exports) {
         "globalAngle"
     ];
 
+    var _allLayerProperties = _layerProperties.concat(_lazyLayerProperties),
+        _allOptionalLayerProperties = _optionalLayerProperties.concat(_lazyOptionalLayerProperties);
+
     /**
      * Get layer descriptors for the given layer references. Only the
      * properties listed in the arrays above will be included for performance
@@ -110,8 +113,8 @@ define(function (require, exports) {
      * @return {Promise.<Array.<object>>}
      */
     var _getLayersByRef = function (references) {
-        var layerPropertiesPromise = descriptor.batchMultiGetProperties(references, _layerProperties),
-            optionalPropertiesPromise = descriptor.batchMultiGetProperties(references, _optionalLayerProperties,
+        var layerPropertiesPromise = descriptor.batchMultiGetProperties(references, _allLayerProperties),
+            optionalPropertiesPromise = descriptor.batchMultiGetProperties(references, _allOptionalLayerProperties,
                 { continueOnError: true });
 
         return Promise.join(layerPropertiesPromise, optionalPropertiesPromise,
@@ -131,6 +134,26 @@ define(function (require, exports) {
      * @return {Promise.<Array.<object>>}
      */
     var _getLayersForDocumentRef = function (docRef, startIndex) {
+        var rangeOpts = {
+            range: "layer",
+            index: startIndex,
+            count: -1
+        };
+
+        var requiredPropertiesPromise = descriptor.getPropertiesRange(docRef, rangeOpts, _allLayerProperties, {
+            failOnMissingProperty: true
+        });
+
+        var optionalPropertiesPromise = descriptor.getPropertiesRange(docRef, rangeOpts, _allOptionalLayerProperties, {
+            failOnMissingProperty: false
+        });
+
+        return Promise.join(requiredPropertiesPromise, optionalPropertiesPromise, function (required, optional) {
+            return _.chain(required).zipWith(optional, _.merge).reverse().value();
+        });
+    };
+
+    var _getRequiredLayerPropertiesForDocumentRef = function (docRef, startIndex) {
         var rangeOpts = {
             range: "layer",
             index: startIndex,
@@ -1660,6 +1683,7 @@ define(function (require, exports) {
     exports.onReset = onReset;
 
     exports._getLayersForDocumentRef = _getLayersForDocumentRef;
+    exports._getRequiredLayerPropertiesForDocumentRef = _getRequiredLayerPropertiesForDocumentRef;
     exports._getLazyLayerPropertiesForDocumentRef = _getLazyLayerPropertiesForDocumentRef;
     exports._verifyLayerSelection = _verifyLayerSelection;
     exports._verifyLayerIndex = _verifyLayerIndex;

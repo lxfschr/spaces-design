@@ -283,7 +283,11 @@ define(function (require, exports, module) {
      * @return {number}
      */
     var _extractOpacity = function (layerDescriptor) {
-        return Math.round(100 * layerDescriptor.opacity / 255);
+        if (typeof layerDescriptor.opacity === "number") {
+            return Math.round(100 * layerDescriptor.opacity / 255);
+        } else {
+            return null;
+        }
     };
 
     /**
@@ -389,7 +393,7 @@ define(function (require, exports, module) {
             dropShadows: Shadow.fromLayerDescriptor(layerDescriptor, "dropShadow"),
             innerShadows: Shadow.fromLayerDescriptor(layerDescriptor, "innerShadow"),
             text: Text.fromLayerDescriptor(resolution, layerDescriptor),
-            proportionalScaling: layerDescriptor.proportionalScaling,
+            proportionalScaling: !!layerDescriptor.proportionalScaling,
             isArtboard: layerDescriptor.artboardEnabled
         };
 

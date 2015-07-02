@@ -175,7 +175,13 @@ define(function (require, exports, module) {
 
             switch (typeof value) {
             case "number":
-                return String(mathjs.round(value, this.props.precision));
+                try {
+                    return String(mathjs.round(value, this.props.precision));
+                } catch (ex) {
+                    console.warn("Invalid number", ex, React.findDOMNode(this));
+                    return "";
+                }
+                
             case "string":
                 return value;
             default:

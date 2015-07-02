@@ -342,7 +342,7 @@ define(function (require, exports) {
             var docRef = documentLib.referenceBy.id(doc.documentID),
                 startIndex = (doc.hasBackgroundLayer ? 0 : 1);
 
-            return layerActions._getLayersForDocumentRef(docRef, startIndex)
+            return layerActions._getRequiredLayerPropertiesForDocumentRef(docRef, startIndex)
                 .bind(this)
                 .then(function (requiredLayerProperties) {
                     this.dispatch(events.document.DOCUMENT_UPDATED, {
@@ -353,13 +353,18 @@ define(function (require, exports) {
                         partial: true
                     });
 
-                    return layerActions._getLazyLayerPropertiesForDocumentRef(docRef, startIndex);
-                })
-                .then(function (optionalLayerProperties) {
-                    this.dispatch(events.document.DOCUMENT_UPDATED_LAZY, {
-                        documentID: doc.documentID,
-                        layers: optionalLayerProperties
-                    });
+                    if (current) {
+                        this.dispatch(events.application.INITIALIZED, { item: "activeDocument" });
+                    }
+
+                    return layerActions._getLazyLayerPropertiesForDocumentRef(docRef, startIndex)
+                        .bind(this)
+                        .then(function (optionalLayerProperties) {
+                            this.dispatch(events.document.DOCUMENT_UPDATED_LAZY, {
+                                documentID: doc.documentID,
+                                layers: _.merge(requiredLayerProperties, optionalLayerProperties)
+                            });
+                        });
                 })
                 .return({ document: doc });
         }.bind(this));
@@ -407,8 +412,6 @@ define(function (require, exports) {
                     deselectPromise = descriptor.playObject(selectionLib.deselectAll());
 
                 return Promise.join(documentPromise, deselectPromise, function (payload) {
-                    this.dispatch(events.application.INITIALIZED, { item: "activeDocument" });
-
                     return {
                         currentIndex: payload.document.itemIndex,
                         docCount: docCount
