@@ -77,7 +77,7 @@ define(function (require, exports, module) {
             // Don't re-render until either the active document or recent files
             // are initialized.
             if (!nextState.activeDocumentInitialized ||
-                (!this.state.document && !nextState.recentFilesInitialized)) {
+                (this.state.documentIDs.isEmpty() && !nextState.recentFilesInitialized)) {
                 return false;
             }
 
@@ -90,7 +90,7 @@ define(function (require, exports, module) {
         render: function () {
             var documentIDs = this.state.documentIDs;
 
-            if (this.state.activeDocumentInitialized && documentIDs.size > 0) {
+            if (this.state.activeDocumentInitialized && !documentIDs.isEmpty()) {
                 var activeDocumentID = this.state.activeDocumentID,
                     documentProperties = this.state.mountedDocumentIDs.map(function (documentID) {
                         var current = documentID === activeDocumentID,
