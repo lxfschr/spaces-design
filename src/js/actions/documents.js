@@ -328,15 +328,37 @@ define(function (require, exports) {
     close.lockUI = true;
     close.post = [_verifyActiveDocument, _verifyOpenDocuments];
 
-    var _initDocument = function (docRef, current) {
-        var documentPromise = _getDocumentByRef(docRef),
-            historyPromise;
+    /**
+     * Initialize document and layer state, emitting DOCUMENT_UPDATED events, for
+     * all the inactive documents.
+     *
+     * @param {number} currentIndex
+     * @param {number} docCount
+     * @return {Promise}
+     */
+    var initInactiveDocuments = function (currentIndex, docCount) {
+        var _initInactiveDocument = function (docRef) {
+            return _getDocumentByRef(docRef)
+                .bind(this)
+                .then(_getLayersForDocument)
+                .then(this.dispatch.bind(this, events.document.DOCUMENT_UPDATED));
+        };
 
-        if (current) {
+        var otherDocPromises = _.range(1, docCount + 1)
+            .filter(function (index) {
+                return index !== currentIndex;
+            })
+            .map(documentLib.referenceBy.index)
+            .map(_initInactiveDocument.bind(this));
+
+        return Promise.all(otherDocPromises);
+    };
+    initInactiveDocuments.reads = [locks.PS_DOC];
+    initInactiveDocuments.writes = [locks.JS_DOC];
+
+    var _initActiveDocumentBase = function (docRef) {
+        var documentPromise = _getDocumentByRef(docRef),
             historyPromise = this.transfer(historyActions.queryCurrentHistory, true);
-        } else {
-            historyPromise = Promise.resolve();
-        }
 
         return Promise.join(documentPromise, historyPromise, function (doc, history) {
             var docRef = documentLib.referenceBy.id(doc.documentID),
@@ -348,48 +370,33 @@ define(function (require, exports) {
                     this.dispatch(events.document.DOCUMENT_UPDATED, {
                         document: doc,
                         layers: requiredLayerProperties,
-                        current: current,
-                        history: current ? history : null,
-                        partial: true
+                        current: true,
+                        history: history,
                     });
 
-                    if (current) {
-                        this.dispatch(events.application.INITIALIZED, { item: "activeDocument" });
-                    }
+                    this.dispatch(events.application.INITIALIZED, { item: "activeDocument" });
 
-                    return layerActions._getLazyLayerPropertiesForDocumentRef(docRef, startIndex)
-                        .bind(this)
-                        .then(function (optionalLayerProperties) {
-                            this.dispatch(events.document.DOCUMENT_UPDATED_LAZY, {
-                                documentID: doc.documentID,
-                                layers: _.merge(requiredLayerProperties, optionalLayerProperties)
-                            });
-                        });
-                })
-                .return({ document: doc });
+                    return {
+                        document: doc,
+                        layers: requiredLayerProperties
+                    };
+                });
         }.bind(this));
     };
 
-    /**
-     * Initialize document and layer state, emitting DOCUMENT_UPDATED events, for
-     * all the inactive documents.
-     *
-     * @param {number} currentIndex
-     * @param {number} docCount
-     * @return {Promise}
-     */
-    var initInactiveDocuments = function (currentIndex, docCount) {
-        var otherDocPromises = _.range(1, docCount + 1)
-            .filter(function (index) {
-                return index !== currentIndex;
-            })
-            .map(documentLib.referenceBy.index)
-            .map(_initDocument.bind(this));
+    var _initActiveDocumentLazy = function (doc, requiredLayerProperties) {
+        var docRef = documentLib.referenceBy.id(doc.documentID),
+            startIndex = (doc.hasBackgroundLayer ? 0 : 1);
 
-        return Promise.all(otherDocPromises);
+        return layerActions._getLazyLayerPropertiesForDocumentRef(docRef, startIndex)
+            .bind(this)
+            .then(function (optionalLayerProperties) {
+                this.dispatch(events.document.DOCUMENT_UPDATED_LAZY, {
+                    documentID: doc.documentID,
+                    layers: _.merge(requiredLayerProperties, optionalLayerProperties)
+                });
+            });
     };
-    initInactiveDocuments.reads = [locks.PS_DOC];
-    initInactiveDocuments.writes = [locks.JS_DOC];
 
     /**
      * Initialize document and layer state, emitting DOCUMENT_UPDATED.
@@ -408,11 +415,13 @@ define(function (require, exports) {
                 }
 
                 var currentRef = documentLib.referenceBy.current,
-                    documentPromise = _initDocument.call(this, currentRef, true),
+                    documentPromise = _initActiveDocumentBase.call(this, currentRef, true),
                     deselectPromise = descriptor.playObject(selectionLib.deselectAll());
 
                 return Promise.join(documentPromise, deselectPromise, function (payload) {
                     return {
+                        document: payload.document,
+                        layers: payload.layers,
                         currentIndex: payload.document.itemIndex,
                         docCount: docCount
                     };
@@ -883,7 +892,9 @@ define(function (require, exports) {
      */
     var afterStartup = function (payload) {
         if (payload) {
-            return this.transfer(initInactiveDocuments, payload.currentIndex, payload.docCount);
+            return _initActiveDocumentLazy.call(this, payload.document, payload.layers)
+                .bind(this)
+                .then(this.transfer.bind(this, initInactiveDocuments, payload.currentIndex, payload.docCount));
         } else {
             return Promise.resolve();
         }
