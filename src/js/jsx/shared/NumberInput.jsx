@@ -165,23 +165,17 @@ define(function (require, exports, module) {
                 if (value.isEmpty()) {
                     return "";
                 } else {
-                    value = collection.uniformValue(value);
+                    value = collection.uniformValue(value, strings.TRANSFORM.MIXED);
 
                     if (value === null) {
-                        return strings.TRANSFORM.MIXED;
+                        value = "";
                     }
                 }
             }
 
             switch (typeof value) {
             case "number":
-                try {
-                    return String(mathjs.round(value, this.props.precision));
-                } catch (ex) {
-                    console.warn("Invalid number", ex, React.findDOMNode(this));
-                    return "";
-                }
-                
+                return String(mathjs.round(value, this.props.precision));
             case "string":
                 return value;
             default:

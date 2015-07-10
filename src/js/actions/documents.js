@@ -357,8 +357,6 @@ define(function (require, exports) {
                         this.dispatch(events.application.INITIALIZED, { item: "activeDocument" });
                     }
 
-                    console.log("got required props");
-
                     return layerActions._getLazyLayerPropertiesForDocumentRef(docRef, startIndex)
                         .bind(this)
                         .then(function (optionalLayerProperties) {
@@ -366,7 +364,6 @@ define(function (require, exports) {
                                 documentID: doc.documentID,
                                 layers: _.merge(requiredLayerProperties, optionalLayerProperties)
                             });
-                            console.log("got lazy props");
                         });
                 })
                 .return({ document: doc });
