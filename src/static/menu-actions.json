@@ -78,7 +78,7 @@
             },
             "$enable-rule": "have-document"
         },
-        "EXPORT_SELECTED": {
+        "EXPORT_UTILITY": {
             "$action": "export.openExportPanel",
             "$enable-rule": "layer-selected"
         },

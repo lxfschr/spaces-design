@@ -67,6 +67,7 @@ define(function (require, exports, module) {
 
     /**
      * This composite key helps us organize groups of assets within a given layer or document
+     * TODO I think this is deprecated?
      * @return {string}
      */
     ExportAsset.prototype.getId = function () {

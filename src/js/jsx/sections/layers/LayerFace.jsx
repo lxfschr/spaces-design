@@ -170,11 +170,6 @@ define(function (require, exports, module) {
             event.stopPropagation();
         },
 
-        _exportClickHandler: function (scale, event) {
-            event.preventDefault();
-            return this.getFlux().actions.export.exportLayer(this.props.layer, scale);
-        },
-
         /**
          * When not editing a layer name, prevent the layer names from scrolling
          * horizontally while scrolling the layers panel by preventing the default
@@ -324,9 +319,6 @@ define(function (require, exports, module) {
                                 onWheel={this._handleWheel}
                                 onChange={this._handleLayerNameChange}>
                             </TextInput>
-                            <a onClick={this._exportClickHandler.bind(this, 1)}>1x</a>
-                            &nbsp;||&nbsp;
-                            <a onClick={this._exportClickHandler.bind(this, 2)}>2x</a>
                             {showHideButton}
                         </span>
                         <ToggleButton

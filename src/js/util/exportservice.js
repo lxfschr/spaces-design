@@ -77,7 +77,7 @@ define(function (require, exports, module) {
     };
 
     ExportService.prototype.receiveMessage = function (response) {
-        log.debug("recieved message: %s", response.data);
+        log.debug("received message: %s", response.data);
         if (this.deferred && this.deferred.promise && this.deferred.promise.isPending()) {
             if (response && response.data) {
                 this.deferred.resolve(JSON.parse(response.data));
@@ -104,7 +104,7 @@ define(function (require, exports, module) {
                 deferred.resolve = resolve;
                 deferred.reject = reject;
             });
-            deferred.promise.timeout(1500);
+            deferred.promise.timeout(10000);
             this.deferred = deferred;
             return deferred.promise;
         }

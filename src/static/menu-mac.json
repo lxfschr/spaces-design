@@ -120,7 +120,7 @@
                     }
                 },
                 {
-                    "id": "EXPORT_SELECTED",
+                    "id": "EXPORT_UTILITY",
                     "shortcut": {
                         "keyChar": "j",
                         "modifiers": {

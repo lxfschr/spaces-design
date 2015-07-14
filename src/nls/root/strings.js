@@ -99,7 +99,7 @@ define(function (require, exports, module) {
                 CLOSE: "Close",
                 SAVE: "Save",
                 SAVE_AS: "Save As…",
-                EXPORT_SELECTED: "Quick Export Selected",
+                EXPORT_UTILITY: "Export...",
                 REVERT: "Revert",
                 RENAME_DOCUMENT: "Rename…",
                 GENERATE_ASSETS: "Generate Assets…",

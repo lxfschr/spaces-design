@@ -30,6 +30,61 @@ define(function (require, exports, module) {
         FluxMixin = Fluxxor.FluxMixin(React),
         StoreWatchMixin = Fluxxor.StoreWatchMixin;
 
+    var collection = require("js/util/collection"),
+        _ = require("lodash");
+
+    var ExportLayerPanel = React.createClass({
+
+        mixins: [FluxMixin],
+
+        _addAssetClickHandler: function (layer, scale, event) {
+            event.preventDefault();
+            return this.getFlux().actions.export.addLayerExportAsset(layer, scale);
+        },
+
+        render: function () {
+            var document = this.props.document,
+                documentExports = this.props.documentExports,
+                scales = [0.5, 1, 1.5, 2];
+
+            if (!document || document.layers.selected.size !== 1) {
+                return (<div>Not valid for no doc, or non-singular selection</div>);
+            }
+
+            var selectedLayer = document.layers.selected.first(),
+                layerExports = documentExports.layerExportsMap && documentExports.layerExportsMap.get(selectedLayer.id);
+
+            var remainingScales = _.difference(scales, collection.pluck(layerExports, "scale").toArray()),
+                addAssetsComponents = [];
+
+            remainingScales.forEach(function (s) {
+                addAssetsComponents.push((
+                    <span key={s}>
+                        <a onClick={this._addAssetClickHandler.bind(this, selectedLayer, s)}>{s + "x"}</a> ||
+                    </span>
+                ));
+            }.bind(this));
+
+
+            var exportComponents = [];
+            if (layerExports && layerExports.size > 0) {
+                layerExports.forEach(function (i, k) {
+                    var x = (<li key={k}>scale: {i.scale} file: {i.filePath}</li>);
+                    exportComponents.push(x);
+                });
+            }
+
+            return (
+                <div>
+                    <div>{addAssetsComponents}</div>
+                    <ul>
+                        {exportComponents}
+                    </ul>
+                </div>
+            );
+        }
+    });
+
     var ExportsPanel = React.createClass({
         mixins: [FluxMixin, StoreWatchMixin("export")],
 
@@ -47,32 +102,60 @@ define(function (require, exports, module) {
             };
         },
 
-        _exportClickHandler: function (scale, event) {
+        _exportAllAssets: function (event) {
             event.preventDefault();
-            return this.getFlux().actions.export.exportSelected(scale);
+            return this.getFlux().actions.export.exportAllAssets();
+        },
+
+        _exportDocument: function (scale, event) {
+            event.preventDefault();
+            return this.getFlux().actions.export.exportDocument(scale);
         },
 
         render: function () {
-            var layerExportsMap = this.state.documentExports && this.state.documentExports.layerExportsMap;
+            var document = this.props.document,
+                layerExportsMap = this.state.documentExports && this.state.documentExports.layerExportsMap;
+
+            if (!document || !layerExportsMap) {
+                return null;
+            }
 
             var layerExportComponents = [];
             if (layerExportsMap && layerExportsMap.size > 0) {
-                layerExportsMap.forEach(function (item, key) {
-                    if (item && item.size > 0) {
-                        item.forEach(function (i, k) {
-                            var x = (<div key={k}>layer {key}: file: {i.filePath}</div>);
-                            layerExportComponents.push(x);
-                        });
+                layerExportsMap.forEach(function (layerExports, key) {
+                    var layer = document.layers.byID(key);
+
+                    if (layer && layerExports && layerExports.size > 0) {
+                        var assetScales = collection.pluck(layerExports, "scale").toArray().join(", ");
+                        layerExportComponents.push((
+                            <li key={"layer" + layer.id}>
+                                {layer.name}: configured with scale(s): {assetScales}
+                            </li>
+                        ));
                     }
                 });
             }
 
+            /*      <div>
+                        <a onClick={this._exportDocument.bind(this, 1)}>export DOCUMENT (legacy)</a>
+                    </div>
+             */
+
             return (
                 <div>
+                    
                     <div>
-                        recent exports:
-                        {layerExportComponents}
+                        <a onClick={this._exportAllAssets}>export all configured Assets</a> &lt; click that
                     </div>
+                    <hr />
+                    layer exports:
+                    <ul>
+                        {layerExportComponents}
+                    </ul>
+                    <hr />
+                    <ExportLayerPanel
+                        {...this.props}
+                        documentExports={this.state.documentExports} />
                 </div>
 
             );

@@ -91,8 +91,7 @@ define(function (require, exports) {
         "artboardEnabled",
         "pathBounds",
         "smartObject",
-        "globalAngle",
-        "generatorSettings"
+        "globalAngle"
     ];
 
     /**
@@ -143,6 +142,8 @@ define(function (require, exports) {
         return Promise.join(requiredPropertiesPromise, optionalPropertiesPromise, function (required, optional) {
             var propArray = _.chain(required).zipWith(optional, _.merge).reverse().value();
             
+            // TODO ideally we could perform this extension data fetch as part of (or at least parallel to)
+            // the first two property getters
             return Promise.map(propArray, function (layer) {
                 return descriptor.playObject(layerLib.getExtensionData(docRef, layer.layerID, "designSpace"))
                     .then(function (extensionData) {

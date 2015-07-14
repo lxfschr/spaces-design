@@ -36,50 +36,96 @@ define(function (require, exports, module) {
     var DocumentExports = Immutable.Record({
         /**
          * Map of root (document) level export assets, indexed by Id
-         * @type {Immutable.Map<string, ExportAsset>}
+         * @type {Immutable.List<ExportAsset>}
         */
         rootExports: null,
 
         /**
-         * Map of export assets for a given document + layer + exportid
-         * @type {Immutable.Map<number, Immutable.Map<number, Immutable.Map.<string, ExportAsset>>>}
+         * Map of Lists of assets, by layer ID
+         * @type {Immutable.Map<number, Immutable.List.<ExportAsset>>}
          */
         layerExportsMap: null
     });
 
     DocumentExports.prototype.layerExportsArray = function (layerID) {
-        var layerExports = this.layerExportsMap.get(layerID),
-            layerExportsArray = [];
+        var layerExports = this.layerExportsMap.get(layerID);
 
         if (layerExports && layerExports.size > 0) {
-            layerExports.forEach(function (item) {
-                layerExportsArray.push(item);
-            });
+            return layerExports.toJS();
+        } else {
+            return [];
         }
-        return layerExportsArray;
     };
 
-    DocumentExports.fromDescriptors = function (payload) {
-        var docAssets = payload.doc.assetExports,
-            layers = payload.layers;
+    DocumentExports.prototype.rootExportsArray = function () {
+        if (this.rootExports && this.rootExports.size > 0) {
+            return this.rootExports.toJS();
+        } else {
+            return [];
+        }
+    };
 
-        //TODO the doc/root level exports
+    // TODO probably should granulate the param a bit
+    DocumentExports.fromDescriptors = function (payload) {
+        var layers = payload.layers || [];
+
+        // TODO the doc/root level exports, maybe?
 
         var layerExportsMap = new Map();
 
         layers.forEach(function (layer) {
+            var layerExports = [];
             if (layer.assetExports && layer.assetExports.length > 0) {
-                var layerExports = new Map();
-                layer.assetExports.forEach(function (layerAssetExports) {
-                    var assetExport = new ExportAsset(layerAssetExports);
-                    layerExports.set(assetExport.getId(), assetExport);
+                layer.assetExports.forEach(function (layerAssetExport) {
+                    var assetExport = new ExportAsset(layerAssetExport);
+                    layerExports.push(assetExport);
                 });
             }
-            layerExportsMap.set(layer.layerID, layerExports);                
+            layerExportsMap.set(layer.layerID, Immutable.List(layerExports));
         });
         
-            
-    }; 
+        return new DocumentExports({ layerExportsMap: Immutable.Map(layerExportsMap) });
+    };
+
+    var _upsertList = function (assetExportList, newProps) {
+        var _assetExportList = assetExportList || Immutable.List();
+
+        if (!newProps) {
+            return _assetExportList;
+        }
+        
+        var existingEntry = _assetExportList.findEntry(function (asset) {
+            return (asset.scale === newProps.scale); // Obviously this will get more refined in the future
+        });
+
+        if (existingEntry) {
+            var nextEntry = existingEntry[1].merge(newProps);
+            return _assetExportList.set(existingEntry[0], nextEntry); // mergeIn ?
+        } else {
+            return _assetExportList.push(new ExportAsset(newProps));
+        }
+    };
+
+    DocumentExports.prototype.fancyMerge = function (documentExportProps) {
+        var nextRootExports = _upsertList(this.rootExports, documentExportProps.rootExports),
+            nextLayerExportsMap;
+
+        if (documentExportProps.layerExportsMap) {
+            var toMergeExportsMap = new Map();
+
+            documentExportProps.layerExportsMap.forEach(function (layerExportProps, key) {
+                var blah = _upsertList(this.layerExportsMap.get(key), layerExportProps);
+                toMergeExportsMap.set(key, blah);
+            }, this);
+
+            nextLayerExportsMap = this.layerExportsMap.merge(toMergeExportsMap);
+        }
+
+        return new DocumentExports ({
+            rootExports: nextRootExports,
+            layerExportsMap: nextLayerExportsMap || Immutable.List()
+        });
+    };
 
     module.exports = DocumentExports;
 });

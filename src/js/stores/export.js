@@ -62,7 +62,7 @@ define(function (require, exports, module) {
         },
 
         _documentUpdated: function (payload) {
-            var documentID = payload.doc.documentID,
+            var documentID = payload.document.documentID,
                 documentExports = DocumentExports.fromDescriptors(payload);
 
             this._documentExportsMap = this._documentExportsMap.set(documentID, documentExports);
@@ -76,7 +76,7 @@ define(function (require, exports, module) {
          * @param {{documentID: !number, documentExports: DocumentExports}} payload 
          */
         _assetUpdated: function (payload) {
-            log.debug("asset payload, %O", payload);
+            log.debug("asset payload, %s", JSON.stringify(payload, null, "  "));
             var documentID = payload.documentID,
                 documentExports = payload.documentExports;
 
@@ -86,14 +86,8 @@ define(function (require, exports, module) {
                 throw new Error ("Can not update an asset without a valid documentExports: %O", documentExports);
             }
 
-            var rootExports = Immutable.Map(documentExports.rootExports),
-                layerExportsMap = Immutable.Map(documentExports.layerExportsMap);
-
             var curDocumentExports = this.getDocumentExports(documentID) || new DocumentExports(),
-                nextDocumentExports = curDocumentExports.merge({
-                    rootExports: rootExports,
-                    layerExportsMap: layerExportsMap
-                });
+                nextDocumentExports = curDocumentExports.fancyMerge(documentExports);
 
             if (!curDocumentExports.equals(nextDocumentExports)) {
                 this._documentExportsMap = this._documentExportsMap.set(documentID, nextDocumentExports);
