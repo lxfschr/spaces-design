@@ -76,6 +76,16 @@ define(function (require, exports, module) {
 
     var LayerFace = React.createClass({
         mixins: [FluxMixin],
+
+        _expandOrCollapseGroup: function () {
+            var layer = this.props.layer;
+            if (layer.kind !== layer.layerKinds.GROUP) {
+                return;
+            }
+
+            this.getFlux().actions.layers.setLayerExpansion(this.props.document, layer, !layer.expanded);
+        },
+
         /**
          * Renames the layer
          * 
@@ -249,7 +259,9 @@ define(function (require, exports, module) {
                 "layer__select_child": isChildOfSelected,
                 "layer__select_descendant": isStrictDescendantOfSelected,
                 "layer__group_end": isLastInGroup,
-                "layer__nested_group_end": endOfGroupStructure
+                "layer__nested_group_end": endOfGroupStructure,
+                "layer__group_collapsed": layer.kind === layer.layerKinds.GROUP && !layer.expanded,
+                "layer__ancestor_collapsed": doc.layers.hasCollapsedAncestor(layer)
             };
 
             // Set all the classes need to style this LayerFace
@@ -264,7 +276,7 @@ define(function (require, exports, module) {
                 "face__drop_target_below": isDropTarget && isDropTargetBelow,
                 "face__group_start": isGroupStart,
                 "face__group_lastchild": isLastInGroup,
-                "face__group_lastchildgroup": endOfGroupStructure
+                "face__group_lastchildgroup": endOfGroupStructure,
             };
 
             faceClasses["face__depth-" + depth] = true;
@@ -302,6 +314,7 @@ define(function (require, exports, module) {
                             disabled={this.props.disabled}
                             className="face__kind"
                             data-kind={layer.isArtboard ? "artboard" : layer.kind}
+                            onClick={this._expandOrCollapseGroup}
                             onDoubleClick={this._handleLayerEdit}>
                             <SVGIcon
                                 CSSID={iconID}

@@ -90,7 +90,8 @@ define(function (require, exports) {
         "artboardEnabled",
         "pathBounds",
         "smartObject",
-        "globalAngle"
+        "globalAngle",
+        "layerSectionExpanded"
     ];
 
     /**
@@ -1219,11 +1220,8 @@ define(function (require, exports) {
                 }
             };
 
-        var dispatchPromise = Promise.bind(this).then(function () {
-            this.dispatch(events.document.history.optimistic.SET_LAYERS_PROPORTIONAL, payload);
-        });
-
-        var layerPlayObjects = layerSpec.map(function (layer) {
+        var dispatchPromise = this.dispatchAsync(events.document.history.optimistic.SET_LAYERS_PROPORTIONAL, payload),
+            layerPlayObjects = layerSpec.map(function (layer) {
             var layerRef = layerLib.referenceBy.id(layer.id),
             proportionalObj = layerLib.setProportionalScaling(layerRef, proportional);
 
@@ -1386,6 +1384,56 @@ define(function (require, exports) {
     };
     duplicate.reads = [locks.PS_DOC, locks.JS_DOC];
     duplicate.writes = [locks.PS_DOC, locks.JS_DOC];
+
+    var setLayerExpansion = function (document, layers, expand) {
+        if (layers instanceof Layer) {
+            layers = Immutable.List.of(layers);
+        }
+
+        var documentRef = documentLib.referenceBy.id(document.id),
+            layerRefs = layers
+            .filter(function (layer) {
+                return layer.kind === layer.layerKinds.GROUP;
+            })
+            .map(function (layer) {
+                return layerLib.referenceBy.id(layer.id);
+            })
+            .unshift(documentRef)
+            .toArray(),
+            expandPlayObject = layerLib.setLayerExpansion(layerRefs, !!expand);
+
+        var expansionPromise = descriptor.playObject(expandPlayObject),
+            dispatchPromise = this.dispatchAsync(events.document.SET_LAYER_EXPANSION, {
+                documentID: document.id,
+                layerIDs: collection.pluck(layers, "id"),
+                expanded: expand
+            });
+
+        return Promise.join(expansionPromise, dispatchPromise);
+    };
+    setLayerExpansion.reads = [];
+    setLayerExpansion.writes = [locks.PS_DOC, locks.JS_DOC];
+
+    var revealLayers = function (document, layers) {
+        if (layers instanceof Layer) {
+            layers = Immutable.List.of(layers);
+        }
+
+        var collapsedAncestors = layers.reduce(function (collapsedAncestors, layer) {
+            if (document.layers.hasCollapsedAncestor(layer)) {
+                document.layers.strictAncestors(layers).forEach(function (ancestor) {
+                    if (!ancestor.expanded) {
+                        collapsedAncestors.add(ancestor);
+                    }
+                });
+                return collapsedAncestors;
+            }
+        }, new Set(), this);
+
+        return this.transfer(setLayerExpansion, document, collapsedAncestors, true);
+    };
+    revealLayers.reads = [];
+    revealLayers.writes = [locks.PS_DOC, locks.JS_DOC];
 
     /**
      * Event handlers initialized in beforeStartup.
@@ -1634,6 +1682,8 @@ define(function (require, exports) {
     exports.createArtboard = createArtboard;
     exports.resetLinkedLayers = resetLinkedLayers;
     exports.duplicate = duplicate;
+    exports.setLayerExpansion = setLayerExpansion;
+    exports.revealLayers = revealLayers;
     exports.getLayerOrder = getLayerOrder;
 
     exports.beforeStartup = beforeStartup;

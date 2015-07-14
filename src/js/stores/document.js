@@ -59,6 +59,7 @@ define(function (require, exports, module) {
                 events.document.SELECT_LAYERS_BY_INDEX, this._handleLayerSelectByIndex,
                 events.document.VISIBILITY_CHANGED, this._handleVisibilityChanged,
                 events.document.history.optimistic.LOCK_CHANGED, this._handleLockChanged,
+                events.document.SET_LAYER_EXPANSION, this._handleLayerExpansion,
                 events.document.history.optimistic.OPACITY_CHANGED, this._handleOpacityChanged,
                 events.document.history.optimistic.BLEND_MODE_CHANGED, this._handleBlendModeChanged,
                 events.document.history.optimistic.RENAME_LAYER, this._handleLayerRenamed,
@@ -363,6 +364,14 @@ define(function (require, exports, module) {
                 locked = payload.locked;
 
             this._updateLayerProperties(documentID, layerIDs, { locked: locked });
+        },
+
+        _handleLayerExpansion: function (payload) {
+            var documentID = payload.documentID,
+                layerIDs = payload.layerIDs,
+                expanded = payload.expanded;
+
+            this._updateLayerProperties(documentID, layerIDs, { expanded: expanded });
         },
 
         /**

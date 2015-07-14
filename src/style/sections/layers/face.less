@@ -224,15 +224,13 @@ input[type="text"].face__name {
 }
 
 // Group collapsed state
-.face__group_collapsed {
-    height: 0;
-    visibility: hidden;
-    border-bottom: none;
-}
-.face__group_expanded {
-    visibility: visible;
+.layer__ancestor_collapsed {
+    display: none;
 }
 
+.layer__group_start.layer__select.layer__group_collapsed {
+    background-color: inherit;
+}
 
 // Layer name focus/blur state
 .face__input_focus {

@@ -576,6 +576,12 @@ define(function (require, exports, module) {
         });
     }));
 
+    Object.defineProperty(LayerStructure.prototype, "hasCollapsedAncestor", objUtil.cachedLookupSpec(function (layer) {
+        return this.strictAncestors(layer).some(function (layer) {
+            return !layer.expanded;
+        });
+    }));
+
     /**
      * Find all descendants of the given layer, including itself.
      *
