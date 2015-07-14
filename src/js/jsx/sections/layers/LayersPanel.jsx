@@ -84,6 +84,8 @@ define(function (require, exports, module) {
          */
         _boundingClientRectCache: null,
 
+        _mountedLayerIDs: null,
+
         getStateFromFlux: function () {
             var flux = this.getFlux(),
                 dragAndDropStore = flux.store("draganddrop"),
@@ -99,6 +101,7 @@ define(function (require, exports, module) {
 
         componentWillMount: function () {
             this._setTooltipThrottled = synchronization.throttle(os.setTooltip, os, 500);
+            this._mountedLayerIDs = new Set();
         },
         
         componentWillReceiveProps: function (nextProps) {
@@ -121,9 +124,13 @@ define(function (require, exports, module) {
             this._bottomNodeBounds = 0;
             
             // For all layer refs, ask for their registration info and add to list
-            var batchRegistrationInformation = this.props.document.layers.allVisible.map(function (i) {
-                return this.refs[i.key].getRegistration();
-            }, this);
+            var batchRegistrationInformation = this.props.document.layers.allVisible
+                .filter(function (i) {
+                    return this.refs[i.key];
+                }, this)
+                .map(function (i) {
+                    return this.refs[i.key].getRegistration();
+                }, this);
 
             var zone = this.props.document.id,
                 flux = this.getFlux();
@@ -512,6 +519,16 @@ define(function (require, exports, module) {
 
             var dragTargetSet = dragTargets && dragTargets.toSet(),
                 layerComponents = doc.layers.allVisibleReversed
+                    .filter(function (layer) {
+                        if (this._mountedLayerIDs.has(layer.id)) {
+                            return true;
+                        } else if (doc.layers.hasCollapsedAncestor(layer)) {
+                            return false;
+                        } else {
+                            this._mountedLayerIDs.add(layer.id);
+                            return true;
+                        }
+                    }, this)
                     .map(function (layer, visibleIndex) {
                         var isDragTarget = !!(dragTargets && dragTargetSet.has(layer)),
                             isDropTarget = !!(dropTarget && dropTarget.key === layer.key);

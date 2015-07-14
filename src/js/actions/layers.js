@@ -535,10 +535,15 @@ define(function (require, exports) {
 
         // TODO: Dispatch optimistically here for the other modifiers, and
         // eventually remove SELECT_LAYERS_BY_INDEX.
-        var dispatchPromise = Promise.resolve();
+        var dispatchPromise,
+            revealPromise;
         if (!modifier || modifier === "select") {
             payload.selectedIDs = collection.pluck(layerSpec, "id");
             dispatchPromise = this.dispatchAsync(events.document.SELECT_LAYERS_BY_ID, payload);
+            revealPromise = this.transfer(revealLayers, document, layerSpec);
+        } else {
+            dispatchPromise = Promise.resolve();
+            revealPromise = Promise.resolve();
         }
 
         var layerRef = layerSpec
@@ -553,11 +558,14 @@ define(function (require, exports) {
                 .bind(this)
                 .then(function () {
                     if (modifier && modifier !== "select") {
-                        return this.transfer(resetSelection, document);
+                        var resetPromise = this.transfer(resetSelection, document),
+                            revealPromise = this.transfer(revealLayers, document, layerSpec);
+                        
+                        return Promise.join(resetPromise, revealPromise);
                     }
                 });
 
-        return Promise.join(dispatchPromise, selectPromise);
+        return Promise.join(dispatchPromise, selectPromise, revealPromise);
     };
     select.reads = [locks.PS_DOC, locks.JS_DOC];
     select.writes = [locks.PS_DOC, locks.JS_DOC];
@@ -1390,19 +1398,26 @@ define(function (require, exports) {
             layers = Immutable.List.of(layers);
         }
 
-        var documentRef = documentLib.referenceBy.id(document.id),
-            layerRefs = layers
+        var layerRefs = layers
             .filter(function (layer) {
                 return layer.kind === layer.layerKinds.GROUP;
-            })
+            });
+
+        if (layerRefs.isEmpty()) {
+            return Promise.resolve();
+        }
+
+        var documentRef = documentLib.referenceBy.id(document.id);
+
+        layerRefs = layerRefs
             .map(function (layer) {
                 return layerLib.referenceBy.id(layer.id);
             })
             .unshift(documentRef)
-            .toArray(),
-            expandPlayObject = layerLib.setLayerExpansion(layerRefs, !!expand);
+            .toArray();
 
-        var expansionPromise = descriptor.playObject(expandPlayObject),
+        var expandPlayObject = layerLib.setLayerExpansion(layerRefs, !!expand),
+            expansionPromise = descriptor.playObject(expandPlayObject),
             dispatchPromise = this.dispatchAsync(events.document.SET_LAYER_EXPANSION, {
                 documentID: document.id,
                 layerIDs: collection.pluck(layers, "id"),
@@ -1419,16 +1434,17 @@ define(function (require, exports) {
             layers = Immutable.List.of(layers);
         }
 
-        var collapsedAncestors = layers.reduce(function (collapsedAncestors, layer) {
+        var collapsedAncestorSet = layers.reduce(function (collapsedAncestors, layer) {
             if (document.layers.hasCollapsedAncestor(layer)) {
-                document.layers.strictAncestors(layers).forEach(function (ancestor) {
+                document.layers.strictAncestors(layer).forEach(function (ancestor) {
                     if (!ancestor.expanded) {
                         collapsedAncestors.add(ancestor);
                     }
                 });
-                return collapsedAncestors;
             }
-        }, new Set(), this);
+            return collapsedAncestors;
+        }, new Set(), this),
+        collapsedAncestors = Immutable.Set(collapsedAncestorSet).toList();
 
         return this.transfer(setLayerExpansion, document, collapsedAncestors, true);
     };

@@ -68,10 +68,20 @@ define(function (require, exports, module) {
             childOfSelection = document.layers.hasSelectedAncestor(this.props.layer);
             
         if (childOfSelection || nextProps.document.layers.hasSelectedAncestor(nextProps.layer)) {
-            return !Immutable.is(this.props.document.layers.allSelected, nextProps.document.layers.allSelected);
+            if (!Immutable.is(this.props.document.layers.allSelected, nextProps.document.layers.allSelected)) {
+                return true;
+            }
         }
 
-        return false;
+        var hadCollapsedAncestor = document.layers.hasCollapsedAncestor(this.props.layer);
+        if (!hadCollapsedAncestor) {
+            return false;
+        }
+
+        var nextDocument = nextProps.document,
+            willHaveCollapsedAncestor = nextDocument.layers.hasCollapsedAncestor(nextProps.layer);
+
+        return !willHaveCollapsedAncestor;
     };
 
     var LayerFace = React.createClass({
@@ -276,7 +286,7 @@ define(function (require, exports, module) {
                 "face__drop_target_below": isDropTarget && isDropTargetBelow,
                 "face__group_start": isGroupStart,
                 "face__group_lastchild": isLastInGroup,
-                "face__group_lastchildgroup": endOfGroupStructure,
+                "face__group_lastchildgroup": endOfGroupStructure
             };
 
             faceClasses["face__depth-" + depth] = true;
