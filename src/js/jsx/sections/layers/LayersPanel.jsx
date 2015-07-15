@@ -201,21 +201,21 @@ define(function (require, exports, module) {
                 !Immutable.is(_getFaces(this.props), _getFaces(nextProps));
         },
 
-        /* Set initial state
-         * State variables are:
-         *  futureReorder {boolean} - Need this to prevent flash of dragged layer 
-         *     back to original positiion
-         *  batchRegister {boolean} - Should we register all dropppables at once 
-         *     (and prevent individual droppables from registering)
-         *  dropAbove {boolean} - Should the dragged layer drop above or below target
-         *
-         * @return {object}
+        /**
+         * Set the initial component state.
+         * 
+         * @return {{futureReorder: boolean, batchRegister: boolean, dropPosition: ?string}} Where:
+         *  futureReorder: Used to prevent flash of dragged layer back to original positiion
+         *  batchRegister: Should we register all dropppables at once (and prevent individual
+         *      droppables from registering)
+         *  dropPosition: One of "above", "below" or "on" (the latter of which is only valid
+         *      for group drop targets)
          */
         getInitialState: function () {
             return {
                 futureReorder: false,
                 batchRegister: true,
-                dropAbove: false
+                dropPosition: null
             };
         },
 
@@ -277,11 +277,16 @@ define(function (require, exports, module) {
          * @private
          * @param {Layer} target
          * @param {Immutable.Iterable.<Layer>} draggedLayers
-         * @param {boolean} dropAbove
+         * @param {string} dropPosition
          */
-        _validCompatibleDropTarget: function (target, draggedLayers, dropAbove) {
+        _validCompatibleDropTarget: function (target, draggedLayers, dropPosition) {
             // Do not let drop below background
-            if (target.isBackground && !dropAbove) {
+            if (target.isBackground && !dropPosition !== "above") {
+                return false;
+            }
+
+            // Drop on is only allowed for groups
+            if (target.kind !== target.layerKinds.GROUP && dropPosition === "on") {
                 return false;
             }
 
@@ -297,7 +302,7 @@ define(function (require, exports, module) {
                 nestLimitExceeded = draggedLayers.some(function (layer) {
                     var layerDepth = doc.layers.depth(layer),
                         layerTreeDepth = doc.layers.maxDescendantDepth(layer) - layerDepth,
-                        extraDepth = dropAbove ? 0 : 1,
+                        extraDepth = dropPosition !== "above" ? 0 : 1,
                         nestDepth = layerTreeDepth + targetDepth + extraDepth,
                         maxDepth = draggingArtboard ? 1 : PS_MAX_NEST_DEPTH;
 
@@ -319,7 +324,7 @@ define(function (require, exports, module) {
 
                 // The special case of dragging a group below itself
                 if (child.kind === child.layerKinds.GROUPEND &&
-                    dropAbove && doc.layers.indexOf(child) - doc.layers.indexOf(target) === 1) {
+                    dropPosition === "above" && doc.layers.indexOf(child) - doc.layers.indexOf(target) === 1) {
                     return false;
                 }
 
@@ -350,24 +355,38 @@ define(function (require, exports, module) {
                 };
             }
 
-            var dropAbove = false;
-            if (point && bounds) {
+            var target = dropInfo.keyObject,
+                dropPosition;
+
+            if (target.kind === target.layerKinds.GROUP) {
+                if (point.y < (bounds.top + (bounds.height / 4))) {
+                    // Point is in the top quarter
+                    dropPosition = "above";
+                } else if (point.y > (bounds.bottom - (bounds.height / 4))) {
+                    // Point is in the bottom quarter
+                    dropPosition = "below";
+                } else {
+                    // Point is in the middle halfœ
+                    dropPosition = "on";
+                }
+            } else {
                 if ((bounds.height / 2) < (bounds.bottom - point.y)) {
-                    dropAbove = true;
+                    dropPosition = "above";
+                } else {
+                    dropPosition = "below";
                 }
             }
 
-            var target = dropInfo.keyObject,
-                valid = this._validCompatibleDropTarget(target, draggedLayers, dropAbove);
+            var valid = this._validCompatibleDropTarget(target, draggedLayers, dropPosition);
 
-            if (valid && this.state.dropAbove !== dropAbove) {
+            if (valid && this.state.dropPosition !== dropPosition) {
                 // For performance reasons, it's important that this NOT cause a virtual
                 // render. Instead, we should just wait until the dropPosition changes and
                 // render then; otherwise, we'll render twice in one trip around the
                 // mousemove handler. This is accomplished by making shouldComponentUpdate oblivious
-                // to the dropAbove state.
+                // to the dropPosition state.
                 this.setState({
-                    dropAbove: dropAbove
+                    dropPosition: dropPosition
                 });
             }
 
@@ -459,8 +478,9 @@ define(function (require, exports, module) {
             if (this.state.dragTargets) {
                 var flux = this.getFlux(),
                     doc = this.props.document,
-                    above = this.state.dropAbove,
-                    dropIndex = doc.layers.indexOf(this.state.dropTarget.keyObject) - (above ? 0 : 1);
+                    position = this.state.dropPosition,
+                    dropOffset = position === "above" ? 0 : 1,
+                    dropIndex = doc.layers.indexOf(this.state.dropTarget.keyObject) - dropOffset;
 
                 this.setState({
                     futureReorder: true
@@ -472,13 +492,13 @@ define(function (require, exports, module) {
                     .bind(this)
                     .finally(function () {
                         this.setState({
-                            dropAbove: null,
+                            dropPosition: null,
                             futureReorder: false
                         });
                     });
             } else {
                 this.setState({
-                    dropAbove: null
+                    dropPosition: null
                 });
             }
         },
@@ -530,8 +550,9 @@ define(function (require, exports, module) {
                         }
                     }, this)
                     .map(function (layer, visibleIndex) {
-                        var isDragTarget = !!(dragTargets && dragTargetSet.has(layer)),
-                            isDropTarget = !!(dropTarget && dropTarget.key === layer.key);
+                        var isDragTarget = dragTargets && dragTargetSet.has(layer),
+                            isDropTarget = dropTarget && dropTarget.key === layer.key,
+                            dropPosition = isDropTarget && this.state.dropPosition;
 
                         return (
                             <LayerFace
@@ -555,7 +576,7 @@ define(function (require, exports, module) {
                                 dragPosition={(isDropTarget || isDragTarget) &&
                                     this.state.dragPosition}
                                 dropTarget={isDropTarget}
-                                dropAbove={!!(isDropTarget && this.state.dropAbove)} />
+                                dropPosition={dropPosition} />
                         );
                     }, this);
 

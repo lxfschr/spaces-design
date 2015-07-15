@@ -51,7 +51,7 @@ define(function (require, exports, module) {
     var shouldComponentUpdate = function (nextProps) {
         // Drag states
         if (this.props.dragTarget !== nextProps.dragTarget ||
-            this.props.dropAbove !== nextProps.dropAbove ||
+            this.props.dropPosition !== nextProps.dropPosition ||
             this.props.dragPosition !== nextProps.dragPosition ||
             this.props.dragStyle !== nextProps.dragStyle ||
             this.props.dropTarget !== nextProps.dropTarget) {
@@ -87,13 +87,18 @@ define(function (require, exports, module) {
     var LayerFace = React.createClass({
         mixins: [FluxMixin],
 
-        _expandOrCollapseGroup: function () {
+        /**
+         * Expand or collapse the selected groups.
+         *
+         * @private
+         */
+        _handleIconClick: function () {
             var layer = this.props.layer;
             if (layer.kind !== layer.layerKinds.GROUP) {
                 return;
             }
 
-            this.getFlux().actions.layers.setLayerExpansion(this.props.document, layer, !layer.expanded);
+            this.getFlux().actions.layers.setGroupExpansion(this.props.document, layer, !layer.expanded);
         },
 
         /**
@@ -228,14 +233,8 @@ define(function (require, exports, module) {
                 isStrictDescendantOfSelected = !isChildOfSelected && layerStructure.hasStrictSelectedAncestor(layer),
                 isDragTarget = this.props.dragTarget,
                 isDropTarget = this.props.dropTarget,
-                isDropTargetAbove = this.props.dropAbove,
-                isDropTargetBelow = false,
+                dropPosition = this.props.dropPosition,
                 isGroupStart = layer.kind === layer.layerKinds.GROUP || layer.isArtboard;
-
-            if (isDropTarget && !this.props.dropAbove) {
-                isDropTargetAbove = false;
-                isDropTargetBelow = true;
-            }
 
             var depth = layerStructure.depth(layer),
                 endOfGroupStructure = false,
@@ -282,8 +281,9 @@ define(function (require, exports, module) {
                 "face__select_descendant": isStrictDescendantOfSelected,
                 "face__drag_target": isDragTarget && this.props.dragStyle,
                 "face__drop_target": isDropTarget,
-                "face__drop_target_above": isDropTarget && isDropTargetAbove,
-                "face__drop_target_below": isDropTarget && isDropTargetBelow,
+                "face__drop_target_above": dropPosition === "above",
+                "face__drop_target_below": dropPosition === "below",
+                "face__drop_target_on": dropPosition === "on",
                 "face__group_start": isGroupStart,
                 "face__group_lastchild": isLastInGroup,
                 "face__group_lastchildgroup": endOfGroupStructure
@@ -324,7 +324,7 @@ define(function (require, exports, module) {
                             disabled={this.props.disabled}
                             className="face__kind"
                             data-kind={layer.isArtboard ? "artboard" : layer.kind}
-                            onClick={this._expandOrCollapseGroup}
+                            onClick={this._handleIconClick}
                             onDoubleClick={this._handleLayerEdit}>
                             <SVGIcon
                                 CSSID={iconID}

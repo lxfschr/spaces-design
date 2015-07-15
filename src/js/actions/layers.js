@@ -1393,7 +1393,7 @@ define(function (require, exports) {
     duplicate.reads = [locks.PS_DOC, locks.JS_DOC];
     duplicate.writes = [locks.PS_DOC, locks.JS_DOC];
 
-    var setLayerExpansion = function (document, layers, expand) {
+    var setGroupExpansion = function (document, layers, expand) {
         if (layers instanceof Layer) {
             layers = Immutable.List.of(layers);
         }
@@ -1413,12 +1413,12 @@ define(function (require, exports) {
             .map(function (layer) {
                 return layerLib.referenceBy.id(layer.id);
             })
-            .unshift(documentRef)
+            .unshift(documentRef)            
             .toArray();
 
-        var expandPlayObject = layerLib.setLayerExpansion(layerRefs, !!expand),
+        var expandPlayObject = layerLib.setGroupExpansion(layerRefs, !!expand),
             expansionPromise = descriptor.playObject(expandPlayObject),
-            dispatchPromise = this.dispatchAsync(events.document.SET_LAYER_EXPANSION, {
+            dispatchPromise = this.dispatchAsync(events.document.SET_GROUP_EXPANSION, {
                 documentID: document.id,
                 layerIDs: collection.pluck(layers, "id"),
                 expanded: expand
@@ -1426,8 +1426,8 @@ define(function (require, exports) {
 
         return Promise.join(expansionPromise, dispatchPromise);
     };
-    setLayerExpansion.reads = [];
-    setLayerExpansion.writes = [locks.PS_DOC, locks.JS_DOC];
+    setGroupExpansion.reads = [];
+    setGroupExpansion.writes = [locks.PS_DOC, locks.JS_DOC];
 
     var revealLayers = function (document, layers) {
         if (layers instanceof Layer) {
@@ -1446,7 +1446,7 @@ define(function (require, exports) {
         }, new Set(), this),
         collapsedAncestors = Immutable.Set(collapsedAncestorSet).toList();
 
-        return this.transfer(setLayerExpansion, document, collapsedAncestors, true);
+        return this.transfer(setGroupExpansion, document, collapsedAncestors, true);
     };
     revealLayers.reads = [];
     revealLayers.writes = [locks.PS_DOC, locks.JS_DOC];
@@ -1698,7 +1698,7 @@ define(function (require, exports) {
     exports.createArtboard = createArtboard;
     exports.resetLinkedLayers = resetLinkedLayers;
     exports.duplicate = duplicate;
-    exports.setLayerExpansion = setLayerExpansion;
+    exports.setGroupExpansion = setGroupExpansion;
     exports.revealLayers = revealLayers;
     exports.getLayerOrder = getLayerOrder;
 
