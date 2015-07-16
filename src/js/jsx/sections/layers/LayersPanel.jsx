@@ -122,6 +122,7 @@ define(function (require, exports, module) {
         componentDidMount: function () {
             this._scrollToSelection(this.props.document.layers.selected);
             this._bottomNodeBounds = 0;
+            this._panelDropKey = "layers-panel-container-" + this.props.document.id;
             
             // For all layer refs, ask for their registration info and add to list
             var batchRegistrationInformation = this.props.document.layers.allVisible
@@ -131,6 +132,16 @@ define(function (require, exports, module) {
                 .map(function (i) {
                     return this.refs[i.key].getRegistration();
                 }, this);
+
+            // Register the panel itself as a drop zone to account for drops
+            // below a bottom-most group
+            batchRegistrationInformation = batchRegistrationInformation.unshift({
+                key: this._panelDropKey,
+                keyObject: this.refs.container,
+                node: React.findDOMNode(this.refs.container),
+                onDrop: this._handleDrop,
+                isValid: this._validDropTarget
+            });
 
             var zone = this.props.document.id,
                 flux = this.getFlux();
@@ -280,6 +291,10 @@ define(function (require, exports, module) {
          * @param {string} dropPosition
          */
         _validCompatibleDropTarget: function (target, draggedLayers, dropPosition) {
+            if (dropPosition === "bottom") {
+                return true;
+            }
+
             // Do not let drop below background
             if (target.isBackground && !dropPosition !== "above") {
                 return false;
@@ -346,7 +361,6 @@ define(function (require, exports, module) {
         _validDropTarget: function (dropInfo, draggedLayers, point) {
             var dropNode = dropInfo.node,
                 bounds = this._getBoundingClientRectFromCache(dropNode);
-
             if (point.y < bounds.top || point.y > bounds.bottom ||
                 point.x < bounds.left || point.y > bounds.right) {
                 return {
@@ -357,8 +371,9 @@ define(function (require, exports, module) {
 
             var target = dropInfo.keyObject,
                 dropPosition;
-
-            if (target.kind === target.layerKinds.GROUP) {
+            if (dropInfo.key === this._panelDropKey) {
+                dropPosition = "bottom";
+            } else if (target.kind === target.layerKinds.GROUP) {
                 if (point.y < (bounds.top + (bounds.height / 4))) {
                     // Point is in the top quarter
                     dropPosition = "above";
@@ -378,7 +393,6 @@ define(function (require, exports, module) {
             }
 
             var valid = this._validCompatibleDropTarget(target, draggedLayers, dropPosition);
-
             if (valid && this.state.dropPosition !== dropPosition) {
                 // For performance reasons, it's important that this NOT cause a virtual
                 // render. Instead, we should just wait until the dropPosition changes and
@@ -479,8 +493,14 @@ define(function (require, exports, module) {
                 var flux = this.getFlux(),
                     doc = this.props.document,
                     position = this.state.dropPosition,
-                    dropOffset = position === "above" ? 0 : 1,
+                    dropIndex;
+
+                if (position === "bottom") {
+                    dropIndex = 0;
+                } else {
+                    var dropOffset = position === "above" ? 0 : 1;
                     dropIndex = doc.layers.indexOf(this.state.dropTarget.keyObject) - dropOffset;
+                }
 
                 this.setState({
                     futureReorder: true
