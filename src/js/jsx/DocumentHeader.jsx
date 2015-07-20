@@ -29,10 +29,8 @@ define(function (require, exports, module) {
         FluxMixin = Fluxxor.FluxMixin(React),
         StoreWatchMixin = Fluxxor.StoreWatchMixin,
         classnames = require("classnames");
-
-    var Button = require("jsx!js/jsx/shared/Button"),
-        Gutter = require("jsx!js/jsx/shared/Gutter"),
-        strings = require("i18n!nls/strings");
+    
+    var strings = require("i18n!nls/strings");
 
     var DocumentHeader = React.createClass({
         mixins: [FluxMixin, StoreWatchMixin("application", "document")],
@@ -46,33 +44,48 @@ define(function (require, exports, module) {
          */
         getStateFromFlux: function () {
             var applicationStore = this.getFlux().store("application"),
+                applicationState = applicationStore.getState(),
+                documentIDs = applicationState.documentIDs,
                 document = applicationStore.getCurrentDocument(),
                 count = applicationStore.getDocumentCount();
 
             return {
                 document: document,
+                documentIDs: documentIDs,
                 count: count
             };
         },
-        /**
-         * Scrolls back one document, wrapping around if necessary
-         */
-        _moveBack: function () {
-            this.getFlux().actions.documents.selectPreviousDocument();
+
+        componentWillReceiveProps: function () {
+            this.setState({
+                headerWidth: React.findDOMNode(this).clientWidth
+            });
+        },
+
+        componentDidMount: function () {
+            var currentTab = window.document.querySelector(".document-title.current");
+            if (currentTab) {
+                currentTab.scrollIntoViewIfNeeded();
+            }
         },
         
-        /**
-         * Scrolls forward a document, wrapping around if necessary
-         */
-        _moveForward: function () {
-            this.getFlux().actions.documents.selectNextDocument();
+        componentDidUpdate: function () {
+            var currentTab = window.document.querySelector(".document-title.current");
+            if (currentTab) {
+                currentTab.scrollIntoViewIfNeeded();
+            }
         },
-    
+
+        _handleTabClick: function (documentID) {
+            var selectedDoc = this.getFlux().store("document").getDocument(documentID);
+            if (selectedDoc) {
+                this.getFlux().actions.documents.selectDocument(selectedDoc);
+            }
+        },
+
         render: function () {
-            var document = this.state.document,
-                dirty = document && document.dirty ? "•" : "",
-                header = document ? document.name : "",
-                disabled = this.state.count < 2,
+            var documentStore = this.getFlux().store("document"),
+                document = this.state.document,
                 warning = document && document.unsupported && (
                     <span
                         title={strings.TOOLTIPS.UNSUPPORTED_FEATURES}
@@ -86,38 +99,37 @@ define(function (require, exports, module) {
                 "document-container__withdoc": !!document
             });
 
-            var prevClassName = classnames({
-                "document-controls__previous": true,
-                "document-controls__previous__disabled": disabled,
-                "column-2": true
-            });
+            var tabStyles = {};
 
-            var nextClassName = classnames({
-                "document-controls__next": true,
-                "document-controls__next__disabled": disabled,
-                "column-2": true
-            });
+            // If we have lots of open documents, let's get back some space
+            if (this.state.headerWidth / this.state.documentIDs.size < 60) {
+                tabStyles.fontSize = "1.4rem";
+                tabStyles.paddingLeft = "1rem";
+            }
+            
+            var documentTabs = this.state.documentIDs.map(function (docID) {
+                var doc = documentStore.getDocument(docID);
+                return (
+                    <div
+                        className={classnames({
+                            "document-title": true,
+                            "current": docID === document.id
+                        })}
+                        style={tabStyles}
+                        title={doc.name}
+                        key={"docheader" + docID}
+                        onClick={this._handleTabClick.bind(this, docID)}>
+                        {doc.dirty ? "•" : ""}
+                        {doc.name}
+                        {warning}
+                    </div>
+                );
+            }, this);
 
             return (
-                <div className={containerClassName}>
-                    <div className="document-controls">
-                        <Gutter size="column-half"/>
-                        <Button
-                            title={strings.TOOLTIPS.SELECT_PREVIOUS_DOCUMENT}
-                            className={prevClassName}
-                            onClick={this._moveBack} />
-                        <Gutter />
-                        <Button
-                            title={strings.TOOLTIPS.SELECT_NEXT_DOCUMENT}
-                            className={nextClassName}
-                            onClick={this._moveForward} />
-                    </div>
-                    <div className="document-header">
-                        <div className="document-title" title={header}>
-                            {header}
-                            {dirty}
-                            {warning}
-                        </div>
+                <div className={containerClassName} >
+                    <div className="document-header" ref="tabContainer">
+                            {documentTabs}
                     </div>
                 </div>
             );
