@@ -27,7 +27,8 @@ define(function (require, exports, module) {
     var Promise = require("bluebird"),
         React = require("react"),
         Fluxxor = require("fluxxor"),
-        FluxMixin = Fluxxor.FluxMixin(React);
+        FluxMixin = Fluxxor.FluxMixin(React),
+        classnames = require("classnames");
 
     var Button = require("jsx!js/jsx/shared/Button"),
         SVGIcon = require("jsx!js/jsx/shared/SVGIcon");
@@ -37,7 +38,8 @@ define(function (require, exports, module) {
 
         getInitialState: function () {
             return {
-                renditionPath: ""
+                renditionPath: "",
+                dragging: false
             };
         },
 
@@ -54,16 +56,70 @@ define(function (require, exports, module) {
             });
         },
 
-        _handleAdd: function () {
-            this.getFlux().actions.libraries.createLayerFromElement(this.props.element);
+        /**
+         * Handle add layer from graphic asset
+         * @private
+         * @param {object} location of canvas
+         */
+        _handleAdd: function (location) {
+            location = location || { x: 0, y: 0 };
+            this.getFlux().actions.libraries.createLayerFromElement(this.props.element, location);
+        },
+        
+        /**
+         * Handle the start of dragging a graphic asset
+         * @private
+         */
+        _handleDragStart: function () {
+            window.addEventListener("mousemove", this._handleDragMove, true);
+            window.addEventListener("mouseup", this._handleDragFinish, true);
+        },
+        
+        /**
+         * Handle moving of a dragging graphic asset
+         * @private
+         * @param {Event} event
+         */
+        _handleDragMove: function (event) {
+            this.setState({
+                dragging: true,
+                x: event.clientX,
+                y: event.clientY
+            });
+        },
+
+        /**
+         * Handle the end of dragging a graphic asset
+         * @private
+         */
+        _handleDragFinish: function () {
+            window.removeEventListener("mousemove", this._handleDragMove, true);
+            window.removeEventListener("mouseup", this._handleDragFinish, true);
+
+            // Short circuit if not currently dragging
+            if (!this.state.dragging) {
+                return;
+            }
+
+            this.setState({ dragging: false });
+            this.props.onDrop(this.props.element, { x: this.state.x, y: this.state.y });
+            
+            var uiStore = this.getFlux().store("ui");
+            var canvasLocation = uiStore.transformWindowToCanvas(this.state.x, this.state.y);
+            this._handleAdd(canvasLocation);
         },
 
         render: function () {
             var element = this.props.element;
+            
+            var classNames = classnames("sub-header", {
+                "assets__graphic_dragging": this.state.dragging
+            });
 
             return (
-                <div className="sub-header"
-                    key={element.id}>
+                <div className={classNames}
+                     key={element.id}
+                     onMouseDown={this._handleDragStart}>
                     <img src={this.state.renditionPath} />
                     {element.displayName}
                     <Button

@@ -317,15 +317,17 @@ define(function (require, exports) {
      * Places the selected asset in the document as a cloud linked smart object
      *  - Gets the path to the content from libraries
      *  - Sends the path to Photoshop with a place command
+     *  - Updates the document for the new layer
      *
      * Right now, this only works with image assets, for other types of assets we'll need
      * different actions and handlers.
      *
      * @param {AdobeLibraryElement} element
+     * @param {object} location of canvas
      *
      * @return {Promise}
      */
-    var createLayerFromElement = function (element) {
+    var createLayerFromElement = function (element, location) {
         var appStore = this.flux.store("application"),
             libStore = this.flux.store("library"),
             currentDocument = appStore.getCurrentDocument(),
@@ -336,16 +338,21 @@ define(function (require, exports) {
         }
 
         var docRef = docAdapter.referenceBy.id(currentDocument.id),
-            location = { x: 100, y: 100 },
             representation = element.getPrimaryRepresentation();
 
-        return Promise.fromNode(function (cb) {
-            representation.getContentPath(cb);
-        }).then(function (path) {
-            var placeObj = libraryAdapter.placeElement(docRef, element, path, location);
+        return Promise
+                .fromNode(function (cb) {
+                    representation.getContentPath(cb);
+                })
+                .bind(this)
+                .then(function (path) {
+                    var placeObj = libraryAdapter.placeElement(docRef, element, path, location);
 
-            return descriptor.playObject(placeObj);
-        });
+                    return descriptor.playObject(placeObj);
+                })
+                .then(function () {
+                    this.flux.actions.documents.updateDocument();
+                });
     };
     createLayerFromElement.reads = [locks.JS_LIBRARIES, locks.JS_DOC];
     createLayerFromElement.writes = [locks.JS_LIBRARIES, locks.JS_DOC, locks.PS_DOC];
