@@ -35,7 +35,7 @@ define(function (require, exports, module) {
     var PolicyOverlay = require("jsx!js/jsx/tools/PolicyOverlay");
 
     var Scrim = React.createClass({
-        mixins: [FluxMixin, StoreWatchMixin("tool", "ui", "application", "preferences")],
+        mixins: [FluxMixin, StoreWatchMixin("tool", "ui", "application", "preferences", "library")],
 
         /**
          * Dispatches (synthetic) click events from the scrim to the currently
@@ -106,6 +106,11 @@ define(function (require, exports, module) {
             if (tool && tool.onMouseUp) {
                 tool.onMouseUp.call(this, event);
             }
+            
+            if (this.state.isAssetDragOver) {
+                this.setState({ isAssetDragOver: false });
+                this._handleDropGraphic(this.state.libraryDragEvent.element);
+            }
         },
 
         /**
@@ -120,6 +125,21 @@ define(function (require, exports, module) {
 
             if (tool && tool.onMouseMove) {
                 tool.onMouseMove.call(this, event);
+            }
+            
+            this.setState({
+                mouseX: event.clientX,
+                mouseY: event.clientY,
+                isAssetDragOver: this.state.libraryDragEvent.isDragging
+            });
+        },
+        
+        /**
+         * Clear mouse location when mouse out to hide asset preview.
+         */
+        _handleMouseOut: function () {
+            if (this.state.libraryDragEvent.isDragging) {
+                this.setState({ isAssetDragOver: false });
             }
         },
 
@@ -164,6 +184,17 @@ define(function (require, exports, module) {
                 tool.onKeyDown.call(this, event);
             }
         },
+        
+        getInitialState: function () {
+            return {
+                // Current position of the mouse
+                mouseX: null,
+                mouseY: null,
+                
+                // Indicate whether the user is dragging a graphic asset over the scrim
+                isAssetDragOver: false
+            };
+        },
 
         getStateFromFlux: function () {
             var flux = this.getFlux(),
@@ -173,7 +204,8 @@ define(function (require, exports, module) {
                 applicationStore = flux.store("application"),
                 applicationState = applicationStore.getState(),
                 policyFrames = preferenceStore.getState().get("policyFramesEnabled"),
-                document = applicationStore.getCurrentDocument();
+                document = applicationStore.getCurrentDocument(),
+                libraryDragEvent = flux.store("library").getDragEvent();
 
             return {
                 current: toolState.current,
@@ -182,7 +214,8 @@ define(function (require, exports, module) {
                 policyFrames: policyFrames,
                 document: document,
                 activeDocumentInitialized: applicationState.activeDocumentInitialized,
-                recentFilesInitialized: applicationState.recentFilesInitialized
+                recentFilesInitialized: applicationState.recentFilesInitialized,
+                libraryDragEvent: libraryDragEvent
             };
         },
 
@@ -226,16 +259,17 @@ define(function (require, exports, module) {
         _renderToolOverlay: function (transform) {
             var tool = this.state.current;
 
-            if (tool && tool.toolOverlay) {
-                var ToolOverlay = tool.toolOverlay;
-
-                return (
-                    <ToolOverlay transformString={transform} ref="toolOverlay"/>
-                );
+            if (!tool || !tool.toolOverlay || this.state.isAssetDragOver) {
+                return null;
             }
+            
+            var ToolOverlay = tool.toolOverlay;
 
-            return null;
+            return (
+                <ToolOverlay transformString={transform} ref="toolOverlay"/>
+            );
         },
+        
         // Stringifies CanvasToWindow transformation for all SVG coordinates
         _getTransformString: function (transformMatrix) {
             if (!transformMatrix) {
@@ -243,6 +277,43 @@ define(function (require, exports, module) {
             }
 
             return "matrix(" + transformMatrix.join(",") + ")";
+        },
+        
+        /**
+         * Create new layer from the dropped element.
+         * @private
+         * @param  {AdobeLibraryElement} element
+         */
+        _handleDropGraphic: function (element) {
+            var uiStore = this.getFlux().store("ui"),
+                canvasLocation = uiStore.transformWindowToCanvas(this.state.mouseX, this.state.mouseY);
+                
+            canvasLocation.x = uiStore.zoomWindowToCanvas(canvasLocation.x);
+            canvasLocation.y = uiStore.zoomWindowToCanvas(canvasLocation.y);
+            
+            this.getFlux().actions.libraries.createLayerFromElement(element, canvasLocation);
+        },
+        
+        /**
+         * Create preview of the dragged graphic asset under the cursor.
+         * @private
+         * @return {ReactComponent}
+         */
+        _renderAssetPreview: function () {
+            if (!this.state.isAssetDragOver) {
+                return null;
+            }
+        
+            var styles = {
+                left: this.state.mouseX,
+                top: this.state.mouseY
+            };
+            
+            return (
+                <div className="scrim__graphic-asset-preview" style={styles}>
+                    <img src={this.state.libraryDragEvent.previewPath} />
+                </div>
+            );
         },
 
         render: function () {
@@ -252,18 +323,20 @@ define(function (require, exports, module) {
                 overlays = !disabled && this.state.overlaysEnabled,
                 transformString = this._getTransformString(transform),
                 toolOverlay = (overlays && transform) ? this._renderToolOverlay(transformString) : null,
-                policyOverlay = this.state.policyFrames ? (<PolicyOverlay/>) : null;
+                policyOverlay = this.state.policyFrames ? (<PolicyOverlay/>) : null,
+                graphicAssetPreview = this._renderAssetPreview();
 
             // Only the mouse event handlers are attached to the scrim
             return (
-                <div
-                    ref="scrim"
-                    className="scrim"
-                    onClick={!disabled && this._handleClick}
-                    onDoubleClick={!disabled && this._handleDoubleClick}
-                    onMouseDown={!disabled && this._handleMouseDown}
-                    onMouseMove={!disabled && this._handleMouseMove}
-                    onMouseUp={!disabled && this._handleMouseUp}>
+                <div ref="scrim"
+                     className="scrim"
+                     onClick={!disabled && this._handleClick}
+                     onDoubleClick={!disabled && this._handleDoubleClick}
+                     onMouseDown={!disabled && this._handleMouseDown}
+                     onMouseMove={!disabled && this._handleMouseMove}
+                     onMouseUp={!disabled && this._handleMouseUp}
+                     onMouseOut={!disabled && this._handleMouseOut}>
+                    {graphicAssetPreview}
                     <svg width="100%" height="100%">
                         <g id="overlay" width="100%" height="100%">
                             {toolOverlay}

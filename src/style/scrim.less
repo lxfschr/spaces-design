@@ -35,3 +35,22 @@
 	top: 0;
 	left: 0;
 }
+
+
+@preview-size: 64px;
+.scrim__graphic-asset-preview {
+    position: absolute;
+    width: @preview-size;
+    height: @preview-size;
+    line-height: @preview-size;
+    text-align: center;
+    margin-top: -@preview-size/2;
+    margin-left: -@preview-size/2;
+    opacity: 0.7;
+    
+    img {
+        max-width:@preview-size;
+        max-height:@preview-size;
+        vertical-align: middle;
+    }
+}

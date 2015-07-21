@@ -337,16 +337,14 @@ define(function (require, exports) {
             return Promise.resolve();
         }
 
-        var docRef = docAdapter.referenceBy.id(currentDocument.id),
-            representation = element.getPrimaryRepresentation();
-
         return Promise
                 .fromNode(function (cb) {
-                    representation.getContentPath(cb);
+                    element.getPrimaryRepresentation().getContentPath(cb);
                 })
                 .bind(this)
                 .then(function (path) {
-                    var placeObj = libraryAdapter.placeElement(docRef, element, path, location);
+                    var docRef = docAdapter.referenceBy.id(currentDocument.id),
+                        placeObj = libraryAdapter.placeElement(docRef, element, path, location);
 
                     return descriptor.playObject(placeObj);
                 })
@@ -543,6 +541,28 @@ define(function (require, exports) {
     };
     afterStartup.reads = [locks.JS_LIBRARIES];
     afterStartup.writes = [locks.JS_LIBRARIES];
+    
+    /**
+     * Broadcast graphic drag event
+     * @param {AdobeLibraryElement} element
+     * @return {Promise}
+     */
+    var dragGraphicAsset = function (element) {
+        return this.dispatchAsync(events.libraries.DRAG_GRAPHIC, {
+            element: element
+        });
+    };
+    
+    /**
+     * Broadcast graphic drop event
+     * @param {AdobeLibraryElement} element
+     * @return {Promise}
+     */
+    var dropGraphicAsset = function (element) {
+        return this.dispatchAsync(events.libraries.DROP_GRAPHIC, {
+            element: element
+        });
+    };
 
 
     exports.beforeStartup = beforeStartup;
@@ -560,4 +580,7 @@ define(function (require, exports) {
     exports.createLayerFromElement = createLayerFromElement;
     exports.applyLayerStyle = applyLayerStyle;
     exports.applyCharacterStyle = applyCharacterStyle;
+    
+    exports.dragGraphicAsset = dragGraphicAsset;
+    exports.dropGraphicAsset = dropGraphicAsset;
 });

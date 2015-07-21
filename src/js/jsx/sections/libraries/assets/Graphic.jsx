@@ -59,11 +59,11 @@ define(function (require, exports, module) {
         /**
          * Handle add layer from graphic asset
          * @private
-         * @param {object} location of canvas
          */
-        _handleAdd: function (location) {
-            location = location || { x: 0, y: 0 };
-            this.getFlux().actions.libraries.createLayerFromElement(this.props.element, location);
+        _handleAdd: function () {
+            // TODO: new graphic is add to a fixed location. Ideally it should place the new graphic layer 
+            // at the center of the view port.
+            this.getFlux().actions.libraries.createLayerFromElement(this.props.element, { x: 100, y: 100 });
         },
         
         /**
@@ -73,6 +73,7 @@ define(function (require, exports, module) {
         _handleDragStart: function () {
             window.addEventListener("mousemove", this._handleDragMove, true);
             window.addEventListener("mouseup", this._handleDragFinish, true);
+            this.getFlux().actions.libraries.dragGraphicAsset(this.props.element);
         },
         
         /**
@@ -102,11 +103,7 @@ define(function (require, exports, module) {
             }
 
             this.setState({ dragging: false });
-            this.props.onDrop(this.props.element, { x: this.state.x, y: this.state.y });
-            
-            var uiStore = this.getFlux().store("ui");
-            var canvasLocation = uiStore.transformWindowToCanvas(this.state.x, this.state.y);
-            this._handleAdd(canvasLocation);
+            this.getFlux().actions.libraries.dropGraphicAsset(this.props.element);
         },
 
         render: function () {
@@ -115,7 +112,7 @@ define(function (require, exports, module) {
             var classNames = classnames("sub-header", {
                 "assets__graphic_dragging": this.state.dragging
             });
-
+            
             return (
                 <div className={classNames}
                      key={element.id}

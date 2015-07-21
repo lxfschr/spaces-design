@@ -26,9 +26,36 @@ define(function (require, exports, module) {
 
     var Fluxxor = require("fluxxor"),
         Immutable = require("immutable"),
+        Promise = require("bluebird"),
         _ = require("lodash");
 
     var events = require("../events");
+    
+    var DragEvent = Immutable.Record({
+        /**
+         * The element that is currently dragged.
+         * @type {AdobeLibraryElement}
+         */
+        element: null,
+        
+        /**
+         * Path to the preview image of the element.
+         * @type {String}
+         */
+        previewPath: null,
+        
+        /**
+         * @type {Boolean}
+         */
+        isDragging: false,
+        
+        /**
+         * @type {Boolean}
+         */
+        didDrop: false
+    });
+    
+    var dragEvent = new DragEvent();
 
     /**
      * Empty store that simply emits change events when the history state changes.
@@ -52,6 +79,8 @@ define(function (require, exports, module) {
         _currentLibraryID: null,
 
         _serviceConnected: null,
+        
+        _draggedGraphic: null,
 
         initialize: function () {
             this.bindActions(
@@ -60,7 +89,9 @@ define(function (require, exports, module) {
                 events.libraries.LIBRARY_REMOVED, this._handleLibraryRemoved,
                 events.libraries.LIBRARY_SELECTED, this._handleLibrarySelected,
                 events.libraries.CONNECTION_FAILED, this._handleConnectionFailed,
-                events.libraries.ASSET_CREATED, this._handleElementCreated
+                events.libraries.ASSET_CREATED, this._handleElementCreated,
+                events.libraries.DRAG_GRAPHIC, this._handleDragGraphic,
+                events.libraries.DROP_GRAPHIC, this._handleDropGraphic
             );
 
             this._handleReset();
@@ -75,6 +106,7 @@ define(function (require, exports, module) {
             this._libraries = Immutable.Map();
             this._currentLibraryID = "";
             this._serviceConnected = false;
+            this._draggedGraphic = null;
         },
 
         _handleConnectionFailed: function () {
@@ -129,6 +161,40 @@ define(function (require, exports, module) {
             // FIXME: Do we need to handle anything here, besides letting the panel know that something is created
             this.emit("change");
         },
+        
+        
+        /**
+         * Handle drage graphic asset event
+         * @param  {{element: AdobeLibraryElement}} payload
+         */
+        _handleDragGraphic: function (payload) {
+            dragEvent = new DragEvent();
+            
+            Promise
+                .fromNode(function (cb) {
+                    payload.element.getRenditionPath(40, cb);
+                })
+                .bind(this)
+                .then(function (path) {
+                    dragEvent = dragEvent.merge({
+                        element: payload.element,
+                        previewPath: path,
+                        isDragging: true
+                    });
+                    this.emit("change");
+                });
+        },
+
+        /**
+         * Handle drop graphic asset event
+         */
+        _handleDropGraphic: function () {
+            dragEvent = dragEvent.merge({
+                isDragging: false,
+                didDrop: true
+            });
+            this.emit("change");
+        },
 
         /**
          * Returns all loaded libraries
@@ -170,6 +236,14 @@ define(function (require, exports, module) {
 
         getConnectionStatus: function () {
             return this._serviceConnected;
+        },
+        
+        /**
+         * Return the graphic asset that is currently dragged.
+         * @return {?AdobeLibraryElement} 
+         */
+        getDragEvent: function () {
+            return dragEvent;
         }
     });
 

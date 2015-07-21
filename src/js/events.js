@@ -150,7 +150,9 @@ define(function (require, exports, module) {
             ASSET_CREATED: "libraryAssetCreated",
             LIBRARY_CREATED: "libraryCreated",
             LIBRARY_REMOVED: "libraryRemoved",
-            LIBRARY_SELECTED: "librarySelected"
+            LIBRARY_SELECTED: "librarySelected",
+            DRAG_GRAPHIC: "librariesDragGraphic",
+            DROP_GRAPHIC: "librariesDropGraphic"
         },
         search: {
             REGISTER_SEARCH_PROVIDER: "registerSearchProvider"
