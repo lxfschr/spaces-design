@@ -24,7 +24,8 @@
 define(function (require, exports, module) {
     "use strict";
 
-    var math = require("js/util/math");
+    var math = require("js/util/math"),
+        _ = require("lodash");
 
     /**
      * Manages a set of event policy lists.
@@ -85,9 +86,10 @@ define(function (require, exports, module) {
      * @return {Array.<EventPolicy>}
      */
     EventPolicySet.prototype.getMasterPolicyList = function () {
-        return Object.keys(this._policyLists)
+        return _.chain(this._policyLists)
+            .keys()
             .map(math.parseNumber)
-            .sort()
+            .sortBy()
             .reduceRight(function (result, policyListID) {
                 var policyList = this._policyLists[policyListID],
                     jsonPolicyList = policyList.map(function (policy) {
@@ -96,7 +98,8 @@ define(function (require, exports, module) {
 
                 result = result.concat(jsonPolicyList);
                 return result;
-            }.bind(this), []);
+            }.bind(this), [])
+            .value();
     };
 
     module.exports = EventPolicySet;
