@@ -58,16 +58,18 @@ define(function (require, exports, module) {
 
                 log.error("Failed to acquire keyboard focus:", message);
             });
+
             this.getFlux().actions.policy.addKeyboardPolicies(keyboardPolicyList)
-            .then(function (policy) {
-                _keyboardPolicy = policy;
-            });
+                .then(function (policy) {
+                    _keyboardPolicy = policy;
+                });
         },
         releaseFocus: function () {
             if (_keyboardPolicy) {
                 this.getFlux().actions.policy.removeKeyboardPolicies(_keyboardPolicy);
             }
-            OS.releaseKeyboardFocus()
+            
+            return OS.releaseKeyboardFocus()
                 .catch(function (err) {
                     var message = err instanceof Error ? (err.stack || err.message) : err;
 
