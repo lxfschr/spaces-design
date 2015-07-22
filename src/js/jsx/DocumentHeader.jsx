@@ -28,9 +28,10 @@ define(function (require, exports, module) {
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React),
         StoreWatchMixin = Fluxxor.StoreWatchMixin,
+        Immutable = require("immutable"),
         classnames = require("classnames");
     
-    var strings = require("i18n!nls/strings");
+    var DocumentHeaderTab = require("jsx!js/jsx/DocumentHeaderTab");
 
     var DocumentHeader = React.createClass({
         mixins: [FluxMixin, StoreWatchMixin("application", "document")],
@@ -56,24 +57,36 @@ define(function (require, exports, module) {
             };
         },
 
-        componentWillReceiveProps: function () {
+        _updateTabContainerScroll: function () {
+            var currentTab = window.document.querySelector(".document-title__current");
+            if (currentTab) {
+                var container = React.findDOMNode(this.refs.tabContainer),
+                    bounds = currentTab.getBoundingClientRect();
+
+                if (bounds.left < 0) {
+                    container.scrollLeft = 0;
+                } else if (bounds.right > container.clientWidth) {
+                    container.scrollLeft = bounds.right;
+                }
+            }
+        },
+
+        shouldComponentUpdate: function (nextProps, nextState) {
+            return this.state.count !== nextState.count ||
+                !Immutable.is(this.state.documentIDs, nextState.documentIDs) ||
+                !Immutable.is(this.state.document, nextState.document);
+        },
+
+        componentDidMount: function () {
+            this._updateTabContainerScroll();
+
             this.setState({
                 headerWidth: React.findDOMNode(this).clientWidth
             });
         },
 
-        componentDidMount: function () {
-            var currentTab = window.document.querySelector(".document-title.current");
-            if (currentTab) {
-                currentTab.scrollIntoViewIfNeeded();
-            }
-        },
-        
         componentDidUpdate: function () {
-            var currentTab = window.document.querySelector(".document-title.current");
-            if (currentTab) {
-                currentTab.scrollIntoViewIfNeeded();
-            }
+            this._updateTabContainerScroll();
         },
 
         _handleTabClick: function (documentID) {
@@ -86,43 +99,24 @@ define(function (require, exports, module) {
         render: function () {
             var documentStore = this.getFlux().store("document"),
                 document = this.state.document,
-                warning = document && document.unsupported && (
-                    <span
-                        title={strings.TOOLTIPS.UNSUPPORTED_FEATURES}
-                        className="document-controls__unsupported">
-                        !
-                    </span>
-                );
+                smallTab = this.state.headerWidth / this.state.documentIDs.size < 60;
 
             var containerClassName = classnames({
                 "document-container": true,
                 "document-container__withdoc": !!document
             });
 
-            var tabStyles = {};
-
-            // If we have lots of open documents, let's get back some space
-            if (this.state.headerWidth / this.state.documentIDs.size < 60) {
-                tabStyles.fontSize = "1.4rem";
-                tabStyles.paddingLeft = "1rem";
-            }
-            
             var documentTabs = this.state.documentIDs.map(function (docID) {
                 var doc = documentStore.getDocument(docID);
                 return (
-                    <div
-                        className={classnames({
-                            "document-title": true,
-                            "current": docID === document.id
-                        })}
-                        style={tabStyles}
-                        title={doc.name}
+                    <DocumentHeaderTab
                         key={"docheader" + docID}
-                        onClick={this._handleTabClick.bind(this, docID)}>
-                        {doc.dirty ? "•" : ""}
-                        {doc.name}
-                        {warning}
-                    </div>
+                        smallTab={smallTab}
+                        name={doc.name}
+                        dirty={doc.dirty}
+                        unsupported={doc.unsupported}
+                        onClick={this._handleTabClick.bind(this, docID)}
+                        current={docID === document.id} />
                 );
             }, this);
 
