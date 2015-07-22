@@ -174,9 +174,11 @@ define(function (require, exports, module) {
                 var flux = this.getFlux(),
                     toolStore = flux.store("tool"),
                     currentTool = toolStore.getCurrentTool(),
-                    layer = this.props.layer;
+                    layer = this.props.layer,
+                    doc = this.props.document,
+                    numSelectedLayers = doc.layers.selected.size;
                 if ((currentTool.id === "typeCreateOrEdit" || currentTool.id === "superselectType") &&
-                    layer.kind === layer.layerKinds.TEXT) {
+                    layer.kind === layer.layerKinds.TEXT && numSelectedLayers === 1) {
                     UI.startEditWithCurrentModalTool(function (err) {
                         log.error("startEditWithCurrentModalTool: " + err);
                     });
