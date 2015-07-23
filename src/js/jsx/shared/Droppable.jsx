@@ -24,9 +24,7 @@
 define(function (require, exports, module) {
     "use strict";
 
-    var React = require("react"),
-        Fluxxor = require("fluxxor"),
-        FluxMixin = Fluxxor.FluxMixin(React);
+    var React = require("react");
 
     /**
      * Create a composed Droppoable component
@@ -40,14 +38,12 @@ define(function (require, exports, module) {
      *     handleDrop: (Function to handle dropping of object on this droppable)
      *    }
      *
-     * @param {ReactComponent} Component Component to wrap
      * @param {function} getProps function to return an object with the props required by Droppable
+     * TODO doc
      * @return {ReactComponent}
      */
-    var createWithComponent = function (Component, getProps, isEqual, shouldUpdate) {
-        var Droppable = React.createClass({
-            mixins: [FluxMixin],
-
+    var createMixin = function (getProps, isEqual) {
+        var DroppableMixin = {
             /**
              * Register the droppable component with the draganddrop store.
              */
@@ -65,8 +61,6 @@ define(function (require, exports, module) {
 
                 flux.store("draganddrop").registerDroppable(zone, droppable);
             },
-
-            shouldComponentUpdate: shouldUpdate,
 
             /**
              * Get the droppable's registration information.
@@ -108,15 +102,11 @@ define(function (require, exports, module) {
                 if (!isEqual(getProps(this.props).keyObject, getProps(prevProps).keyObject)) {
                     this._register();
                 }
-            },
-
-            render: function () {
-                return <Component {...this.props} {...this.state} />;
             }
-        });
+        };
 
-        return Droppable;
+        return DroppableMixin;
     };
 
-    module.exports = { createWithComponent: createWithComponent };
+    module.exports = { createMixin: createMixin };
 });

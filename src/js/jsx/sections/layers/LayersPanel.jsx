@@ -522,7 +522,6 @@ define(function (require, exports, module) {
                                 disabled={this.props.disabled}
                                 document={doc}
                                 layer={layer}
-                                axis="y"
                                 visibleLayerIndex={visibleIndex}
                                 dragPlaceholderClass="face__placeholder"
                                 zone={doc.id}
@@ -531,8 +530,8 @@ define(function (require, exports, module) {
                                 onDragStop={this._handleStop}
                                 onDrop={this._handleDrop}
                                 getDragItems={this._getDraggingLayers}
-                                dragTarget={isDragTarget}
-                                dropTarget={isDropTarget}
+                                isDragTarget={isDragTarget}
+                                isDropTarget={isDropTarget}
                                 dropPosition={dropPosition} />
                         );
                     }, this);
@@ -545,7 +544,6 @@ define(function (require, exports, module) {
                     <DummyLayerFace
                         key="dummy"
                         document={doc}
-                        axis="y"
                         zone={doc.id}
                         isValid={this._validDropTarget}
                         onDrop={this._handleDrop}

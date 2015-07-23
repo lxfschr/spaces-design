@@ -31,7 +31,7 @@ define(function (require, exports, module) {
         Immutable = require("immutable"),
         _ = require("lodash");
 
-    var Draggable = require("jsx!js/jsx/mixin/Draggable"),
+    var Draggable = require("jsx!js/jsx/shared/Draggable"),
         Droppable = require("jsx!js/jsx/shared/Droppable"),
         Button = require("jsx!js/jsx/shared/Button"),
         SVGIcon = require("jsx!js/jsx/shared/SVGIcon"),
@@ -41,58 +41,75 @@ define(function (require, exports, module) {
         svgUtil = require("js/util/svg"),
         strings = require("i18n!nls/strings");
 
-    /**
-     * Function for checking whether React component should update
-     * Passed to Droppable composed component in order to save on extraneous renders
-     *
-     * @param {object} nextProps - Next set of properties for this component
-     * @return {boolean}
-     */
-    var shouldComponentUpdate = function (nextProps) {
-        // Drag states
-        if (this.props.dragTarget !== nextProps.dragTarget ||
-            this.props.dropPosition !== nextProps.dropPosition ||
-            this.props.dragPosition !== nextProps.dragPosition ||
-            this.props.dragStyle !== nextProps.dragStyle ||
-            this.props.dropTarget !== nextProps.dropTarget) {
-            return true;
-        }
+    var LayerFace = React.createClass({
+        mixins: [
+            FluxMixin,
+            Draggable.createMixin("y"),
+            Droppable.createMixin(
+                function (props) {
+                    return {
+                        zone: props.document.id,
+                        key: props.layer.key,
+                        keyObject: props.layer,
+                        isValid: props.isValid,
+                        handleDrop: props.onDrop
+                    };
+                },
+                function (layerA, layerB) {
+                    return layerA.key === layerB.key;
+                }
+            )
+        ],
         
-        // Face change
-        if (!Immutable.is(this.props.layer.face, nextProps.layer.face)) {
-            return true;
-        }
-
-        var document = this.props.document,
-            nextDocument = nextProps.document;
-
-        // Depth changes
-        var currentDepth = document.layers.depth(this.props.layer),
-            nextDepth = nextDocument.layers.depth(nextProps.layer);
-
-        if (currentDepth !== nextDepth) {
-            return true;
-        }
-
-        // Deeper selection changes
-        var childOfSelection = document.layers.hasSelectedAncestor(this.props.layer);
-        if (childOfSelection || nextDocument.layers.hasSelectedAncestor(nextProps.layer)) {
-            if (!Immutable.is(document.layers.allSelected, nextDocument.layers.allSelected)) {
+        /**
+         * Function for checking whether React component should update
+         * Passed to Droppable composed component in order to save on extraneous renders
+         *
+         * @param {object} nextProps - Next set of properties for this component
+         * @return {boolean}
+         */
+        shouldComponentUpdate: function (nextProps, nextState) {
+            // Drag states
+            if (this.props.isDragTarget !== nextProps.isDragTarget ||
+                this.props.dropPosition !== nextProps.dropPosition ||
+                this.props.dragPosition !== nextProps.dragPosition ||
+                this.state.dragStyle !== nextState.dragStyle ||
+                this.props.isDropTarget !== nextProps.isDropTarget) {
                 return true;
             }
-        }
+            
+            // Face change
+            if (!Immutable.is(this.props.layer.face, nextProps.layer.face)) {
+                return true;
+            }
 
-        // Given that the face hasn't changed and no selected ancestor has changed, this
-        // component only needs to re-render when going from having a collapsed ancestor
-        // (i.e., being hidden) to not having one (i.e., becoming newly visible).
-        var hadCollapsedAncestor = document.layers.hasCollapsedAncestor(this.props.layer),
-            willHaveCollapsedAncestor = nextDocument.layers.hasCollapsedAncestor(nextProps.layer);
+            var document = this.props.document,
+                nextDocument = nextProps.document;
 
-        return hadCollapsedAncestor !== willHaveCollapsedAncestor;
-    };
+            // Depth changes
+            var currentDepth = document.layers.depth(this.props.layer),
+                nextDepth = nextDocument.layers.depth(nextProps.layer);
 
-    var LayerFace = React.createClass({
-        mixins: [FluxMixin, Draggable.createMixin("y")],
+            if (currentDepth !== nextDepth) {
+                return true;
+            }
+
+            // Deeper selection changes
+            var childOfSelection = document.layers.hasSelectedAncestor(this.props.layer);
+            if (childOfSelection || nextDocument.layers.hasSelectedAncestor(nextProps.layer)) {
+                if (!Immutable.is(document.layers.allSelected, nextDocument.layers.allSelected)) {
+                    return true;
+                }
+            }
+
+            // Given that the face hasn't changed and no selected ancestor has changed, this
+            // component only needs to re-render when going from having a collapsed ancestor
+            // (i.e., being hidden) to not having one (i.e., becoming newly visible).
+            var hadCollapsedAncestor = document.layers.hasCollapsedAncestor(this.props.layer),
+                willHaveCollapsedAncestor = nextDocument.layers.hasCollapsedAncestor(nextProps.layer);
+
+            return hadCollapsedAncestor !== willHaveCollapsedAncestor;
+        },
 
         /**
          * Expand or collapse the selected groups.
@@ -249,8 +266,8 @@ define(function (require, exports, module) {
                     layerStructure.parent(layer) &&
                     layerStructure.parent(layer).selected,
                 isStrictDescendantOfSelected = !isChildOfSelected && layerStructure.hasStrictSelectedAncestor(layer),
-                isDragTarget = this.props.dragTarget,
-                isDropTarget = this.props.dropTarget,
+                isDragTarget = this.props.isDragTarget,
+                isDropTarget = this.props.isDropTarget,
                 dropPosition = this.props.dropPosition,
                 isGroupStart = layer.kind === layer.layerKinds.GROUP || layer.isArtboard;
 
@@ -259,8 +276,8 @@ define(function (require, exports, module) {
                 isLastInGroup = false,
                 dragStyle;
 
-            if (isDragTarget && this.props.dragStyle) {
-                dragStyle = this.props.dragStyle;
+            if (isDragTarget && this.state.dragStyle) {
+                dragStyle = this.state.dragStyle;
             } else {
                 // We can skip some rendering calculations if dragging
                 isLastInGroup = layerIndex > 0 &&
@@ -297,7 +314,7 @@ define(function (require, exports, module) {
                 "face__select_immediate": isSelected,
                 "face__select_child": isChildOfSelected,
                 "face__select_descendant": isStrictDescendantOfSelected,
-                "face__drag_target": isDragTarget && this.props.dragStyle,
+                "face__drag_target": isDragTarget && this.state.dragStyle,
                 "face__drop_target": isDropTarget,
                 "face__drop_target_above": dropPosition === "above",
                 "face__drop_target_below": dropPosition === "below",
@@ -377,19 +394,5 @@ define(function (require, exports, module) {
         }
     });
 
-    // Create a Droppable from a Draggable from a LayerFace.
-    var isEqual = function (layerA, layerB) {
-            return layerA.key === layerB.key;
-        },
-        droppableSettings = function (props) {
-            return {
-                zone: props.document.id,
-                key: props.layer.key,
-                keyObject: props.layer,
-                isValid: props.isValid,
-                handleDrop: props.onDrop
-            };
-        };
-
-    module.exports = Droppable.createWithComponent(LayerFace, droppableSettings, isEqual, shouldComponentUpdate);
+    module.exports = LayerFace;
 });

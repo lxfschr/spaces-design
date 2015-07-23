@@ -25,31 +25,51 @@ define(function (require, exports, module) {
     "use strict";
 
     var React = require("react"),
+        Fluxxor = require("fluxxor"),
+        FluxMixin = Fluxxor.FluxMixin(React),
         classnames = require("classnames");
 
-    var Draggable = require("jsx!js/jsx/mixin/Draggable"),
+    var Draggable = require("jsx!js/jsx/shared/Draggable"),
         Droppable = require("jsx!js/jsx/shared/Droppable");
 
-    /**
-     * Function for checking whether React component should update
-     * Passed to Droppable composed component in order to save on extraneous renders
-     *
-     * @param {object} nextProps - Next set of properties for this component
-     * @return {boolean}
-     */
-    var shouldComponentUpdate = function (nextProps) {
-        // Only drop states are compared
-        return this.props.dropPosition !== nextProps.dropPosition ||
-            this.props.dropTarget !== nextProps.dropTarget;
-    };
-
     var DummyLayerFace = React.createClass({
-        mixins: [Draggable.createMixin("y")],
+        mixins: [
+            FluxMixin,
+            Draggable.createMixin("y"),
+            Droppable.createMixin(
+                function (props) {
+                    return {
+                        zone: props.document.id,
+                        key: "dummy",
+                        keyObject: { key: "dummy" },
+                        isValid: props.isValid,
+                        handleDrop: props.onDrop
+                    };
+                },
+                function (layerA, layerB) {
+                    return layerA.key === layerB.key;
+                }
+            )
+        ],
+        
+        /**
+         * Function for checking whether React component should update
+         * Passed to Droppable composed component in order to save on extraneous renders
+         *
+         * @param {object} nextProps - Next set of properties for this component
+         * @return {boolean}
+         */
+        shouldComponentUpdate: function (nextProps) {
+            // Only drop states are compared
+            return this.props.dropPosition !== nextProps.dropPosition ||
+                this.props.isDropTarget !== nextProps.isDropTarget;
+        },
+        
         render: function () {
             var dummyClassNames = classnames({
                 layer: true,
                 "layer__dummy": true,
-                "layer__dummy_drop": this.props.dropTarget
+                "layer__dummy_drop": this.props.isDropTarget
             });
 
             // The dummy layer only has enough structure to support styling of
@@ -60,19 +80,5 @@ define(function (require, exports, module) {
         }
     });
 
-    // Create a Droppable from a Draggable from a DummyLayerFace.
-    var isEqual = function (layerA, layerB) {
-            return layerA.key === layerB.key;
-        },
-        droppableSettings = function (props) {
-            return {
-                zone: props.document.id,
-                key: "dummy",
-                keyObject: { key: "dummy" },
-                isValid: props.isValid,
-                handleDrop: props.onDrop
-            };
-        };
-
-    module.exports = Droppable.createWithComponent(DummyLayerFace, droppableSettings, isEqual, shouldComponentUpdate);
+    module.exports = DummyLayerFace;
 });

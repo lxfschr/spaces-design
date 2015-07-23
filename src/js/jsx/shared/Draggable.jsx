@@ -49,9 +49,12 @@
 define(function (require, exports, module) {
     "use strict";
 
-    var React = require("react");
+    var React = require("react"),
+        Fluxxor = require("fluxxor"),
+        StoreWatchMixin = Fluxxor.StoreWatchMixin;
 
     /**
+     * TODO doc
      * Create a composed Droppoable component
      *
      * @param {ReactComponent} Component to wrap
@@ -69,15 +72,32 @@ define(function (require, exports, module) {
         };
 
         var _canDragX = function () {
-            return axis === "both" ||
-                axis === "x";
+            return axis === "both" || axis === "x";
         };
 
         var DraggableMixin = {
+            mixins: [StoreWatchMixin("draganddrop")],
+            
             propTypes: {
                 // TODO doc
                 zone: React.PropTypes.number.isRequired,
                 getDragItems: React.PropTypes.function
+            },
+            
+            getStateFromFlux: function () {
+                var dragPosition;
+                
+                if (this.props.isDragTarget) {
+                    var flux = this.getFlux(),
+                        dragAndDropStore = flux.store("draganddrop"),
+                        dragAndDropState = dragAndDropStore.getState();
+                    
+                    dragPosition = dragAndDropState.dragPosition;
+                }
+                
+                return {
+                    dragPosition: dragPosition
+                };
             },
 
             componentWillUnmount: function () {
@@ -100,68 +120,61 @@ define(function (require, exports, module) {
                     dragging: false,
 
                     // Start top/left of the DOM node
-                    startX: null, startY: null,
+                    startX: null,
+                    startY: null,
+                    
                     dragStyle: null
                 };
             },
 
             componentWillReceiveProps: function (nextProps) {
-                if (nextProps.dragTarget) {
+                if (nextProps.isDragTarget) {
                     var startY = this.state.startY,
                         startX = this.state.startX;
+                    
+                    if (!startY || !startX) {
+                        var node = React.findDOMNode(this),
+                            bounds = node.getBoundingClientRect();
 
-                    if (nextProps.dragPosition) {
+                        startX = bounds.left;
+                        startY = bounds.top;
+                        
+                        this.setState({
+                            startX: startX,
+                            startY: startY,
+                            dragStyle: {
+                                top: startY,
+                                left: startX
+                            }
+                        });
+                    } else if (this.state.dragPosition) {
                         var offsetY, offsetX;
                         
                         if (this.state.offsetY) {
                             offsetY = this.state.offsetY;
                             offsetX = this.state.offsetX;
                         } else {
-                            offsetY = nextProps.dragPosition.y;
-                            offsetX = nextProps.dragPosition.x;
+                            offsetY = startY - this.state.dragPosition.y;
+                            offsetX = startX - this.state.dragPosition.x;
                         }
 
                         this.setState({
                             offsetY: offsetY,
                             offsetX: offsetX,
                             dragStyle: {
-                                top: _canDragY() ? startY + (nextProps.dragPosition.y - offsetY) : startY,
-                                left: _canDragX() ? startX + (nextProps.dragPosition.x - offsetX) : startX
+                                top: _canDragY() ? this.state.dragPosition.y + offsetY : startY,
+                                left: _canDragX() ? this.state.dragPosition.x + offsetX : startX
                             }
                         });
-                    } else {
-                        if (!startY || !startX) {
-                            var node = React.findDOMNode(this),
-                                bounds = node.getBoundingClientRect();
-
-                            startX = bounds.left;
-                            startY = bounds.top;
-                            
-                            this.setState({
-                                startX: startX,
-                                startY: startY,
-                                dragStyle: {
-                                    top: startY,
-                                    left: startX
-                                }
-                            });
-                        } else {
-                            this.setState({
-                                startX: null,
-                                startY: null
-                            });
-                        }
                     }
-                } else if (this.props.dragTarget && !nextProps.dragTarget) {
+                } else {
                     this.setState({
                         startX: null,
                         startY: null,
-                        wasDragTarget: true,
+                        wasDragTarget: this.props.isDragTarget && !nextProps.isDragTarget,
                         offsetY: null,
                         offsetX: null
                     });
-                } else {
-                    this.setState({ wasDragTarget: false });
                 }
             },
 
@@ -216,12 +229,6 @@ define(function (require, exports, module) {
                     flux.store("draganddrop").updateDrag(this.props.zone, {
                         x: event.clientX,
                         y: event.clientY
-                    });
-                    this.setState({
-                        dragPosition: {
-                            x: event.clientX,
-                            y: event.clientY
-                        }
                     });
                 }
             },
