@@ -27,7 +27,7 @@ define(function (require, exports, module) {
     var React = require("react"),
         classnames = require("classnames");
 
-    var Draggable = require("jsx!js/jsx/shared/Draggable"),
+    var Draggable = require("jsx!js/jsx/mixin/Draggable"),
         Droppable = require("jsx!js/jsx/shared/Droppable");
 
     /**
@@ -44,6 +44,7 @@ define(function (require, exports, module) {
     };
 
     var DummyLayerFace = React.createClass({
+        mixins: [Draggable.createMixin("y")],
         render: function () {
             var dummyClassNames = classnames({
                 layer: true,
@@ -60,8 +61,7 @@ define(function (require, exports, module) {
     });
 
     // Create a Droppable from a Draggable from a DummyLayerFace.
-    var draggedVersion = Draggable.createWithComponent(DummyLayerFace, "y"),
-        isEqual = function (layerA, layerB) {
+    var isEqual = function (layerA, layerB) {
             return layerA.key === layerB.key;
         },
         droppableSettings = function (props) {
@@ -74,5 +74,5 @@ define(function (require, exports, module) {
             };
         };
 
-    module.exports = Droppable.createWithComponent(draggedVersion, droppableSettings, isEqual, shouldComponentUpdate);
+    module.exports = Droppable.createWithComponent(DummyLayerFace, droppableSettings, isEqual, shouldComponentUpdate);
 });

@@ -49,9 +49,7 @@
 define(function (require, exports, module) {
     "use strict";
 
-    var React = require("react"),
-        Fluxxor = require("fluxxor"),
-        FluxMixin = Fluxxor.FluxMixin(React);
+    var React = require("react");
 
     /**
      * Create a composed Droppoable component
@@ -60,7 +58,8 @@ define(function (require, exports, module) {
      * @param {string} axis is either "x", "y" or "both" for which axis dragging is allowed
      * @return {ReactComponent}
      */
-    var createWithComponent = function (Component, axis) {
+
+    var createMixin = function (axis) {
         if (typeof axis === "undefined") {
             axis = "both";
         }
@@ -74,11 +73,11 @@ define(function (require, exports, module) {
                 axis === "x";
         };
 
-        var Draggable = React.createClass({
-            mixins: [FluxMixin],
-
+        var DraggableMixin = {
             propTypes: {
-                zone: React.PropTypes.number.isRequired
+                // TODO doc
+                zone: React.PropTypes.number.isRequired,
+                getDragItems: React.PropTypes.function
             },
 
             componentWillUnmount: function () {
@@ -162,7 +161,7 @@ define(function (require, exports, module) {
                         offsetX: null
                     });
                 } else {
-                    this.state.wasDragTarget = false;
+                    this.setState({ wasDragTarget: false });
                 }
             },
 
@@ -181,7 +180,7 @@ define(function (require, exports, module) {
              * Handles the start of a dragging operation by setting up initial position
              * and adding event listeners to the window
              */
-            _handleDragStart: function () {
+            _notifyDragStart: function () {
                 window.addEventListener("mousemove", this._handleDragMove, true);
                 window.addEventListener("mouseup", this._handleDragFinish, true);
             },
@@ -217,6 +216,12 @@ define(function (require, exports, module) {
                     flux.store("draganddrop").updateDrag(this.props.zone, {
                         x: event.clientX,
                         y: event.clientY
+                    });
+                    this.setState({
+                        dragPosition: {
+                            x: event.clientX,
+                            y: event.clientY
+                        }
                     });
                 }
             },
@@ -255,18 +260,11 @@ define(function (require, exports, module) {
                 });
 
                 this.getFlux().store("draganddrop").stopDrag();
-            },
-
-            render: function () {
-                return <Component
-                    {...this.props}
-                    {...this.state}
-                    handleDragStart={this._handleDragStart} />;
             }
-        });
+        };
 
-        return Draggable;
+        return DraggableMixin;
     };
 
-    module.exports = { createWithComponent: createWithComponent };
+    module.exports = { createMixin: createMixin };
 });

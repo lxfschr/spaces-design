@@ -532,8 +532,6 @@ define(function (require, exports, module) {
                                 onDrop={this._handleDrop}
                                 getDragItems={this._getDraggingLayers}
                                 dragTarget={isDragTarget}
-                                dragPosition={(isDropTarget || isDragTarget) &&
-                                    this.state.dragPosition}
                                 dropTarget={isDropTarget}
                                 dropPosition={dropPosition} />
                         );

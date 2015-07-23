@@ -31,7 +31,7 @@ define(function (require, exports, module) {
         Immutable = require("immutable"),
         _ = require("lodash");
 
-    var Draggable = require("jsx!js/jsx/shared/Draggable"),
+    var Draggable = require("jsx!js/jsx/mixin/Draggable"),
         Droppable = require("jsx!js/jsx/shared/Droppable"),
         Button = require("jsx!js/jsx/shared/Button"),
         SVGIcon = require("jsx!js/jsx/shared/SVGIcon"),
@@ -92,7 +92,7 @@ define(function (require, exports, module) {
     };
 
     var LayerFace = React.createClass({
-        mixins: [FluxMixin],
+        mixins: [FluxMixin, Draggable.createMixin("y")],
 
         /**
          * Expand or collapse the selected groups.
@@ -335,7 +335,7 @@ define(function (require, exports, module) {
                         className={classnames(faceClasses)}
                         data-layer-id={layer.id}
                         data-kind={layer.kind}
-                        onMouseDown={!this.props.disabled && this.props.handleDragStart}
+                        onMouseDown={!this.props.disabled && this._notifyDragStart}
                         onClick={!this.props.disabled && this._handleLayerClick}>
                         <Button
                             title={tooltipTitle + tooltipPadding}
@@ -378,8 +378,7 @@ define(function (require, exports, module) {
     });
 
     // Create a Droppable from a Draggable from a LayerFace.
-    var draggedVersion = Draggable.createWithComponent(LayerFace, "y"),
-        isEqual = function (layerA, layerB) {
+    var isEqual = function (layerA, layerB) {
             return layerA.key === layerB.key;
         },
         droppableSettings = function (props) {
@@ -392,5 +391,5 @@ define(function (require, exports, module) {
             };
         };
 
-    module.exports = Droppable.createWithComponent(draggedVersion, droppableSettings, isEqual, shouldComponentUpdate);
+    module.exports = Droppable.createWithComponent(LayerFace, droppableSettings, isEqual, shouldComponentUpdate);
 });
