@@ -108,16 +108,19 @@ define(function (require, exports, module) {
 
             var documentTabs = this.state.documentIDs.map(function (docID) {
                 var doc = documentStore.getDocument(docID);
-                return (
-                    <DocumentHeaderTab
-                        key={"docheader" + docID}
-                        smallTab={smallTab}
-                        name={doc.name}
-                        dirty={doc.dirty}
-                        unsupported={doc.unsupported}
-                        onClick={this._handleTabClick.bind(this, docID)}
-                        current={docID === document.id} />
-                );
+                
+                if (doc) {
+                    return (
+                        <DocumentHeaderTab
+                            key={"docheader" + docID}
+                            smallTab={smallTab}
+                            name={doc.name}
+                            dirty={doc.dirty}
+                            unsupported={doc.unsupported}
+                            onClick={this._handleTabClick.bind(this, docID)}
+                            current={document && docID === document.id} />
+                    );
+                }
             }, this);
 
             return (
