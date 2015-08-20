@@ -1,0 +1,15 @@
+<svg version="1.1" id="mesh-folder" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 13 13" style="enable-background:new 0 0 13 13;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill-rule:evenodd;clip-rule:evenodd;}
+</style>
+<g>
+	<g>
+		<path class="st0" d="M1,11h7v-1H1V3h4v1h5v2c0.4-0.1,1,0,1,0V4c0-0.5-0.5-1-1-1H6c0-0.5-0.4-1-1-1H1C0.4,2,0,2.5,0,3v7
+			C0,10.6,0.4,11,1,11z"/>
+	</g>
+	<path class="st0" d="M1,10h7V8.2c0-1.5,1.1-2,2-2.2V4H5V3H1V10z"/>
+	<path class="st0" d="M9,8.3c0,0,0,2.5,0,2.5c0,1.1,0.8,1.2,1.8,1.2H11c1.1,0,2,0,2-1.2V8.3C13,7.6,12.7,7,11,7C9.2,7,9,7.7,9,8.3z
+		 M9.6,8.3c0-0.4,0.3-0.8,1.4-0.8c1.1,0,1.4,0.3,1.4,0.8C12.4,8.9,11.8,9,11,9C9.9,9,9.6,8.8,9.6,8.3z"/>
+</g>
+</svg>

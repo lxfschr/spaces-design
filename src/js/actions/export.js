@@ -419,6 +419,7 @@ define(function (require, exports) {
      * @return {Promise}
      */
     var afterStartup = function () {
+        return Promise.resolve(); // To shut error up - Alex
         return descriptor.playObject(generatorLib.getGeneratorStatus())
             .bind(this)
             .then(function (status) {

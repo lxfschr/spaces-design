@@ -33,6 +33,7 @@ define(function (require, exports, module) {
         Radii = require("./radii"),
         Stroke = require("./stroke"),
         Fill = require("./fill"),
+        ElementStructure = require("./elementstructure"),
         Shadow = require("./shadow"),
         Text = require("./text");
 
@@ -206,6 +207,13 @@ define(function (require, exports, module) {
          * @type {object}
          */
         smartObject: null,
+
+        /**
+         * The 3d scene elements.
+         * @type {object}
+         */
+        layer3D: null,
+
 
         /**
          * Indicates whether the layer used to have layer effect or not. If yes, the layer will have
@@ -475,6 +483,7 @@ define(function (require, exports, module) {
             innerShadows: Shadow.fromLayerDescriptor(layerDescriptor, "innerShadow"),
             text: Text.fromLayerDescriptor(resolution, layerDescriptor),
             proportionalScaling: layerDescriptor.proportionalScaling,
+            layer3D: ElementStructure.fromLayerDescriptor(layerDescriptor),
             isArtboard: layerDescriptor.artboardEnabled,
             vectorMaskEnabled: layerDescriptor.vectorMaskEnabled,
             exportEnabled: layerDescriptor.exportEnabled,
@@ -513,6 +522,7 @@ define(function (require, exports, module) {
                 innerShadows: Shadow.fromLayerDescriptor(layerDescriptor, "innerShadow"),
                 text: Text.fromLayerDescriptor(resolution, layerDescriptor),
                 proportionalScaling: layerDescriptor.proportionalScaling,
+                layer3D: ElementStructure.fromLayerDescriptor(layerDescriptor),
                 isArtboard: layerDescriptor.artboardEnabled,
                 vectorMaskEnabled: layerDescriptor.vectorMaskEnabled,
                 exportEnabled: layerDescriptor.exportEnabled,

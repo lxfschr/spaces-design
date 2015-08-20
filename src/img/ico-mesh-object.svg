@@ -1,0 +1,14 @@
+<svg version="1.1" id="mesh-object"
+	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 13 13"
+	 style="enable-background:new 0 0 13 13;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:none;}
+</style>
+<path class="st0" d="z"/>
+<path d="M4,10.7c-1.1,0-1-0.9-1-1.7h1V10.7z M10,9c0,0.8,0,1.7-1,1.7V9H10z M10,7v1H9V7H10z M3,8V7h1v1H3z M3,3c0-1.1,1-1.2,3.4-1.2
+	C9,1.8,10,2,10,3c0,1.2-1.7,1-3.6,1C4,4,3,4,3,3z M8,10v1H7v-1H8z M8,9L8,9L8,9z M8,8v1l0,0H7V8H8z M8,7L8,7v1V7L8,7z M9,5.1
+	C9.4,5,9.7,4.9,10,4.7V6H9V5.1z M8,7L8,7L8,7L8,7z M7,5.3c0.4,0,1-0.1,1-0.1V7H7V5.3z M6,10v1c-0.6,0-0.5,0.1-1,0v-1H6z M5,8h1v1H5
+	V8z M5,7L5,7z M5,5.2c0.3,0,0.6,0.1,1,0.1V7H5V5.2z M4,5L4,5z M3,4.7C3.3,4.9,3.6,5,4,5v1H3V4.7z M2,3.6c0,0,0,5.8,0,5.8
+	C2,11.9,3.8,12,6.1,12l0.4,0C9,12,11,11.9,11,9.3c0,0,0-5.2,0-5.7C11,2.2,10.7,1,6.5,1C1.9,1,2,2.2,2,3.6z"/>
+<path class="st0" d="z"/>
+</svg>

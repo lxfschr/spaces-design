@@ -41,6 +41,7 @@ define(function (require, exports, module) {
         StylePanel = require("jsx!./sections/style/StylePanel"),
         ExportPanel = require("jsx!./sections/export/ExportPanel"),
         LayersPanel = require("jsx!./sections/layers/LayersPanel"),
+        Panel3d = require("jsx!./sections/3d/Panel3d"),
         LibrariesPanel = require("jsx!./sections/libraries/LibrariesPanel"),
         collection = require("js/util/collection"),
         strings = require("i18n!nls/strings");
@@ -227,6 +228,12 @@ define(function (require, exports, module) {
                                     onVisibilityToggle=
                                     {this._handleColumnVisibilityToggle.bind(this, UI.LAYERS_LIBRARY_COL)}>
                                     <LayersPanel
+                                        ref={UI.LAYERS_PANEL}
+                                        visible={this.state[UI.LAYERS_PANEL]}
+                                        document={document}
+                                        onVisibilityToggle=
+                                            {this._handlePanelVisibilityToggle.bind(this, UI.LAYERS_PANEL)} />
+                                    <Panel3d
                                         ref={UI.LAYERS_PANEL}
                                         visible={this.state[UI.LAYERS_PANEL]}
                                         document={document}
