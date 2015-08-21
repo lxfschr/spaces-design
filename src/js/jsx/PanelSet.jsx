@@ -54,6 +54,7 @@ define(function (require, exports, module) {
         STYLES_PANEL: "stylesVisible",
         EXPORT_PANEL: "exportVisible",
         LAYERS_PANEL: "layersVisible",
+        PANEL_3D: "panel3dVisible",
         LIBRARIES_PANEL: "libraryVisible"
     };
 
@@ -96,6 +97,7 @@ define(function (require, exports, module) {
             fluxState[UI.STYLES_PANEL] = preferences.get(UI.STYLES_PANEL, true);
             fluxState[UI.EXPORT_PANEL] = preferences.get(UI.EXPORT_PANEL, true);
             fluxState[UI.LAYERS_PANEL] = preferences.get(UI.LAYERS_PANEL, true);
+            fluxState[UI.PANEL_3D] = preferences.get(UI.PANEL_3D, true);
             fluxState[UI.LIBRARIES_PANEL] = preferences.get(UI.LIBRARIES_PANEL, true);
       
             return fluxState;
@@ -131,6 +133,7 @@ define(function (require, exports, module) {
                 this.state[UI.STYLES_PANEL] !== nextState[UI.STYLES_PANEL] ||
                 this.state[UI.EXPORT_PANEL] !== nextState[UI.EXPORT_PANEL] ||
                 this.state[UI.LAYERS_PANEL] !== nextState[UI.LAYERS_PANEL] ||
+                this.state[UI.PANEL_3D] !== nextState[UI.PANEL_3D] ||
                 this.state[UI.LIBRARIES_PANEL] !== nextState[UI.LIBRARIES_PANEL] ||
                 this.state.activeDocumentInitialized !== nextState.activeDocumentInitialized ||
                 this.state.recentFilesInitialized !== nextState.recentFilesInitialized ||
@@ -235,11 +238,11 @@ define(function (require, exports, module) {
                                         onVisibilityToggle=
                                             {this._handlePanelVisibilityToggle.bind(this, UI.LAYERS_PANEL)} />
                                     <Panel3d
-                                        ref={UI.LAYERS_PANEL}
-                                        visible={this.state[UI.LAYERS_PANEL]}
+                                        ref={UI.PANEL_3D}
+                                        visible={this.state[UI.PANEL_3D]}
                                         document={document}
                                         onVisibilityToggle=
-                                            {this._handlePanelVisibilityToggle.bind(this, UI.LAYERS_PANEL)} />
+                                            {this._handlePanelVisibilityToggle.bind(this, UI.PANEL_3D)} />
                                     <LibrariesPanel
                                         ref={UI.LIBRARIES_PANEL}
                                         disabled={disabled}
