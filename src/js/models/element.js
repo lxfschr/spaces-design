@@ -28,13 +28,7 @@ define(function (require, exports, module) {
 
     var elementLib = require("adapter/lib/element");
 
-    var object = require("js/util/object"),
-        Bounds = require("./bounds"),
-        Radii = require("./radii"),
-        Stroke = require("./stroke"),
-        Fill = require("./fill"),
-        Shadow = require("./shadow"),
-        Text = require("./text");
+    var object = require("js/util/object");
     var log = require("js/util/log");
 
     /**
@@ -44,10 +38,40 @@ define(function (require, exports, module) {
      */
     var Element = Immutable.Record({
         /**
+         * The ID of this element's layer
+         * @type {number}
+         */
+        layerID: null,
+
+        /**
+         * Id of element
+         * @type {number}
+         */
+        id: null,
+
+        /**
+         * A unique key for the element.
+         * @param {string}
+         */
+        key: null,
+
+        /**
          * Element name
          * @type {string}
          */
         name: null,
+
+        /**
+         * True if element is visible
+         * @type {boolean}
+         */
+        visible: null,
+
+        /**
+         * True if element is selected
+         * @type {boolean}
+         */
+        selected: null,
 
         /**
          * Element Kind
@@ -56,9 +80,15 @@ define(function (require, exports, module) {
         kind: null,
 
         /**
+         * Indicates whether this group element is expanded or collapsed.
+         * @type {boolean}
+         */
+        expanded: false,
+
+        /**
          * @type {object}
          */
-        elementKinds: elementLib.elementKinds,
+        elementKinds: elementLib.elementKinds
     });
 
     Element.elementKinds = elementLib.elementKinds;
@@ -71,9 +101,21 @@ define(function (require, exports, module) {
         face: function () {
             var self = this;
             return new Immutable.Map({
+                id: self.id,
                 name: self.name,
                 kind: self.kind,
+                visible: self.visible,
+                expanded: self.expanded,
+                selected: self.selected
             });
+        },
+        /**
+         * This layer is safe to be super-selected
+         * @type {boolean}
+         */
+        superSelectable: function () {
+            return this.kind !== this.elementKinds.SCENEEND &&
+                   this.kind !== this.elementKinds.MESHFOLDEREND;
         }
     }));
 
@@ -88,14 +130,16 @@ define(function (require, exports, module) {
             sceneDescriptor.elementSectionExpanded;
     };
 
+
     /**
      * Create a new Element object from the given layer descriptor.
      *
-     * @param {object} descriptor Photoshop layer descriptor
+     * @param {object} rawElement Photoshop 3D element
+     * @param {number} layerID Photoshop layer id
      * @return {Element}
      */
-    Element.fromRawElement = function (rawElement) {
-        var model = this.parseRawElement(rawElement);
+    Element.fromRawElement = function (rawElement, layerID, id) {
+        var model = this.parseRawElement(rawElement, layerID, id);
 
         return new Element(model);
     };
@@ -103,43 +147,21 @@ define(function (require, exports, module) {
     /**
      * Parses given raw element to construct a usable object
      *
-     * @param {object} descriptor
-     *
+     * @param {object} rawElement
+     * @param {number} layerID Photoshop layer id
      * @return {{top: number, left: number, bottom: number, right: number}}
      */
-    Element.parseRawElement = function (rawElement) {
+    Element.parseRawElement = function (rawElement, layerID, id) {
         var model = {
-            name: rawElement.name,
-            kind: rawElement.type
+            layerID: layerID,
+            id: id,
+            key: layerID + "." + id,
+            name: rawElement.key3DTreeParamName,
+            kind: rawElement.key3DNodeType,
+            visible: true,
+            expanded: rawElement.key3DExpansion,
+            selected: false
         };
-    };
-
-    /**
-     * Updates the bound object with new properties
-     *
-     * @param {object} descriptor Photoshop layer descriptor
-     * @return {Bounds} [description]
-     */
-    Element.prototype.resetFromDescriptor = function (descriptor) {
-        var newBoundObject = Bounds.parseLayerDescriptor(descriptor);
-
-        return this.merge(newBoundObject);
-    };
-    
-    /**
-     * True if the element has element effect.
-     * @return {boolean}  
-     */
-    Element.prototype.hasElementEffect = function () {
-        return !this.innerShadows.isEmpty() || !this.dropShadows.isEmpty();
-    };
-
-    /**
-     * True if the element is text element.
-     * @return {boolean}  
-     */
-    Element.prototype.isTextElement = function () {
-        return this.kind === this.elementKinds.TEXT;
     };
 
     module.exports = Element;

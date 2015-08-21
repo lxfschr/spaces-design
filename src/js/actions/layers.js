@@ -100,6 +100,7 @@ define(function (require, exports) {
         "artboardEnabled",
         "pathBounds",
         "smartObject",
+        "layer3D",
         "globalAngle",
         "layerSectionExpanded",
         "vectorMaskEnabled"

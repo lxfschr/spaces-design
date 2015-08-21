@@ -52,13 +52,6 @@ define(function (require, exports, module) {
         elements: null,
 
         /**
-         * Element names.
-         *
-         * @type {Immutable.List.<string>}
-         */
-        names: null,
-
-        /**
          * Index-ordered element IDs.
          *
          * @type {Immutable.List.<number>}
@@ -84,45 +77,46 @@ define(function (require, exports, module) {
         return sceneElements;
     };
 
+    var _extractID = function(element, frameList) {
+        for(var i = 0; i < frameList.length; i++) {
+            var frame = frameList[i];
+            if(frame.name === element.key3DTreeParamName) {
+                return frame.$NoID;
+            }
+        }
+    }
+
     /**
      * Construct a ElementStructure model from Photoshop document and layer descriptor.
      *
-     * @param {object} documentDescriptor
-     * @param {object} layerDescriptors
+     * @param {object} layerDescriptor
      * @return {ElementStructure}
      */
     ElementStructure.fromLayerDescriptor = function (layerDescriptor) {
+        log.debug("in ElementStructure");
+        log.debug("layerDescriptor.layer3D" + layerDescriptor.layer3D);
         var layer3D = layerDescriptor.layer3D;
         var elements = new Map();
-        var names = new Immutable.List();
         var index = new Immutable.List();
         if(layer3D) {
-            var scene = layer3D.key3DScene,
-                frameList = scene.$KeFL,
-                sceneTree = scene.key3DSceneTree[0].key3DTreeClassList,
-                rawElements = scene.$mshl.concat(scene.$lite).concat(scene.$caml).concat(scene.$mtll);
+            var scene = layer3D.key3DScene;
+            var sceneTree = scene.key3DSceneTree[0].key3DTreeClassList;
+            sceneTree = Immutable.List(sceneTree);
+            elements = sceneTree.reduce(function (elements, element) {
 
-            elements = rawElements.reduce(function (elements, rawElement) {
-                var name = rawElement.name;
-
-                elements.set(name, Element.fromRawElement(rawElement));
+                var id = _extractID(element, scene.$KeFL);
+                elements.set(id, Element.fromRawElement(element, layerDescriptor.layerID, id));
                 return elements;
             }, elements);
             elements = Immutable.Map(elements);
 
-            index = frameList.reverse().map(function (element) {
-                return element.$NoID;
+            index = sceneTree.reverse().map(function (element) {
+                return _extractID(element, scene.$KeFL);
             });
             index = Immutable.List(index);
-
-            names = rawElements.reverse().map(function (rawElement) {
-                return rawElement.name;
-            });
-            names = Immutable.List(names);
         }
         return new ElementStructure({
             elements: elements,
-            names: names,
             index: index
         });
     };

@@ -214,7 +214,6 @@ define(function (require, exports, module) {
          */
         layer3D: null,
 
-
         /**
          * Indicates whether the layer used to have layer effect or not. If yes, the layer will have
          * a hidden layer effect that makes the extended property descriptor works, even if the layer
@@ -256,7 +255,7 @@ define(function (require, exports, module) {
         unsupported: function () {
             switch (this.kind) {
             case layerLib.layerKinds.VIDEO:
-            case layerLib.layerKinds["3D"]:
+            // case layerLib.layerKinds["3D"]:
                 return true;
             default:
                 return false;
