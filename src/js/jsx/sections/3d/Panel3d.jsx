@@ -537,28 +537,27 @@ define(function (require, exports, module) {
             doc.layers.allSelected.forEach(function (layer) {
                 var isDropTarget = !!dropTarget && dropTarget.key === layer.key,
                     dropPosition = isDropTarget && this.state.dropPosition;
-                Object.keys(layer.layer3D).forEach(function(elementType) {
-                    layer.layer3D[elementType].forEach(function(element) {
-                        elementComponents.push(
-                            <ElementFace
-                                key={element.key}
-                                ref={element.key}
-                                elem={element}
-                                disabled={panel3dRef.props.disabled}
-                                document={doc}
-                                layer={layer}
-                                keyObject={element}
-                                dragPlaceholderClass="face__placeholder"
-                                zone={doc.id}
-                                isValid={panel3dRef._validDropTarget}
-                                onDragStart={panel3dRef._handleStart}
-                                onDragStop={panel3dRef._handleStop}
-                                onDrop={panel3dRef._handleDrop}
-                                getDragItems={panel3dRef._getDraggingLayers}
-                                isDropTarget={isDropTarget}
-                                dropPosition={dropPosition} />
-                        );
-                    });
+                layer.layer3D.elements.forEach(function(element) {
+                    log.debug("element: " + element);
+                    elementComponents.push(
+                        <ElementFace
+                            key={element.key}
+                            ref={element.key}
+                            elem={element}
+                            disabled={panel3dRef.props.disabled}
+                            document={doc}
+                            layer={layer}
+                            keyObject={element}
+                            dragPlaceholderClass="face__placeholder"
+                            zone={doc.id}
+                            isValid={panel3dRef._validDropTarget}
+                            onDragStart={panel3dRef._handleStart}
+                            onDragStop={panel3dRef._handleStop}
+                            onDrop={panel3dRef._handleDrop}
+                            getDragItems={panel3dRef._getDraggingLayers}
+                            isDropTarget={isDropTarget}
+                            dropPosition={dropPosition} />
+                    );
                 });
             });
 

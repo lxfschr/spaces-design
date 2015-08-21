@@ -62,7 +62,7 @@ define(function (require, exports, module) {
         }
         
         // Face change
-        if (!Immutable.is(this.props.layer.face, nextProps.layer.face)) {
+        if (!Immutable.is(this.props.element.face, nextProps.element.face)) {
             return true;
         }
 
@@ -260,9 +260,9 @@ define(function (require, exports, module) {
                 layer = this.props.layer,
                 layerStructure = doc.layers,
                 layerIndex = doc.layers.indexOf(layer),
-                elem = this.props.elem,
+                element = this.props.elem,
                 nameEditable = !layer.isBackground,
-                isSelected = elem.selected, // ToDo - create selected property
+                isSelected = element.selected, // ToDo - create selected property
                 isChildOfSelected = !layer.selected &&
                     layerStructure.parent(layer) &&
                     layerStructure.parent(layer).selected,
@@ -270,8 +270,7 @@ define(function (require, exports, module) {
                 isDragging = this.props.isDragging,
                 isDropTarget = this.props.isDropTarget,
                 dropPosition = this.props.dropPosition,
-                isGroupStart = layer.kind === layer.layerKinds.GROUP || layer.isArtboard,
-                elem = this.props.elem;
+                isGroupStart = layer.kind === layer.layerKinds.GROUP || layer.isArtboard;
 
             var depth = layerStructure.depth(layer),
                 endOfGroupStructure = false,
@@ -334,9 +333,7 @@ define(function (require, exports, module) {
             // and hence to force the tooltip to be invalidated.
             var tooltipPadding = _.repeat("\u200b", layerIndex),
                 tooltipTitle = layer.isArtboard ? strings.LAYER_KIND.ARTBOARD : strings.LAYER_KIND[layer.kind],
-                iconID = svgUtil.getSVGClassFromLayer(layer),
-                //iconID = svgUtil.getSVGClassFromElement(elem),
-                iconID = "light-1",
+                iconID = svgUtil.getSVGClassFromElement(element),
                 showHideButton = layer.isBackground ? null : (
                     <ToggleButton
                         disabled={this.props.disabled}
@@ -348,7 +345,7 @@ define(function (require, exports, module) {
                         onClick={this._handleVisibilityToggle}>
                     </ToggleButton>
                 );
-            log.debug("elem name: " + elem.name);
+            log.debug("elem name: " + element.name);
             return (
                 <li className={classnames(layerClasses)}>
                     <div
@@ -367,7 +364,6 @@ define(function (require, exports, module) {
                             onDoubleClick={this._handleLayerEdit}>
                             <SVGIcon
                                 CSSID={iconID}
-                                iconPath="img/ico-light-1.svg"
                                 viewbox="0 0 24 24"/>
                         </Button>
                         <span className="face__separator">
@@ -376,7 +372,7 @@ define(function (require, exports, module) {
                                 className="face__name"
                                 ref="layerName"
                                 type="text"
-                                value={elem.name}
+                                value={element.name}
                                 editable={!this.props.disabled && nameEditable}
                                 onKeyDown={this._skipToNextLayerName}
                                 onWheel={this._handleWheel}

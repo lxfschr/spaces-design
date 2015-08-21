@@ -27,11 +27,8 @@ define(function (require, exports, module) {
     var Immutable = require("immutable");
 
     var Layer = require("./layer"),
-        LayerNode = require("./layernode"),
+        SceneTreeNode = require("./scenetreenode"),
         Bounds = require("./bounds"),
-        Radii = require("./radii"),
-        Stroke = require("./stroke"),
-        Fill = require("./fill"),
         Element = require("./element");
 
     var objUtil = require("js/util/object"),
@@ -165,7 +162,7 @@ define(function (require, exports, module) {
     Object.defineProperties(ElementStructure.prototype, objUtil.cachedGetSpecs({
         /**
          * @private
-         * @type {{nodes: Immutable.Map.<number, LayerNode>, roots: Immutable.List.<LayerNode>}}
+         * @type {{nodes: Immutable.Map.<number, SceneTreeNode>, roots: Immutable.List.<SceneTreeNode>}}
          */
         "_nodeInfo": function () {
             return SceneTreeNode.fromElements(this.all);
@@ -174,7 +171,7 @@ define(function (require, exports, module) {
         /**
          * All LayerNode objects index by layer ID.
          *
-         * @type {Immutable.Map.<number, LayerNode>}
+         * @type {Immutable.Map.<number, SceneTreeNode>}
          */
         "nodes": function () {
             return this._nodeInfo.nodes;
@@ -183,7 +180,7 @@ define(function (require, exports, module) {
         /**
          * Index-ordered root LayerNode objects.
          *
-         * @type {Immutable.List.<LayerNode>}
+         * @type {Immutable.List.<SceneTreeNode>}
          */
         "roots": function () {
             return this._nodeInfo.roots;

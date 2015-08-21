@@ -80,6 +80,12 @@ define(function (require, exports, module) {
         kind: null,
 
         /**
+         * Element subType
+         * @type {number}
+         */
+        subType: null,
+
+        /**
          * Indicates whether this group element is expanded or collapsed.
          * @type {boolean}
          */
@@ -104,6 +110,7 @@ define(function (require, exports, module) {
                 id: self.id,
                 name: self.name,
                 kind: self.kind,
+                subType: self.subType,
                 visible: self.visible,
                 expanded: self.expanded,
                 selected: self.selected
@@ -140,7 +147,7 @@ define(function (require, exports, module) {
      */
     Element.fromRawElement = function (rawElement, layerID, id) {
         var model = this.parseRawElement(rawElement, layerID, id);
-
+        log.debug("model: " + model);
         return new Element(model);
     };
 
@@ -158,10 +165,13 @@ define(function (require, exports, module) {
             key: layerID + "." + id,
             name: rawElement.key3DTreeParamName,
             kind: rawElement.key3DNodeType,
+            subType: rawElement.key3DNodeSubType,
             visible: true,
             expanded: rawElement.key3DExpansion,
             selected: false
         };
+
+        return model;
     };
 
     module.exports = Element;

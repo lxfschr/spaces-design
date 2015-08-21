@@ -25,8 +25,9 @@ define(function (require, exports) {
     "use strict";
 
     var _ = require("lodash"),
+        elementLib = require("adapter/lib/element"),
         layerLib = require("adapter/lib/layer");
-   
+   var log = require("js/util/log");
     /**
      * Get the class name for the layer face icon for the given layer
      *
@@ -50,6 +51,38 @@ define(function (require, exports) {
             iconID += "-collapsed";
         }
 
+        return iconID;
+    };
+
+    /**
+     * Get the class name for the element face icon for the given element
+     *
+     * @private
+     * @param {Element} element
+     * @return {string}
+     */
+    var getSVGClassFromElement = function (element) {
+        var iconID = "";
+        if (element.kind === element.elementKinds.GROUP) {
+            iconID += "mesh-folder";
+        } else if (element.kind === element.elementKinds.GEOMETRY) {
+            iconID += "mesh-";
+            if(element.subType === elementLib.meshTypes.REPOUSSE) {
+                iconID += "repousse";
+            } else {
+                iconID += "object";
+            }
+        } else if (element.kind === element.elementKinds.LIGHT) {
+            iconID += "light-";
+            iconID += element.subType;
+        } else if (element.kind === element.elementKinds.CAMERA) {
+            iconID += "camera";
+        } else if (element.kind === element.elementKinds.MATERIAL) {
+            iconID += "material";
+        } else {
+            iconID += element.kind;
+        }
+        log.debug("iconID: " + iconID);
         return iconID;
     };
 
@@ -89,4 +122,5 @@ define(function (require, exports) {
 
     exports.getSVGClassFromLayer = getSVGClassFromLayer;
     exports.getSVGClassFromLayerCategories = getSVGClassFromLayerCategories;
+    exports.getSVGClassFromElement = getSVGClassFromElement;
 });
