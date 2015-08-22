@@ -98,6 +98,7 @@ define(function (require, exports, module) {
         if(layer3D) {
             var scene = layer3D.key3DScene;
             var sceneTree = scene.key3DSceneTree[0].key3DTreeClassList;
+            log.debug("sceneTree" + sceneTree);
             sceneTree = Immutable.List(sceneTree);
             elements = sceneTree.reduce(function (elements, element) {
 

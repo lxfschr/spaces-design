@@ -69,6 +69,8 @@ define(function (require, exports) {
             iconID += "mesh-";
             if(element.subType === elementLib.meshTypes.REPOUSSE) {
                 iconID += "repousse";
+            } else if(element.subType === 2) {
+                iconID += "text";
             } else {
                 iconID += "object";
             }
