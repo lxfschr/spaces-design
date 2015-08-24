@@ -26,37 +26,37 @@ define(function (require, exports, module) {
 
     var Immutable = require("immutable");
 
-    var layerLib = require("adapter/lib/layer");
+    var elementLib = require("adapter/lib/element");
 
     /**
      * A node in the layer tree structure.
      * 
      * @constructor
      */
-    var LayerNode = Immutable.Record({
+    var SceneTreeNode = Immutable.Record({
         /**
-         * Layer ID
+         * Node ID
          *
          * @type {number}
          */
         id: null,
 
         /**
-         * Layer IDs of immediate children
+         * Node IDs of immediate children
          *
          * @type {Immutable.Iterable<number>}
          */
         children: null,
 
         /**
-         * Layer ID of parent
+         * Node ID of parent
          *
          * @type {Immutable.Iterable<number>}
          */
         parent: null,
 
         /**
-         * Depth of the layer in the layer hierarchy
+         * Depth of the node in the scene tree hierarchy
          *
          * @type {number}
          */
@@ -64,49 +64,49 @@ define(function (require, exports, module) {
     });
 
     /**
-     * Create a tree of layer nodes from an order list of Layer models. Returns
-     * a Map of all layer IDs to their corresponding LayerNode, as well as an
+     * Create a tree of nodes from an order list of Element models. Returns
+     * a Map of all element IDs to their corresponding ElementNode, as well as an
      * ordered list of tree roots.
      * 
-     * @param {Immutable.Iterable<Layer>} layers
-     * @return {{roots: Immutable.List<LayerNode>, nodes: Immutable.Map.<number, LayerNode>}}
+     * @param {Immutable.Iterable<Element>} elements
+     * @return {{roots: Immutable.List<SceneTreeNode>, nodes: Immutable.Map.<number, SceneTreeNode>}}
      */
-    LayerNode.fromLayers = function (layers) {
+    SceneTreeNode.fromElements = function (elements) {
         var nodes = new Map();
 
-        var makeLayerNodes = function (parent, index, depth) {
+        var makeSceneTreeNodes = function (parent, index, depth) {
             var roots = [],
                 node,
-                layer,
-                layerID,
-                layerKind,
+                element,
+                nodeID,
+                elementKind,
                 children,
                 previousSize;
 
             while (index >= 0) {
-                layer = layers.get(index--);
-                layerID = layer.id;
-                layerKind = layer.kind;
+                element = elements.get(index--);
+                nodeID = element.id;
+                elementKind = element.kind;
 
-                if (layerKind === layerLib.layerKinds.GROUP) {
+                if (elementKind === elementLib.elementKinds.GROUP) {
                     previousSize = nodes.size;
-                    children = makeLayerNodes(layerID, index, depth + 1);
+                    children = makeSceneTreeNodes(nodeID, index, depth + 1);
                     index -= (nodes.size - previousSize);
                 } else {
                     children = null;
                 }
 
-                node = new LayerNode({
-                    id: layerID,
+                node = new SceneTreeNode({
+                    id: nodeID,
                     children: children,
                     parent: parent,
                     depth: depth
                 });
 
-                nodes.set(layerID, node);
+                nodes.set(nodeID, node);
                 roots.push(node);
 
-                if (layerKind === layerLib.layerKinds.GROUPEND) {
+                if (elementKind === elementLib.elementKinds.GROUPEND) {
                     break;
                 }
             }
@@ -114,12 +114,12 @@ define(function (require, exports, module) {
             return Immutable.List(roots);
         };
 
-        var roots = makeLayerNodes(null, layers.size - 1, 0);
+        var roots = makeSceneTreeNodes(null, layers.size - 1, 0);
         return {
             roots: roots,
             nodes: Immutable.Map(nodes)
         };
     };
 
-    module.exports = LayerNode;
+    module.exports = SceneTreeNode;
 });

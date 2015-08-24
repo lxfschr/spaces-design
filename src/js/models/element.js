@@ -122,7 +122,7 @@ define(function (require, exports, module) {
          */
         superSelectable: function () {
             return this.kind !== this.elementKinds.SCENEEND &&
-                   this.kind !== this.elementKinds.MESHFOLDEREND;
+                   this.kind !== this.elementKinds.GROUPEND;
         }
     }));
 

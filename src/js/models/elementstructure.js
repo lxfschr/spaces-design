@@ -90,8 +90,6 @@ define(function (require, exports, module) {
      * @return {ElementStructure}
      */
     ElementStructure.fromLayerDescriptor = function (layerDescriptor) {
-        log.debug("in ElementStructure");
-        log.debug("layerDescriptor.layer3D" + layerDescriptor.layer3D);
         var layer3D = layerDescriptor.layer3D;
         var elements = new Map();
         var index = new Immutable.List();
@@ -120,44 +118,44 @@ define(function (require, exports, module) {
     };
 
     /**
-     * Helper function for getSelectableLayers
-     * For one layer, adds all siblings of it's parents, all the way up the tree
+     * Helper function for getSelectableElements
+     * For one element, adds all siblings of it's parents, all the way up the tree
      *
      * @private
-     * @param {Layer} layer Starting layer
-     * @param {Immutable.Iterable.<Layer>} selectableLayers Collection of selectable layers so far
-     * @param {Object.<{number: Layer}>} visitedParents Already processed parents
-     * @return {Immutable.Iterable.<Layer>} Siblings of this layer
+     * @param {Element} element Starting element
+     * @param {Immutable.Iterable.<Element>} selectableElements Collection of selectable elements so far
+     * @param {Object.<{number: Element}>} visitedParents Already processed parents
+     * @return {Immutable.Iterable.<Element>} Siblings of this element
      */
-    ElementStructure.prototype._replaceAncestorWithSiblingsOf = function (layer, selectableLayers, visitedParents) {
-        var layerAncestor = this.parent(layer);
+    ElementStructure.prototype._replaceAncestorWithSiblingsOf = function (element, selectableElements, visitedParents) {
+        var elementAncestor = this.parent(element);
 
         // If we were already at root, we don't need to do anything for this layer
-        if (!layerAncestor) {
-            return selectableLayers;
+        if (!elementAncestor) {
+            return selectableElements;
         }
 
-        var pull = function (layers, parent) {
-            return layers.filter(function (layer) {
-                return layer !== parent;
+        var pull = function (elements, parent) {
+            return elements.filter(function (element) {
+                return element !== parent;
             });
         };
 
         // Traverse up to root
-        while (layerAncestor && !visitedParents.hasOwnProperty(layerAncestor.id)) {
+        while (elementAncestor && !visitedParents.hasOwnProperty(elementAncestor.id)) {
             // Remove the current parent because we're already below it
-            selectableLayers = pull(selectableLayers, layerAncestor);
+            selectableElements = pull(selectableElements, elementAncestor);
 
             // So we don't process this parent again
-            visitedParents[layerAncestor.id] = layerAncestor;
+            visitedParents[elementAncestor.id] = elementAncestor;
 
             // Add the siblings of this layer to accepted layers
-            selectableLayers = selectableLayers.concat(this.children(layerAncestor));
+            selectableElements = selectableElements.concat(this.children(elementAncestor));
 
-            layerAncestor = this.parent(layerAncestor);
+            elementAncestor = this.parent(elementAncestor);
         }
 
-        return selectableLayers;
+        return selectableElements;
     };
 
     Object.defineProperties(ElementStructure.prototype, objUtil.cachedGetSpecs({
