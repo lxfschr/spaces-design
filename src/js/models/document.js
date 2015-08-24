@@ -30,6 +30,7 @@ define(function (require, exports, module) {
         LayerStructure = require("./layerstructure"),
         Guide = require("./guide"),
         Bounds = require("./bounds");
+    var log = require("js/util/log");
 
     /**
      * Model for a Photoshop document
@@ -149,6 +150,7 @@ define(function (require, exports, module) {
         model.guidesVisible = documentDescriptor.guidesVisibility;
         model.smartGuidesVisible = documentDescriptor.smartGuidesVisibility;
         model.bounds = Bounds.fromDocumentDescriptor(documentDescriptor);
+        log.debug("layerDescriptors" + JSON.stringify(layerDescriptors));
         model.layers = LayerStructure.fromDescriptors(documentDescriptor, layerDescriptors);
         model.guides = guideDescriptors ? Guide.fromDescriptors(documentDescriptor, guideDescriptors) :
             Immutable.List();

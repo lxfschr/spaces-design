@@ -81,7 +81,37 @@ define(function (require, exports, module) {
                 return frame.$NoID;
             }
         }
-    }
+    };
+
+    var _getInsertionIndex = function(list, count) {
+        var idx = 0;
+        var children = 0;
+        var i = 0;
+        while(i < list.length) {
+            if (list[i].key3DChildCount > 0) {
+                i += list[i].key3DChildCount;
+            }
+            i++;
+            children++;
+            if (children === count) {
+                return i;
+            }
+        }
+    };
+
+    var _insertGroupEnds = function(sceneTree){
+        for(var i = 0; i < sceneTree.length; i++) {
+            var node = sceneTree[i];
+            var numChildren = node.key3DChildCount;
+            if(numChildren > 0 && node.key3DIsParent) {
+                var groupEndIndex = _getInsertionIndex(sceneTree.subarray(i+1), numChildren);
+                sceneTree.splice(i+1+groupEndIndex, 0, {key3DNodeType: 13});
+
+            }
+        }
+
+        return sceneTree;
+    };
 
     /**
      * Construct a ElementStructure model from Photoshop document and layer descriptor.
@@ -96,6 +126,7 @@ define(function (require, exports, module) {
         if(layer3D) {
             var scene = layer3D.key3DScene;
             var sceneTree = scene.key3DSceneTree[0].key3DTreeClassList;
+            sceneTree = _insertGroupEnds(sceneTree);
             log.debug("sceneTree" + sceneTree);
             sceneTree = Immutable.List(sceneTree);
             elements = sceneTree.reduce(function (elements, element) {
