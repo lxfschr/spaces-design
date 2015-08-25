@@ -27,6 +27,7 @@ define(function (require, exports, module) {
     var Immutable = require("immutable");
 
     var elementLib = require("adapter/lib/element");
+    var log = require("js/util/log");
 
     /**
      * A node in the layer tree structure.
@@ -88,7 +89,7 @@ define(function (require, exports, module) {
                 nodeID = element.id;
                 elementKind = element.kind;
 
-                if (elementKind === elementLib.elementKinds.GROUP) {
+                if (elementKind === elementLib.elementKinds.GROUP || element.isParent) {
                     previousSize = nodes.size;
                     children = makeSceneTreeNodes(nodeID, index, depth + 1);
                     index -= (nodes.size - previousSize);

@@ -33,7 +33,6 @@ define(function (require, exports, module) {
 
     var objUtil = require("js/util/object"),
         collection = require("js/util/collection");
-    var log = require("js/util/log");
 
     /**
      * A model of the Photoshop layer structure.

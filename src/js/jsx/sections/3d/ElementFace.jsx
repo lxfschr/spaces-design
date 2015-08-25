@@ -342,17 +342,6 @@ define(function (require, exports, module) {
                     </ToggleButton>
                 );
 
-            log.debug("elem name: " + element.name);
-            log.debug("elementIndex: " + elementIndex);
-            log.debug("isSelected: " + isSelected);
-            log.debug("isChildOfSelected: " + isChildOfSelected);
-            log.debug("isStrictDescendantOfSelected: " + isStrictDescendantOfSelected);
-            log.debug("isGroupStart: " + isGroupStart);
-            log.debug("depth: " + depth);
-            log.debug("endOfGroupStructure: " + endOfGroupStructure);
-            log.debug("isLastInGroup: " + isLastInGroup);
-            log.debug("\n");
-
             return (
                 <li className={classnames(layerClasses)}>
                     <div

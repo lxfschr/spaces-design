@@ -164,6 +164,7 @@ define(function (require, exports, module) {
             elements = Immutable.Map(elements);
             index = Immutable.List(elements.keys()).reverse();
         }
+
         return new ElementStructure({
             elements: elements,
             index: index

@@ -533,39 +533,50 @@ define(function (require, exports, module) {
             }
 
             var panel3dRef = this;
-            var elementComponents = [];
-            doc.layers.allSelected.forEach(function (layer) {
-                var isDropTarget = !!dropTarget && dropTarget.key === layer.key,
-                    dropPosition = isDropTarget && this.state.dropPosition;
-                log.debug("elements: " + JSON.stringify(layer.sceneTree.elements));
-                layer.sceneTree.elements.forEach(function(element) {
-                    log.debug("element: " + element);
-                    elementComponents.push(
+            var selectedLayer = doc.layers.allSelected.first();
+            var elementComponents = selectedLayer.sceneTree.allVisibleReversed
+                .filter(function (element) {
+                    // Do not render descendants of collapsed layers unless
+                    // they have been mounted previously
+                    if (this._mountedLayerIDs.has(element.id)) {
+                        return true;
+                    } else if (selectedLayer.sceneTree.hasCollapsedAncestor(element)) {
+                        return false;
+                    } else {
+                        this._mountedLayerIDs.add(element.id);
+                        return true;
+                    }
+                }, this)
+                .map(function (element, visibleIndex) {
+                    var isDropTarget = !!dropTarget && dropTarget.key === element.key,
+                        dropPosition = isDropTarget && this.state.dropPosition;
+
+                    return (
                         <ElementFace
                             key={element.key}
                             ref={element.key}
-                            element={element}
-                            disabled={panel3dRef.props.disabled}
+                            disabled={this.props.disabled}
                             document={doc}
-                            layer={layer}
+                            layer={selectedLayer}
+                            element={element}
                             keyObject={element}
+                            visibleLayerIndex={visibleIndex}
                             dragPlaceholderClass="face__placeholder"
                             zone={doc.id}
-                            isValid={panel3dRef._validDropTarget}
-                            onDragStart={panel3dRef._handleStart}
-                            onDragStop={panel3dRef._handleStop}
-                            onDrop={panel3dRef._handleDrop}
-                            getDragItems={panel3dRef._getDraggingLayers}
+                            isValid={this._validDropTarget}
+                            onDragStart={this._handleStart}
+                            onDragStop={this._handleStop}
+                            onDrop={this._handleDrop}
+                            getDragItems={this._getDraggingLayers}
                             isDropTarget={isDropTarget}
                             dropPosition={dropPosition} />
                     );
-                });
-            });
+                }, this);
 
             var bottomLayer = doc.layers.byIndex(1);
-            if (bottomLayer.kind === bottomLayer.layerKinds.GROUPEND) {
+            bottomLayer = selectedLayer.sceneTree.byIndex(1);
+            if (bottomLayer.kind === bottomLayer.elementKinds.GROUPEND) {
                 var isBottomDropTarget = dropTarget && dropTarget.key === "dummy";
-                
                 elementComponents = elementComponents.push(
                     <DummyElementFace
                         key="dummy"
