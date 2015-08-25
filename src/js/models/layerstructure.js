@@ -295,11 +295,22 @@ define(function (require, exports, module) {
 
         /**
          * The set of artboards in the document
+         * @type {Immutable.List.<Layer>}
          */
         "artboards": function () {
             return this.top.filter(function (layer) {
                 return layer.isArtboard;
             });
+        },
+
+        /**
+         * The set of top level ancestors of all selected layers
+         * @type {Immutable.Set.<Layer>}
+         */
+        "selectedTopAncestors": function () {
+            return this.selected.map(function (layer) {
+                return this.topAncestor(layer);
+            }, this).toSet();
         },
 
         /**
@@ -554,6 +565,22 @@ define(function (require, exports, module) {
     }));
 
     /**
+     * Find the top ancestor of the given layer.
+     *
+     * @param {Layer} layer
+     * @return {Layer}
+     */
+    Object.defineProperty(LayerStructure.prototype, "topAncestor", objUtil.cachedLookupSpec(function (layer) {
+        var ancestor = layer;
+
+        while (this.parent(ancestor)) {
+            ancestor = this.parent(ancestor);
+        }
+
+        return ancestor;
+    }));
+
+    /**
      * Find all ancestors of the given layer, excluding itself.
      *
      * @param {Layer} layer
@@ -754,6 +781,25 @@ define(function (require, exports, module) {
                 return layer.bounds;
         }
     }));
+
+    /**
+     * Calculate the bounds of a layer visible within it's parent artboard,
+     * layer's own bounds if it's not in an artboard
+     *
+     * @param {Layer} layer
+     * @return {?Bounds}
+     */
+    Object.defineProperty(LayerStructure.prototype, "boundsWithinArtboard", objUtil.cachedLookupSpec(function (layer) {
+        var bounds = this.childBounds(layer),
+            topAncestor = this.topAncestor(layer);
+
+        if (topAncestor.isArtboard) {
+            bounds = Bounds.intersection(this.childBounds(topAncestor), bounds);
+        }
+
+        return bounds;
+    }));
+
 
     /**
      * Create a new non-group layer model from a Photoshop layer descriptor and
