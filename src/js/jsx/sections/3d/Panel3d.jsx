@@ -534,59 +534,61 @@ define(function (require, exports, module) {
 
             var panel3dRef = this;
             var selectedLayer = doc.layers.allSelected.first();
-            var elementComponents = selectedLayer.sceneTree.allVisibleReversed
-                .filter(function (element) {
-                    // Do not render descendants of collapsed layers unless
-                    // they have been mounted previously
-                    if (this._mountedLayerIDs.has(element.id)) {
-                        return true;
-                    } else if (selectedLayer.sceneTree.hasCollapsedAncestor(element)) {
-                        return false;
-                    } else {
-                        this._mountedLayerIDs.add(element.id);
-                        return true;
-                    }
-                }, this)
-                .map(function (element, visibleIndex) {
-                    var isDropTarget = !!dropTarget && dropTarget.key === element.key,
-                        dropPosition = isDropTarget && this.state.dropPosition;
 
-                    return (
-                        <ElementFace
-                            key={element.key}
-                            ref={element.key}
-                            disabled={this.props.disabled}
+            if(selectedLayer && selectedLayer.sceneTree.elements.size > 0) {
+                var elementComponents = selectedLayer.sceneTree.allVisibleReversed
+                    .filter(function (element) {
+                        // Do not render descendants of collapsed layers unless
+                        // they have been mounted previously
+                        if (this._mountedLayerIDs.has(element.id)) {
+                            return true;
+                        } else if (selectedLayer.sceneTree.hasCollapsedAncestor(element)) {
+                            return false;
+                        } else {
+                            this._mountedLayerIDs.add(element.id);
+                            return true;
+                        }
+                    }, this)
+                    .map(function (element, visibleIndex) {
+                        var isDropTarget = !!dropTarget && dropTarget.key === element.key,
+                            dropPosition = isDropTarget && this.state.dropPosition;
+
+                        return (
+                            <ElementFace
+                                key={element.key}
+                                ref={element.key}
+                                disabled={this.props.disabled}
+                                document={doc}
+                                layer={selectedLayer}
+                                element={element}
+                                keyObject={element}
+                                visibleLayerIndex={visibleIndex}
+                                dragPlaceholderClass="face__placeholder"
+                                zone={doc.id}
+                                isValid={this._validDropTarget}
+                                onDragStart={this._handleStart}
+                                onDragStop={this._handleStop}
+                                onDrop={this._handleDrop}
+                                getDragItems={this._getDraggingLayers}
+                                isDropTarget={isDropTarget}
+                                dropPosition={dropPosition}/>
+                        );
+                    }, this);
+
+                var bottomLayer = selectedLayer.sceneTree.byIndex(1);
+                if (bottomLayer.kind === bottomLayer.elementKinds.GROUPEND) {
+                    var isBottomDropTarget = dropTarget && dropTarget.key === "dummy";
+                    elementComponents = elementComponents.push(
+                        <DummyElementFace
+                            key="dummy"
                             document={doc}
-                            layer={selectedLayer}
-                            element={element}
-                            keyObject={element}
-                            visibleLayerIndex={visibleIndex}
-                            dragPlaceholderClass="face__placeholder"
                             zone={doc.id}
                             isValid={this._validDropTarget}
-                            onDragStart={this._handleStart}
-                            onDragStop={this._handleStop}
+                            keyObject={{ key: "dummy" }}
                             onDrop={this._handleDrop}
-                            getDragItems={this._getDraggingLayers}
-                            isDropTarget={isDropTarget}
-                            dropPosition={dropPosition} />
+                            isDropTarget={isBottomDropTarget} />
                     );
-                }, this);
-
-            var bottomLayer = doc.layers.byIndex(1);
-            bottomLayer = selectedLayer.sceneTree.byIndex(1);
-            if (bottomLayer.kind === bottomLayer.elementKinds.GROUPEND) {
-                var isBottomDropTarget = dropTarget && dropTarget.key === "dummy";
-                elementComponents = elementComponents.push(
-                    <DummyElementFace
-                        key="dummy"
-                        document={doc}
-                        zone={doc.id}
-                        isValid={this._validDropTarget}
-                        keyObject={{ key: "dummy" }}
-                        onDrop={this._handleDrop}
-                        isDropTarget={isBottomDropTarget} />
-                );
+                }
             }
 
             var layerListClasses = classnames({
