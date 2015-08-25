@@ -114,7 +114,7 @@ define(function (require, exports, module) {
             return Immutable.List(roots);
         };
 
-        var roots = makeSceneTreeNodes(null, layers.size - 1, 0);
+        var roots = makeSceneTreeNodes(null, elements.size - 1, 0);
         return {
             roots: roots,
             nodes: Immutable.Map(nodes)

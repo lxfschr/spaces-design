@@ -33,6 +33,7 @@ define(function (require, exports, module) {
 
     var objUtil = require("js/util/object"),
         collection = require("js/util/collection");
+    var log = require("js/util/log");
 
     /**
      * A model of the Photoshop layer structure.
@@ -83,7 +84,6 @@ define(function (require, exports, module) {
             return layerDescriptor.layerID;
         });
         index = Immutable.List(index);
-
         return new LayerStructure({
             layers: layers,
             index: index

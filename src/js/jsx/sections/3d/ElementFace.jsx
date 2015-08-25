@@ -104,8 +104,8 @@ define(function (require, exports, module) {
          * @param {SyntheticEvent} event
          */
         _handleIconClick: function (event) {
-            var layer = this.props.layer;
-            if (layer.kind !== layer.layerKinds.GROUP) {
+            var element = this.props.element;
+            if (element.kind !== element.elementKinds.GROUP) {
                 return;
             }
 
@@ -179,7 +179,7 @@ define(function (require, exports, module) {
                         numSelectedLayers = doc.layers.selected.size;
                         
                     if ((currentTool.id === "typeCreateOrEdit" || currentTool.id === "superselectType") &&
-                        layer.kind === layer.layerKinds.TEXT && numSelectedLayers === 1) {
+                        layer.kind === element.elementKinds.TEXT && numSelectedLayers === 1) {
                         UI.startEditWithCurrentModalTool();
                     }
                 });
@@ -258,21 +258,20 @@ define(function (require, exports, module) {
         render: function () {
             var doc = this.props.document,
                 layer = this.props.layer,
-                layerStructure = doc.layers,
-                layerIndex = doc.layers.indexOf(layer),
-                element = this.props.elem,
+                element = this.props.element,
+                elementStructure = this.props.layer.sceneTree,
+                elementIndex = elementStructure.indexOf(element),
                 nameEditable = !layer.isBackground,
                 isSelected = element.selected, // ToDo - create selected property
-                isChildOfSelected = !layer.selected &&
-                    layerStructure.parent(layer) &&
-                    layerStructure.parent(layer).selected,
-                isStrictDescendantOfSelected = !isChildOfSelected && layerStructure.hasStrictSelectedAncestor(layer),
+                isChildOfSelected = !element.selected &&
+                    elementStructure.parent(element) &&
+                    elementStructure.parent(element).selected,
+                isStrictDescendantOfSelected = !isChildOfSelected && elementStructure.hasStrictSelectedAncestor(element),
                 isDragging = this.props.isDragging,
                 isDropTarget = this.props.isDropTarget,
                 dropPosition = this.props.dropPosition,
-                isGroupStart = layer.kind === layer.layerKinds.GROUP || layer.isArtboard;
-
-            var depth = layerStructure.depth(layer),
+                isGroupStart = element.kind === element.elementKinds.GROUP || element.isParent;
+            var depth = elementStructure.depth(element),
                 endOfGroupStructure = false,
                 isLastInGroup = false,
                 dragStyle;
@@ -281,17 +280,14 @@ define(function (require, exports, module) {
                 dragStyle = this.props.dragStyle;
             } else {
                 // We can skip some rendering calculations if dragging
-                isLastInGroup = layerIndex > 0 &&
+                isLastInGroup = elementIndex > 0 &&
                     isChildOfSelected &&
-                    layerStructure.byIndex(layerIndex - 1).kind === layer.layerKinds.GROUPEND;
+                    elementStructure.byIndex(elementIndex - 1).kind === element.elementKinds.GROUPEND;
                 
                 // Check to see if this layer is the last in a bunch of nested groups
                 if (isStrictDescendantOfSelected &&
-                    layerStructure.byIndex(layerIndex - 1).kind === layer.layerKinds.GROUPEND) {
-                    var nextVisibleLayer = doc.layers.allVisibleReversed.get(this.props.visibleLayerIndex + 1);
-                    if (nextVisibleLayer && !doc.layers.hasStrictSelectedAncestor(nextVisibleLayer)) {
-                        endOfGroupStructure = true;
-                    }
+                    elementStructure.byIndex(elementIndex - 1).kind === element.elementKinds.GROUPEND) {
+                    endOfGroupStructure = true;
                 }
 
                 dragStyle = {};
@@ -305,7 +301,7 @@ define(function (require, exports, module) {
                 "layer__select_descendant": isStrictDescendantOfSelected,
                 "layer__group_end": isLastInGroup,
                 "layer__nested_group_end": endOfGroupStructure,
-                "layer__group_collapsed": layer.kind === layer.layerKinds.GROUP && !layer.expanded,
+                "layer__group_collapsed": element.kind === element.elementKinds.GROUP && !layer.expanded,
                 "layer__ancestor_collapsed": doc.layers.hasCollapsedAncestor(layer)
             };
 
@@ -331,7 +327,7 @@ define(function (require, exports, module) {
             // the plugin does not invalidate the tooltip when moving the mouse from
             // one region to the other. This is used to make the titles to be different,
             // and hence to force the tooltip to be invalidated.
-            var tooltipPadding = _.repeat("\u200b", layerIndex),
+            var tooltipPadding = _.repeat("\u200b", elementIndex),
                 tooltipTitle = layer.isArtboard ? strings.LAYER_KIND.ARTBOARD : strings.LAYER_KIND[layer.kind],
                 iconID = svgUtil.getSVGClassFromElement(element),
                 showHideButton = layer.isBackground ? null : (
@@ -345,7 +341,18 @@ define(function (require, exports, module) {
                         onClick={this._handleVisibilityToggle}>
                     </ToggleButton>
                 );
+
             log.debug("elem name: " + element.name);
+            log.debug("elementIndex: " + elementIndex);
+            log.debug("isSelected: " + isSelected);
+            log.debug("isChildOfSelected: " + isChildOfSelected);
+            log.debug("isStrictDescendantOfSelected: " + isStrictDescendantOfSelected);
+            log.debug("isGroupStart: " + isGroupStart);
+            log.debug("depth: " + depth);
+            log.debug("endOfGroupStructure: " + endOfGroupStructure);
+            log.debug("isLastInGroup: " + isLastInGroup);
+            log.debug("\n");
+
             return (
                 <li className={classnames(layerClasses)}>
                     <div

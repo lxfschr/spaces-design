@@ -74,13 +74,31 @@ define(function (require, exports, module) {
         return sceneElements;
     };
 
-    var _extractID = function(element, frameList) {
-        for(var i = 0; i < frameList.length; i++) {
+    var _extractID = function(element, frameList, meshList) {
+        var i;
+        for(i = 0; i < frameList.length; i++) {
             var frame = frameList[i];
             if(frame.name === element.key3DTreeParamName) {
                 return frame.$NoID;
             }
         }
+        //log.debug("meshList: " + meshList);
+        if(meshList) {
+            for (i = 0; i < meshList.length; i++) {
+                var mesh = meshList[i];
+                if (mesh.meshExtraData) {
+                    var constraintList = meshList[i].meshExtraData.internalConstraints
+                    for (var j = 0; j < constraintList.length; j++) {
+                        var constraint = constraintList[j];
+                        if (constraint.name === element.key3DTreeParamName) {
+                            //log("constraint name: " + constraint.name);
+                            return Math.floor((Math.random() * 100) + 50) + constraint.ID;
+                        }
+                    }
+                }
+            }
+        }
+        return Math.floor((Math.random() * 150) + 100);
     };
 
     var _getInsertionIndex = function(list, count) {
@@ -104,12 +122,19 @@ define(function (require, exports, module) {
             var node = sceneTree[i];
             var numChildren = node.key3DChildCount;
             if(numChildren > 0 && node.key3DIsParent) {
-                var groupEndIndex = _getInsertionIndex(sceneTree.subarray(i+1), numChildren);
-                sceneTree.splice(i+1+groupEndIndex, 0, {key3DNodeType: 13});
+                var groupEndIndex = _getInsertionIndex(sceneTree.slice(i+1), numChildren);
+                var model = {
+                    key3DChildCount: 1,
+                    key3DExpansion: false,
+                    key3DIsParent: false,
+                    key3DNodeSubType: 0,
+                    key3DNodeType: 13,
+                    key3DTreeParamName: "</Element group>"
 
+                };
+                sceneTree.splice(i+1+groupEndIndex, 0, model);
             }
         }
-
         return sceneTree;
     };
 
@@ -127,20 +152,17 @@ define(function (require, exports, module) {
             var scene = layer3D.key3DScene;
             var sceneTree = scene.key3DSceneTree[0].key3DTreeClassList;
             sceneTree = _insertGroupEnds(sceneTree);
-            log.debug("sceneTree" + sceneTree);
+            //log.debug("sceneTree" + JSON.stringify(sceneTree));
             sceneTree = Immutable.List(sceneTree);
+            var idx = 0;
             elements = sceneTree.reduce(function (elements, element) {
-
-                var id = _extractID(element, scene.$KeFL);
-                elements.set(id, Element.fromRawElement(element, layerDescriptor.layerID, id));
+                var id = _extractID(element, scene.$KeFL, scene.$mshl);
+                elements.set(idx, Element.fromRawElement(element, layerDescriptor.layerID, idx));
+                idx++;
                 return elements;
             }, elements);
             elements = Immutable.Map(elements);
-
-            index = sceneTree.reverse().map(function (element) {
-                return _extractID(element, scene.$KeFL);
-            });
-            index = Immutable.List(index);
+            index = Immutable.List(elements.keys()).reverse();
         }
         return new ElementStructure({
             elements: elements,
@@ -223,8 +245,8 @@ define(function (require, exports, module) {
          * @type {boolean}
          */
         "unsupported": function () {
-            return this.layers.some(function (layer) {
-                return layer.unsupported;
+            return this.elements.some(function (element) {
+                return element.unsupported;
             });
         },
 
@@ -233,8 +255,8 @@ define(function (require, exports, module) {
          * @type {Immutable.Map.<number, number>}
          */
         "reverseIndex": function () {
-            var reverseIndex = this.index.reduce(function (reverseIndex, layerID, i) {
-                return reverseIndex.set(layerID, i + 1);
+            var reverseIndex = this.index.reduce(function (reverseIndex, elementID, i) {
+                return reverseIndex.set(elementID, i + 1);
             }, new Map());
 
             return Immutable.Map(reverseIndex);
@@ -254,8 +276,8 @@ define(function (require, exports, module) {
          */
         "allVisible": function () {
             return this.all
-                .filterNot(function (layer) {
-                    return layer.kind === layer.layerKinds.GROUPEND;
+                .filterNot(function (element) {
+                    return element.kind === element.elementKinds.GROUPEND;
                 });
         },
 
@@ -285,8 +307,8 @@ define(function (require, exports, module) {
                 .map(function (node) {
                     return this.byID(node.id);
                 }, this)
-                .filter(function (layer) {
-                    return layer.kind !== layer.layerKinds.GROUPEND;
+                .filter(function (element) {
+                    return element.kind !== element.elementKinds.GROUPEND;
                 })
                 .toList();
         },
@@ -298,15 +320,15 @@ define(function (require, exports, module) {
          */
         "topBelowArtboards": function () {
             return this.top
-                .flatMap(function (layer) {
-                    if (layer.isArtboard) {
-                        return this.children(layer)
+                .flatMap(function (element) {
+                    if (element.isArtboard) {
+                        return this.children(element)
                             .filter(function (layer) {
-                                return layer.kind !== layer.layerKinds.GROUPEND;
+                                return layer.kind !== layer.elementKinds.GROUPEND;
                             })
-                            .push(layer);
+                            .push(element);
                     } else {
-                        return Immutable.List.of(layer);
+                        return Immutable.List.of(element);
                     }
                 }, this)
                 .sort(function (layerA, layerB) {
@@ -335,8 +357,8 @@ define(function (require, exports, module) {
         "selectedChildBounds": function () {
             return this.selected
                 .toSeq()
-                .map(function (layer) {
-                    return this.childBounds(layer);
+                .map(function (element) {
+                    return this.childBounds(element);
                 }, this)
                 .filter(function (bounds) {
                     return bounds && bounds.area > 0;
@@ -353,24 +375,16 @@ define(function (require, exports, module) {
         },
 
         /**
-         * The set of artboards in the document
-         */
-        "artboards": function () {
-            return this.top.filter(function (layer) {
-                return layer.isArtboard;
-            });
-        },
-
-        /**
          * The subset of Layer models that correspond to leaves of the layer forest.
          * @type {Immutable.List.<Layer>}
          */
         "leaves": function () {
-            return this.all.filter(function (layer) {
-                return layer.kind !== layer.layerKinds.GROUPEND &&
-                    layer.kind !== layer.layerKinds.GROUP &&
-                    layer.visible &&
-                    !this.hasLockedAncestor(layer);
+            return this.all.filter(function (element) {
+                return element.kind !== element.elementKinds.GROUPEND &&
+                    element.kind !== element.elementKinds.GROUP &&
+                    !element.isParent &&
+                    element.visible &&
+                    !this.hasLockedAncestor(element);
             }, this);
         },
 
@@ -484,8 +498,8 @@ define(function (require, exports, module) {
             return !allSelectedLayers.isEmpty() &&
                 !notSelectedLayers.isEmpty() &&
                 notSelectedLayers.some(function (layer) {
-                    return layer.kind !== layer.layerKinds.GROUPEND &&
-                        layer.kind !== layer.layerKinds.GROUP;
+                    return layer.kind !== layer.elementKinds.GROUPEND &&
+                        layer.kind !== layer.elementKinds.GROUP;
                 });
         }
     }));
@@ -763,7 +777,7 @@ define(function (require, exports, module) {
     Object.defineProperty(ElementStructure.prototype, "hasVisibleDescendant", objUtil.cachedLookupSpec(function (layer) {
         return this.descendants(layer)
             .filterNot(function (layer) {
-                return layer.kind === layer.layerKinds.GROUP || layer.kind === layer.layerKinds.GROUPEND;
+                return layer.kind === layer.elementKinds.GROUP || layer.kind === layer.elementKinds.GROUPEND;
             })
             .some(function (layer) {
                 return layer.visible;
@@ -777,10 +791,10 @@ define(function (require, exports, module) {
      * @return {boolean}
      */
     Object.defineProperty(ElementStructure.prototype, "isEmptyGroup", objUtil.cachedLookupSpec(function (layer) {
-        return layer.kind === layer.layerKinds.GROUP &&
+        return layer.kind === layer.elementKinds.GROUP &&
             this.children(layer)
             .filterNot(function (layer) {
-                return layer.kind === layer.layerKinds.ADJUSTMENT || this.isEmptyGroup(layer);
+                return layer.kind === layer.elementKinds.ADJUSTMENT || this.isEmptyGroup(layer);
             }, this)
             .size === 1; // only contains groupend
     }));
@@ -794,7 +808,7 @@ define(function (require, exports, module) {
      */
     Object.defineProperty(ElementStructure.prototype, "childBounds", objUtil.cachedLookupSpec(function (layer) {
         switch (layer.kind) {
-            case layer.layerKinds.GROUP:
+            case layer.elementKinds.GROUP:
                 if (layer.isArtboard) {
                     return layer.bounds;
                 }
@@ -806,7 +820,7 @@ define(function (require, exports, module) {
                     });
 
                 return Bounds.union(childBounds);
-            case layer.layerKinds.GROUPEND:
+            case layer.elementKinds.GROUPEND:
                 return null;
             default:
                 return layer.bounds;
@@ -844,7 +858,7 @@ define(function (require, exports, module) {
             // The selected layer should be empty and a non-background layer unless replace is explicitly provided true
             replace = replaceLayer &&
                 (replace ||
-                (!replaceLayer.isBackground && replaceLayer.kind === replaceLayer.layerKinds.PIXEL &&
+                (!replaceLayer.isBackground && replaceLayer.kind === replaceLayer.elementKinds.PIXEL &&
                 replaceLayer.bounds && !replaceLayer.bounds.area));
         }
 
@@ -855,7 +869,7 @@ define(function (require, exports, module) {
                 descriptor = descriptors[i],
                 layerIndex = descriptor.itemIndex - 1,
                 isNewSelected = selected && i + 1 === layerIDs.length,
-                newLayer = Layer.fromDescriptor(document, descriptor, isNewSelected);
+                newLayer = Element.fromDescriptor(document, descriptor, isNewSelected);
 
             if (i === 0 && replace) {
                 // Replace the single selected layer (derived above)
@@ -927,7 +941,7 @@ define(function (require, exports, module) {
             descriptors.forEach(function (descriptor) {
                 var i = descriptor.itemIndex,
                     previousLayer = this.byIndex(i),
-                    nextLayer = Layer.fromDescriptor(document, descriptor, previousLayer.selected);
+                    nextLayer = Element.fromDescriptor(document, descriptor, previousLayer.selected);
 
                 // update layers map
                 layers.delete(previousLayer.id);
@@ -1208,8 +1222,8 @@ define(function (require, exports, module) {
      * @return {ElementStructure} Updated layer tree with group added
      */
     ElementStructure.prototype.createGroup = function (documentID, groupID, groupEndID, groupName) {
-        var groupHead = Layer.fromGroupDescriptor(documentID, groupID, groupName, false),
-            groupEnd = Layer.fromGroupDescriptor(documentID, groupEndID, "", true),
+        var groupHead = Element.fromGroupDescriptor(documentID, groupID, groupName, false),
+            groupEnd = Element.fromGroupDescriptor(documentID, groupEndID, "", true),
             layersToMove = this.selectedNormalized.flatMap(this.descendants, this).toOrderedSet(),
             layersToMoveIndices = layersToMove.map(this.indexOf, this),
             layersToMoveIDs = collection.pluck(layersToMove, "id"),
@@ -1389,7 +1403,7 @@ define(function (require, exports, module) {
     ElementStructure.prototype.setLayerEffectProperties = function (layerIDs,
         layerEffectIndex, layerEffectType, layerEffectProperties) {
         // validate layerEffectType
-        if (!Layer.layerEffectTypes.has(layerEffectType)) {
+        if (!Element.layerEffectTypes.has(layerEffectType)) {
             throw new Error("Invalid layerEffectType supplied");
         }
 
@@ -1408,7 +1422,7 @@ define(function (require, exports, module) {
 
             newProps = Immutable.List.isList(layerEffectProperties) ?
                 layerEffectProperties.get(index) : layerEffectProperties;
-            layerEffect = layerEffects.get(_layerEffectIndex) || Layer.newLayerEffectByType(layerEffectType);
+            layerEffect = layerEffects.get(_layerEffectIndex) || Element.newLayerEffectByType(layerEffectType);
             nextLayerEffect = layerEffect.merge(newProps);
             nextLayer = layer.setLayerEffectByType(layerEffectType, _layerEffectIndex, nextLayerEffect)
                 .set("usedToHaveLayerEffect", true);
@@ -1430,7 +1444,7 @@ define(function (require, exports, module) {
      * @return {ElementStructure}
      */
     ElementStructure.prototype.deleteLayerEffectProperties = function (layerIDs, deletedIndex, layerEffectType) {
-        if (!Layer.layerEffectTypes.has(layerEffectType)) {
+        if (!Element.layerEffectTypes.has(layerEffectType)) {
             throw new Error("Invalid layerEffectType supplied");
         }
 
@@ -1459,7 +1473,7 @@ define(function (require, exports, module) {
      * @return {ElementStructure} [description]
      */
     ElementStructure.prototype.deleteAllLayerEffects = function (layerIDs, layerEffectType) {
-        if (!Layer.layerEffectTypes.has(layerEffectType)) {
+        if (!Element.layerEffectTypes.has(layerEffectType)) {
             throw new Error("Invalid layerEffectType supplied");
         }
 

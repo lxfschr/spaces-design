@@ -382,7 +382,7 @@ define(function (require, exports, module) {
             };
         },
 
-        /** 
+        /**
          * Tests to make sure layer we're trying to drag is draggable
          * For now, we only check for background layer, but we might prevent locked layers dragging later
          *
@@ -484,7 +484,7 @@ define(function (require, exports, module) {
                 this.setState({
                     dropPosition: null
                 });
-                
+
                 return Promise.resolve();
             }
         },
@@ -537,13 +537,14 @@ define(function (require, exports, module) {
             doc.layers.allSelected.forEach(function (layer) {
                 var isDropTarget = !!dropTarget && dropTarget.key === layer.key,
                     dropPosition = isDropTarget && this.state.dropPosition;
-                layer.layer3D.elements.forEach(function(element) {
+                log.debug("elements: " + JSON.stringify(layer.sceneTree.elements));
+                layer.sceneTree.elements.forEach(function(element) {
                     log.debug("element: " + element);
                     elementComponents.push(
                         <ElementFace
                             key={element.key}
                             ref={element.key}
-                            elem={element}
+                            element={element}
                             disabled={panel3dRef.props.disabled}
                             document={doc}
                             layer={layer}

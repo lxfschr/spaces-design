@@ -84,7 +84,7 @@ define(function (require, exports) {
         } else {
             iconID += element.kind;
         }
-        log.debug("iconID: " + iconID);
+        //log.debug("iconID: " + iconID);
         return iconID;
     };
 

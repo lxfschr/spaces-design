@@ -80,6 +80,12 @@ define(function (require, exports, module) {
         kind: null,
 
         /**
+         * True if element has children.
+         * @type {number}
+         */
+        isParent: false,
+
+        /**
          * Element subType
          * @type {number}
          */
@@ -147,7 +153,6 @@ define(function (require, exports, module) {
      */
     Element.fromRawElement = function (rawElement, layerID, id) {
         var model = this.parseRawElement(rawElement, layerID, id);
-        log.debug("model: " + model);
         return new Element(model);
     };
 
@@ -165,6 +170,7 @@ define(function (require, exports, module) {
             key: layerID + "." + id,
             name: rawElement.key3DTreeParamName,
             kind: rawElement.key3DNodeType,
+            isParent: rawElement.key3DIsParent,
             subType: rawElement.key3DNodeSubType,
             visible: true,
             expanded: rawElement.key3DExpansion,

@@ -40,6 +40,7 @@ define(function (require, exports, module) {
         system = require("js/util/system"),
         svgUtil = require("js/util/svg"),
         strings = require("i18n!nls/strings");
+    var log = require("js/util/log");
 
     /**
      * Function for checking whether React component should update
@@ -330,6 +331,17 @@ define(function (require, exports, module) {
                         onClick={this._handleVisibilityToggle}>
                     </ToggleButton>
                 );
+
+            log.debug("layer name: " + layer.name);
+            log.debug("layerIndex: " + layerIndex);
+            log.debug("isSelected: " + isSelected);
+            log.debug("isChildOfSelected: " + isChildOfSelected);
+            log.debug("isStrictDescendantOfSelected: " + isStrictDescendantOfSelected);
+            log.debug("isGroupStart: " + isGroupStart);
+            log.debug("depth: " + depth);
+            log.debug("endOfGroupStructure: " + endOfGroupStructure);
+            log.debug("isLastInGroup: " + isLastInGroup);
+            log.debug("\n");
 
             return (
                 <li className={classnames(layerClasses)}>
