@@ -404,7 +404,12 @@ define(function (require, exports, module) {
          * Goes through all layer bounds and highlights the top one the cursor is on
          */
         updateMouseOverHighlights: function () {
+            if (!this.state.document) {
+                return;
+            }
+
             var marquee = this.state.marqueeEnabled,
+                layerTree = this.state.document.layers,
                 scale = this._scale,
                 uiStore = this.getFlux().store("ui"),
                 mouseX = this._currentMouseX,
@@ -438,13 +443,19 @@ define(function (require, exports, module) {
             // Yuck, we gotta traverse the list backwards, and D3 doesn't offer reverse iteration
             _.forEachRight(d3.selectAll(".layer-bounds")[0], function (element) {
                 var layer = d3.select(element),
+                    layerID = mathUtil.parseNumber(layer.attr("layer-id")),
                     layerSelected = layer.attr("layer-selected") === "true",
-                    layerLeft = mathUtil.parseNumber(layer.attr("x")),
-                    layerTop = mathUtil.parseNumber(layer.attr("y")),
-                    layerRight = layerLeft + mathUtil.parseNumber(layer.attr("width")),
-                    layerBottom = layerTop + mathUtil.parseNumber(layer.attr("height")),
-                    intersects = layerLeft < canvasMouse.x && layerRight > canvasMouse.x &&
-                        layerTop < canvasMouse.y && layerBottom > canvasMouse.y;
+                    layerModel = layerTree.byID(layerID);
+
+                // Sometimes, the DOM elements may be out of date, and be of different documents
+                if (!layerModel) {
+                    return;
+                }
+                
+                var visibleBounds = layerTree.boundsWithinArtboard(layerModel),
+                    intersects = visibleBounds &&
+                        visibleBounds.left <= canvasMouse.x && visibleBounds.right >= canvasMouse.x &&
+                        visibleBounds.top <= canvasMouse.y && visibleBounds.bottom >= canvasMouse.y;
 
                 if (!marquee && !highlightFound && intersects) {
                     if (!layerSelected) {

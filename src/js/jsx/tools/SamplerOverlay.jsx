@@ -162,7 +162,7 @@ define(function (require, exports, module) {
             var currentDocument = this.state.document,
                 svg = d3.select(React.findDOMNode(this));
 
-            svg.selectAll(".sampler-bounds").remove();
+            svg.selectAll(".sampler-bounds-group").remove();
             svg.selectAll(".sampler-hud").remove();
 
             if (!currentDocument || this.state.modalState) {
@@ -170,7 +170,7 @@ define(function (require, exports, module) {
             }
 
             this._scrimGroup = svg.insert("g", ".transform-control-group")
-                .classed("sampler-bounds", true)
+                .classed("sampler-bounds-group", true)
                 .attr("transform", this.props.transformString);
 
             this._hudGroup = svg.insert("g", ".hud-group")
@@ -376,9 +376,10 @@ define(function (require, exports, module) {
                             fluxActions.sampler.applyColor(this.state.document, null, sample.value);
                             d3.event.stopPropagation();
                         }.bind(this));
-                } else if (sample.type === "strokeColor") {
-                    var strokeColor = sample.value ? sample.value.toTinyColor().toRgbString() : "#000000",
-                        strokeOpacity = sample.value ? 1.0 : 0.0;
+                } else if (sample.type === "stroke") {
+                    var stroke = sample.value,
+                        strokeColor = (stroke && stroke.color) ? stroke.color.toTinyColor().toRgbString() : "#000000",
+                        strokeOpacity = (stroke && stroke.color && stroke.enabled) ? 1.0 : 0.0;
                     
                     // background of stroke 
                     this._hudGroup
@@ -406,7 +407,7 @@ define(function (require, exports, module) {
                         .attr("opacity", strokeOpacity)
                         .on("click", function () {
                             // Apply the color to selected layers
-                            fluxActions.sampler.applyColor(this.state.document, null, sample.value);
+                            fluxActions.sampler.applyStroke(this.state.document, null, stroke);
                             d3.event.stopPropagation();
                         }.bind(this));
                 } else if (sample.type === "typeStyle") {
@@ -479,7 +480,12 @@ define(function (require, exports, module) {
          * @private
          */
         updateMouseOverHighlights: function () {
+            if (!this.state.document) {
+                return;
+            }
+
             var scale = this._scale,
+                layerTree = this.state.document.layers,
                 uiStore = this.getFlux().store("ui"),
                 mouseX = this._currentMouseX,
                 mouseY = this._currentMouseY,
@@ -489,13 +495,19 @@ define(function (require, exports, module) {
             // Yuck, we gotta traverse the list backwards, and D3 doesn't offer reverse iteration
             _.forEachRight(d3.selectAll(".sampler-bounds")[0], function (element) {
                 var layer = d3.select(element),
+                    layerID = mathUtil.parseNumber(layer.attr("layer-id")),
                     layerSelected = layer.attr("layer-selected") === "true",
-                    layerLeft = mathUtil.parseNumber(layer.attr("x")),
-                    layerTop = mathUtil.parseNumber(layer.attr("y")),
-                    layerRight = layerLeft + mathUtil.parseNumber(layer.attr("width")),
-                    layerBottom = layerTop + mathUtil.parseNumber(layer.attr("height")),
-                    intersects = layerLeft < canvasMouse.x && layerRight > canvasMouse.x &&
-                        layerTop < canvasMouse.y && layerBottom > canvasMouse.y;
+                    layerModel = layerTree.byID(layerID);
+
+                // Sometimes, the DOM elements may be out of date, and be of different documents
+                if (!layerModel) {
+                    return;
+                }
+
+                var visibleBounds = layerTree.boundsWithinArtboard(layerModel),
+                    intersects = visibleBounds &&
+                        visibleBounds.left <= canvasMouse.x && visibleBounds.right >= canvasMouse.x &&
+                        visibleBounds.top <= canvasMouse.y && visibleBounds.bottom >= canvasMouse.y;
 
                 if (!highlightFound && intersects) {
                     if (!layerSelected) {
