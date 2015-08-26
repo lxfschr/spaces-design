@@ -725,25 +725,27 @@ define(function (require, exports) {
      * Renames the given layer
      *
      * @param {Document} document Owner document
-     * @param {Layer} layer Layer to be renamed
+     * @param {Layer} layer Layer that the sceneNode is in
+     * @param {Element} sceneNode to be renamed
      * @param {string} newName What to rename the layer
      * 
      * @returns {Promise}
      */
-    var rename = function (document, layer, newName) {
+    var rename = function (document, layer, sceneNode, newName) {
         var payload = {
             documentID: document.id,
             layerID: layer.id,
-            name: newName
+            sceneNodeID: sceneNode.id,
+            sceneNodeName: sceneNode.name,
+            newName: newName
         };
-
-        var dispatchPromise = this.dispatchAsync(events.document.history.optimistic.RENAME_LAYER, payload),
-            layerRef = [
+        var dispatchPromise = this.dispatchAsync(events.document.history.optimistic.RENAME_SCENE_NODE, payload),
+            sceneNodeRef = [
                 documentLib.referenceBy.id(document.id),
-                layerLib.referenceBy.id(layer.id)
+                elementLib.referenceBy.id(sceneNode.id)
             ],
-            renameObj = layerLib.rename(layerRef, newName),
-            renamePromise = descriptor.playObject(renameObj);
+            renameObj = elementLib.rename(sceneNodeRef, newName),
+            renamePromise = Promise.resolve(); // descriptor.playObject(renameObj); // ToDo: add rename scene node to ps api. -Alex
 
         return Promise.join(dispatchPromise, renamePromise);
     };

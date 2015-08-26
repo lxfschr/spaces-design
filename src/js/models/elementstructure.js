@@ -999,19 +999,19 @@ define(function (require, exports, module) {
     /**
      * Update basic properties of the given layers.
      *
-     * @param {Immutable.Iterable.<number>} layerIDs
+     * @param {Immutable.Iterable.<number>} sceneNodeIDs
      * @param {object} properties
      * @return {ElementStructure}
      */
-    ElementStructure.prototype.setProperties = function (layerIDs, properties) {
+    ElementStructure.prototype.setProperties = function (sceneNodeIDs, properties) {
         var nextProperties = Immutable.Map(properties),
-            updatedLayers = Immutable.Map(layerIDs.reduce(function (layers, layerID) {
-                layers.set(layerID, nextProperties);
-                return layers;
+            updatedSceneNodes = Immutable.Map(sceneNodeIDs.reduce(function (sceneNodes, sceneNodeID) {
+                sceneNodes.set(sceneNodeID, nextProperties);
+                return sceneNodes;
             }.bind(this), new Map()));
 
         return this.mergeDeep({
-            layers: updatedLayers
+            elements: updatedSceneNodes
         });
     };
 

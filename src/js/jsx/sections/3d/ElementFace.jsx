@@ -129,8 +129,8 @@ define(function (require, exports, module) {
          * @param {event} event
          * @param {string} newName
          */
-        _handleLayerNameChange: function (event, newName) {
-            this.getFlux().actions.scenetree.rename(this.props.document, this.props.layer, newName);
+        _handleSceneNodeNameChange: function (event, newName) {
+            this.getFlux().actions.scenetree.rename(this.props.document, this.props.layer, this.props.element, newName);
         },
 
         /**
@@ -154,7 +154,6 @@ define(function (require, exports, module) {
          */
         _handleSceneNodeClick: function (event) {
             event.stopPropagation();
-            log.debug("Scene Node Selected");
             var modifier = "select";
             if (event.shiftKey) {
                 modifier = "addUpTo";
@@ -193,13 +192,13 @@ define(function (require, exports, module) {
          *
          * @param {SyntheticEvent} event
          */
-        _handleLayerEdit: function (event) {
-            var layer = this.props.layer;
-            if (layer.locked || !layer.visible) {
+        _handleSceneNodeEdit: function (event) {
+            var sceneNode = this.props.element;
+            if (!sceneNode.visible) {
                 return;
             }
 
-            this.getFlux().actions.superselect.editLayer(this.props.document, this.props.layer);
+            this.getFlux().actions.superselect.editLayer(this.props.document, sceneNode);
             event.stopPropagation();
         },
 
@@ -343,7 +342,7 @@ define(function (require, exports, module) {
                             className="face__kind"
                             data-kind={layer.isArtboard ? "artboard" : layer.kind}
                             onClick={this._handleIconClick}
-                            onDoubleClick={this._handleLayerEdit}>
+                            onDoubleClick={this._handleSceneNodeEdit}>
                             <SVGIcon
                                 CSSID={iconID}
                                 viewbox="0 0 24 24"/>
@@ -358,7 +357,7 @@ define(function (require, exports, module) {
                                 editable={!this.props.disabled && nameEditable}
                                 onKeyDown={this._skipToNextLayerName}
                                 onWheel={this._handleWheel}
-                                onChange={this._handleLayerNameChange}>
+                                onChange={this._handleSceneNodeNameChange}>
                             </TextInput>
                             {showHideButton}
                         </span>

@@ -43,6 +43,7 @@ define(function (require, exports, module) {
                     DELETE_LAYERS: "deleteLayers",
                     RESIZE_DOCUMENT: "resizeDocument",
                     RENAME_LAYER: "renameLayer",
+                    RENAME_SCENE_NODE: "renameSceneNode",
                     GROUP_SELECTED: "groupSelectedLayers",
                     LOCK_CHANGED: "layerLockChanged",
                     OPACITY_CHANGED: "opacityChanged",

@@ -31,6 +31,7 @@ define(function (require, exports, module) {
     var Document = require("../models/document"),
         Guide = require("../models/guide"),
         events = require("../events");
+    var log = require("js/util/log");
 
     var DocumentStore = Fluxxor.createStore({
 
@@ -66,6 +67,7 @@ define(function (require, exports, module) {
                 events.document.history.optimistic.OPACITY_CHANGED, this._handleOpacityChanged,
                 events.document.history.optimistic.BLEND_MODE_CHANGED, this._handleBlendModeChanged,
                 events.document.history.optimistic.RENAME_LAYER, this._handleLayerRenamed,
+                events.document.history.optimistic.RENAME_SCENE_NODE, this._handleSceneNodeRenamed,
                 events.document.history.optimistic.DELETE_LAYERS, this._handleDeleteLayers,
                 events.document.history.nonOptimistic.DELETE_LAYERS, this._handleDeleteLayers,
                 events.document.DELETE_LAYERS_NO_HISTORY, this._handleDeleteLayers,
@@ -347,7 +349,6 @@ define(function (require, exports, module) {
             var document = this._openDocuments[documentID],
                 nextLayers = document.layers.setProperties(layerIDs, properties),
                 nextDocument = document.set("layers", nextLayers);
-
             this.setDocument(nextDocument, true);
         },
 
@@ -437,6 +438,25 @@ define(function (require, exports, module) {
                 name = payload.name;
 
             this._updateLayerProperties(documentID, layerIDs, { name: name });
+        },
+
+        /**
+         * Rename the given scene node in the given document.
+         *
+         * @private
+         * @param {{documentID: number, sceneNodeID: number, newName: string}} payload
+         */
+        _handleSceneNodeRenamed: function (payload) {
+            var documentID = payload.documentID,
+                document = this._openDocuments[documentID],
+                layerID = payload.layerID,
+                layerIDs = Immutable.List.of(layerID),
+                sceneNodeID = payload.sceneNodeID,
+                sceneNodeName = payload.sceneNodeName,
+                newName = payload.newName;
+            var selectedLayer = document.layers.byID(layerID);
+            var nextSceneTree = selectedLayer.sceneTree.setProperties(Immutable.List([sceneNodeID]), {name: newName});
+            this._updateLayerProperties(documentID, layerIDs, { sceneTree: nextSceneTree });
         },
 
         /**
