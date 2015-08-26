@@ -118,27 +118,27 @@ define(function (require, exports, module) {
                 modifierState = modifierStore.getState(),
                 descendants = modifierState.alt;
 
-            this.getFlux().actions.layers.setGroupExpansion(this.props.document, layer,
+            this.getFlux().actions.scenetree.setGroupExpansion(this.props.document, layer,
                 !layer.expanded, descendants);
         },
 
         /**
          * Renames the layer
-         * 
+         *
          * @private
-         * @param {SyntheticEvent} event
-         * @param {string} newName 
+         * @param {event} event
+         * @param {string} newName
          */
         _handleLayerNameChange: function (event, newName) {
-            this.getFlux().actions.layers.rename(this.props.document, this.props.layer, newName);
+            this.getFlux().actions.scenetree.rename(this.props.document, this.props.layer, newName);
         },
 
         /**
          * Not implemented yet, but will call the handler being passed from PagesPanel
          * to skip to the next layer and make it editable
-         * 
+         *
          * @private
-         * @param {SyntheticEvent} event
+         * @param {event} event
          */
         _skipToNextLayerName: function (event) {
             // TODO: Skip to next layer on the tree
@@ -148,18 +148,18 @@ define(function (require, exports, module) {
         /**
          * Grabs the correct modifier by processing event modifier keys
          * and calls the select action with correct modifier.
-         * 
+         *
          * @private
-         * @param {SyntheticEvent} event React event
+         * @param {event} event React event
          */
-        _handleLayerClick: function (event) {
+        _handleSceneNodeClick: function (event) {
             event.stopPropagation();
-
+            log.debug("Scene Node Selected");
             var modifier = "select";
             if (event.shiftKey) {
                 modifier = "addUpTo";
             } else if (system.isMac ? event.metaKey : event.ctrlKey) {
-                var selected = this.props.layer.selected;
+                var selected = this.props.element.selected;
 
                 if (selected) {
                     modifier = "deselect";
@@ -168,33 +168,19 @@ define(function (require, exports, module) {
                 }
             }
 
-            this.getFlux().actions.layers.select(this.props.document, this.props.layer, modifier)
-                .bind(this)
-                .then(function () {
-                    var flux = this.getFlux(),
-                        toolStore = flux.store("tool"),
-                        currentTool = toolStore.getCurrentTool(),
-                        layer = this.props.layer,
-                        doc = this.props.document,
-                        numSelectedLayers = doc.layers.selected.size;
-                        
-                    if ((currentTool.id === "typeCreateOrEdit" || currentTool.id === "superselectType") &&
-                        layer.kind === element.elementKinds.TEXT && numSelectedLayers === 1) {
-                        UI.startEditWithCurrentModalTool();
-                    }
-                });
+            this.getFlux().actions.scenetree.select(this.props.document, this.props.element, modifier);
         },
 
         /**
          * Changes the visibility of the layer
-         * 
+         *
          * @private
          * @param {SyntheticEvent} event
          * @param {boolean} toggled Flag for the ToggleButton, false means visible
          */
         _handleVisibilityToggle: function (event, toggled) {
             // Invisible if toggled, visible if not
-            this.getFlux().actions.layers.setVisibility(this.props.document, this.props.layer, !toggled);
+            this.getFlux().actions.scenetree.setVisibility(this.props.document, this.props.layer, !toggled);
             event.stopPropagation();
         },
 
@@ -204,7 +190,7 @@ define(function (require, exports, module) {
          * to go into edit mode, and:
          *  - For invisible layers that causes the tool we're switching to create a new layer
          *  - For locked layers, Photoshop does not like we're trying to edit them
-         *  
+         *
          * @param {SyntheticEvent} event
          */
         _handleLayerEdit: function (event) {
@@ -219,14 +205,14 @@ define(function (require, exports, module) {
 
         /**
          * Changes the locking of the layer
-         * 
+         *
          * @private
          * @param {SyntheticEvent} event
          * @param {boolean} toggled Flag for the ToggleButton, true means locked
          */
         _handleLockToggle: function (event, toggled) {
             // Locked if toggled, visible if not
-            this.getFlux().actions.layers.setLocking(this.props.document, this.props.layer, toggled);
+            this.getFlux().actions.scenetree.setLocking(this.props.document, this.props.layer, toggled);
             event.stopPropagation();
         },
 
@@ -350,7 +336,7 @@ define(function (require, exports, module) {
                         data-layer-id={layer.id}
                         data-kind={layer.kind}
                         onMouseDown={!this.props.disabled && this.props.handleDragStart}
-                        onClick={!this.props.disabled && this._handleLayerClick}>
+                        onClick={!this.props.disabled && this._handleSceneNodeClick}>
                         <Button
                             title={tooltipTitle + tooltipPadding}
                             disabled={this.props.disabled}

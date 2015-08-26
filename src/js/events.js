@@ -91,6 +91,7 @@ define(function (require, exports, module) {
             RESET_LAYERS: "resetLayers",
             RESET_LAYERS_BY_INDEX: "resetLayersByIndex",
             TRANSLATE_LAYERS: "translateLayers",
+            SELECT_SCENE_NODES_BY_NAME: "selectSceneNodesByName",
             GUIDES_VISIBILITY_CHANGED: "guidesVisibilityChanged",
             SELECT_DOCUMENT: "selectDocument",
             SAVE_DOCUMENT: "saveDocument",

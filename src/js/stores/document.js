@@ -58,6 +58,7 @@ define(function (require, exports, module) {
                 events.document.history.amendment.REORDER_LAYERS, this._handleLayerReorder,
                 events.document.REORDER_LAYERS, this._handleLayerReorder,
                 events.document.SELECT_LAYERS_BY_ID, this._handleLayerSelectByID,
+                events.document.SELECT_SCENE_NODES_BY_NAME, this._handleSceneNodeSelectByName,
                 events.document.SELECT_LAYERS_BY_INDEX, this._handleLayerSelectByIndex,
                 events.document.VISIBILITY_CHANGED, this._handleVisibilityChanged,
                 events.document.history.optimistic.LOCK_CHANGED, this._handleLockChanged,
@@ -551,6 +552,22 @@ define(function (require, exports, module) {
         },
 
         /**
+         * Helper function to change layer selection given a Set of selected IDs.
+         *
+         * @private
+         * @param {Document} document
+         * @param {Immutable.Set<string>} selectedNames
+         */
+        _updateSceneNodeSelection: function (document, selectedNames) {
+            var selectedLayer = document.layers.selected.first();
+            var nextSceneNodes = selectedLayer.sceneTree.updateSelection(selectedNames),
+                nextLayers = document.layers.setProperties(Immutable.List([selectedLayer.id]), {sceneTree: nextSceneNodes}),
+                nextDocument = document.set("layers", nextLayers);
+
+            this.setDocument(nextDocument, true);
+        },
+
+        /**
          * Helper function to change layer selection given a Set of selected indexes.
          *
          * @private
@@ -576,6 +593,19 @@ define(function (require, exports, module) {
                 selectedIDs = Immutable.Set(payload.selectedIDs);
 
             this._updateLayerSelection(document, selectedIDs);
+        },
+
+        /**
+         * Update selection state of scene node models, referenced by name.
+         *
+         * @private
+         * @param {{documentID: number, selectedNames: Array.<string>}} payload
+         */
+        _handleSceneNodeSelectByName: function (payload) {
+            var document = this._openDocuments[payload.documentID],
+                selectedNames = Immutable.Set(payload.selectedNames);
+
+            this._updateSceneNodeSelection(document, selectedNames);
         },
 
         /**

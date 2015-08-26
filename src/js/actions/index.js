@@ -43,6 +43,7 @@ define(function (require, exports, module) {
         policy: require("./policy"),
         preferences: require("./preferences"),
         sampler: require("./sampler"),
+        scenetree: require("./scenetree"),
         search: require("./search"),
         shapes: require("./shapes"),
         shortcuts: require("./shortcuts"),

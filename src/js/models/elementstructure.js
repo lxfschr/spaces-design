@@ -1147,16 +1147,16 @@ define(function (require, exports, module) {
      * Update the selection property to be select iff the layer ID is contained
      * in the given set.
      *
-     * @param {Immutable.Set.<number>} selectedIDs
+     * @param {Immutable.Set.<string>} selectedNames
      * @return {ElementStructure}
      */
-    ElementStructure.prototype.updateSelection = function (selectedIDs) {
-        var updatedLayers = this.layers.map(function (layer) {
-            var selected = selectedIDs.has(layer.id);
-            return layer.set("selected", selected);
+    ElementStructure.prototype.updateSelection = function (selectedNames) {
+        var updatedSceneNodes = this.elements.map(function (element) {
+            var selected = selectedNames.has(element.name);
+            return element.set("selected", selected);
         });
 
-        return this.set("layers", updatedLayers);
+        return this.set("elements", updatedSceneNodes);
     };
 
     /**
