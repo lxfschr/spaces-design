@@ -82,7 +82,6 @@ define(function (require, exports, module) {
                 return frame.$NoID;
             }
         }
-        //log.debug("meshList: " + meshList);
         if(meshList) {
             for (i = 0; i < meshList.length; i++) {
                 var mesh = meshList[i];
@@ -91,7 +90,6 @@ define(function (require, exports, module) {
                     for (var j = 0; j < constraintList.length; j++) {
                         var constraint = constraintList[j];
                         if (constraint.name === element.key3DTreeParamName) {
-                            //log("constraint name: " + constraint.name);
                             return Math.floor((Math.random() * 100) + 50) + constraint.ID;
                         }
                     }
@@ -152,7 +150,6 @@ define(function (require, exports, module) {
             var scene = layer3D.key3DScene;
             var sceneTree = scene.key3DSceneTree[0].key3DTreeClassList;
             sceneTree = _insertGroupEnds(sceneTree);
-            //log.debug("sceneTree" + JSON.stringify(sceneTree));
             sceneTree = Immutable.List(sceneTree);
             var idx = 0;
             elements = sceneTree.reduce(function (elements, element) {
@@ -1147,12 +1144,12 @@ define(function (require, exports, module) {
      * Update the selection property to be select iff the layer ID is contained
      * in the given set.
      *
-     * @param {Immutable.Set.<string>} selectedNames
+     * @param {Immutable.Set.<string>} selectedIDs
      * @return {ElementStructure}
      */
-    ElementStructure.prototype.updateSelection = function (selectedNames) {
+    ElementStructure.prototype.updateSelection = function (selectedIDs) {
         var updatedSceneNodes = this.elements.map(function (element) {
-            var selected = selectedNames.has(element.name);
+            var selected = selectedIDs.has(element.id);
             return element.set("selected", selected);
         });
 

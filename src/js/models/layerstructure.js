@@ -269,6 +269,16 @@ define(function (require, exports, module) {
         },
 
         /**
+         * The subset of Layer models that correspond to currently selected layers.
+         * @type {Immutable.List.<Layer>}
+         */
+        "selectedWith3D": function () {
+            return this.all.filter(function (layer) {
+                return layer.selected && layer.sceneTree;
+            }, this);
+        },
+
+        /**
          * Child-encompassing bounds objects for all the selected layers.
          * @type {Immutable.List.<Bounds>}
          */

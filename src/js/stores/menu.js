@@ -72,6 +72,7 @@ define(function (require, exports, module) {
                 events.document.history.optimistic.REORDER_LAYERS, this._updateMenuItems,
                 events.document.REORDER_LAYERS, this._updateMenuItems,
                 events.document.SELECT_LAYERS_BY_ID, this._updateMenuItems,
+                events.document.SELECT_SCENE_NODES_BY_ID, this._updateMenuItems,
                 events.document.SELECT_LAYERS_BY_INDEX, this._updateMenuItems,
                 events.document.VISIBILITY_CHANGED, this._updateMenuItems,
                 events.document.history.optimistic.LOCK_CHANGED, this._updateMenuItems,

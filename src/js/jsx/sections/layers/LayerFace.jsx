@@ -40,6 +40,7 @@ define(function (require, exports, module) {
         system = require("js/util/system"),
         svgUtil = require("js/util/svg"),
         strings = require("i18n!nls/strings");
+    var log = require("js/util/log");
 
     /**
      * Function for checking whether React component should update
@@ -255,7 +256,8 @@ define(function (require, exports, module) {
                 isDropTarget = this.props.isDropTarget,
                 dropPosition = this.props.dropPosition,
                 isGroupStart = layer.kind === layer.layerKinds.GROUP || layer.isArtboard;
-
+            log.debug("layer: " + layer.name);
+            log.debug("isSelected: " + isSelected);
             var depth = layerStructure.depth(layer),
                 endOfGroupStructure = false,
                 isLastInGroup = false,

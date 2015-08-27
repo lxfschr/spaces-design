@@ -57,9 +57,12 @@ define(function (require, exports, module) {
         if (!document) {
             return null;
         }
-
-        var layers = document.layers.allVisible;
-        return collection.pluck(layers, "face");
+        var selectedLayer = document.layers.selectedWith3D.first();
+        if(!selectedLayer) {
+            return;
+        }
+        var sceneNodes = selectedLayer.sceneTree.allVisible;
+        return collection.pluck(sceneNodes, "face");
     };
 
     var Panel3d = React.createClass({

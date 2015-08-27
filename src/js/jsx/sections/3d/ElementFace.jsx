@@ -60,7 +60,8 @@ define(function (require, exports, module) {
             this.props.isDropTarget !== nextProps.isDropTarget) {
             return true;
         }
-        
+        log.debug("this.props.element.face: " + this.props.element.face);
+        log.debug("nextProps.element.face: " + nextProps.element.face);
         // Face change
         if (!Immutable.is(this.props.element.face, nextProps.element.face)) {
             return true;
@@ -153,6 +154,7 @@ define(function (require, exports, module) {
          * @param {event} event React event
          */
         _handleSceneNodeClick: function (event) {
+            log.debug("in _handleSceneNodeClick()");
             event.stopPropagation();
             var modifier = "select";
             if (event.shiftKey) {
@@ -167,7 +169,7 @@ define(function (require, exports, module) {
                 }
             }
 
-            this.getFlux().actions.scenetree.select(this.props.document, this.props.element, modifier);
+            this.getFlux().actions.scenetree.select(this.props.document, this.props.layer, this.props.element, modifier);
         },
 
         /**
@@ -260,7 +262,8 @@ define(function (require, exports, module) {
                 endOfGroupStructure = false,
                 isLastInGroup = false,
                 dragStyle;
-
+            log.debug("element: " + element.name);
+            log.debug("isSelected: " + isSelected);
             if (isDragging && this.props.dragStyle) {
                 dragStyle = this.props.dragStyle;
             } else {

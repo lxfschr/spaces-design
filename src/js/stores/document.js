@@ -59,7 +59,7 @@ define(function (require, exports, module) {
                 events.document.history.amendment.REORDER_LAYERS, this._handleLayerReorder,
                 events.document.REORDER_LAYERS, this._handleLayerReorder,
                 events.document.SELECT_LAYERS_BY_ID, this._handleLayerSelectByID,
-                events.document.SELECT_SCENE_NODES_BY_NAME, this._handleSceneNodeSelectByName,
+                events.document.SELECT_SCENE_NODES_BY_ID, this._handleSceneNodeSelectByID,
                 events.document.SELECT_LAYERS_BY_INDEX, this._handleLayerSelectByIndex,
                 events.document.VISIBILITY_CHANGED, this._handleVisibilityChanged,
                 events.document.history.optimistic.LOCK_CHANGED, this._handleLockChanged,
@@ -168,9 +168,7 @@ define(function (require, exports, module) {
             if (dirty) {
                 nextDocument = nextDocument.set("dirty", true);
             }
-
             this._openDocuments[nextDocument.id] = nextDocument;
-
             if (!suppressChange) {
                 this.emit("change");
             }
@@ -576,14 +574,14 @@ define(function (require, exports, module) {
          *
          * @private
          * @param {Document} document
-         * @param {Immutable.Set<string>} selectedNames
+         * @param {number} layerID
+         * @param {Immutable.Set<string>} selectedIDs
          */
-        _updateSceneNodeSelection: function (document, selectedNames) {
-            var selectedLayer = document.layers.selected.first();
-            var nextSceneNodes = selectedLayer.sceneTree.updateSelection(selectedNames),
+        _updateSceneNodeSelection: function (document, layerID, selectedIDs) {
+            var selectedLayer = document.layers.byID(layerID);
+            var nextSceneNodes = selectedLayer.sceneTree.updateSelection(selectedIDs),
                 nextLayers = document.layers.setProperties(Immutable.List([selectedLayer.id]), {sceneTree: nextSceneNodes}),
                 nextDocument = document.set("layers", nextLayers);
-
             this.setDocument(nextDocument, true);
         },
 
@@ -621,11 +619,12 @@ define(function (require, exports, module) {
          * @private
          * @param {{documentID: number, selectedNames: Array.<string>}} payload
          */
-        _handleSceneNodeSelectByName: function (payload) {
+        _handleSceneNodeSelectByID: function (payload) {
             var document = this._openDocuments[payload.documentID],
-                selectedNames = Immutable.Set(payload.selectedNames);
+                layerID = payload.layerID,
+                selectedIDs = Immutable.Set(payload.selectedIDs);
 
-            this._updateSceneNodeSelection(document, selectedNames);
+            this._updateSceneNodeSelection(document, layerID, selectedIDs);
         },
 
         /**

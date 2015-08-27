@@ -664,8 +664,8 @@ define(function (require, exports) {
      *
      * @returns {Promise}
      */
-    var select = function (document, sceneNodeSpec, modifier) {
-        log.debug("in select");
+    var select = function (document, layer, sceneNodeSpec, modifier) {
+        log.debug("in select()");
         if (sceneNodeSpec instanceof Element) {
             sceneNodeSpec = Immutable.List.of(sceneNodeSpec);
         }
@@ -675,7 +675,8 @@ define(function (require, exports) {
         }
 
         var payload = {
-            documentID: document.id
+            documentID: document.id,
+            layerID: layer.id
         };
 
         // TODO: Dispatch optimistically here for the other modifiers, and
@@ -684,8 +685,8 @@ define(function (require, exports) {
             revealPromise;
             
         if (!modifier || modifier === "select") {
-            payload.selectedNames = collection.pluck(sceneNodeSpec, "name");
-            dispatchPromise = this.dispatchAsync(events.document.SELECT_SCENE_NODES_BY_NAME, payload);
+            payload.selectedIDs = collection.pluck(sceneNodeSpec, "id");
+            dispatchPromise = this.dispatchAsync(events.document.SELECT_SCENE_NODES_BY_ID, payload);
             revealPromise = this.transfer(revealSceneNodes, document, sceneNodeSpec);
         } else {
             dispatchPromise = Promise.resolve();
@@ -700,7 +701,14 @@ define(function (require, exports) {
             .toArray();
 
         var selectObj = elementLib.select(sceneNodeRef, false, modifier),
-            selectPromise = Promise.resolve();
+            selectPromise = Promise.resolve().then(function () {
+                if (modifier && modifier !== "select") {
+                    var resetPromise = this.transfer(resetSelection, document),
+                        revealPromise = this.transfer(revealSceneNodes, document, sceneNodeSpec);
+
+                    return Promise.join(resetPromise, revealPromise);
+                }
+            });
             /*selectPromise = descriptor.playObject(selectObj) // ToDo make select scene node handler in ps.
                 .bind(this)
                 .then(function () {
