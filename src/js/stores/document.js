@@ -422,7 +422,6 @@ define(function (require, exports, module) {
             this._updateLayerProperties(documentID, layerIDs, { blendMode: mode });
         },
 
-
         /**
          * Rename the given layer in the given document.
          *
@@ -863,7 +862,6 @@ define(function (require, exports, module) {
             this.setDocument(nextDocument, true);
         },
 
-
         /**
          * Delete the selected layer effects of selected layers of the given document
          *
@@ -1095,15 +1093,16 @@ define(function (require, exports, module) {
          * Updates a guide with new information, or creates a new guide
          * 
          * @private
-         * @param {{documentID: number, index: number, orientation: string, position: number}} payload
+         * @param {{documentID: number, index: number, guide: object} payload
          */
         _handleGuideSet: function (payload) {
             var documentID = payload.documentID,
                 index = payload.index,
                 document = this._openDocuments[documentID],
-                orientation = payload.orientation,
-                position = payload.position,
-                layerID = payload.layerID;
+                guide = payload.guide,
+                orientation = guide.orientation,
+                position = guide.position,
+                layerID = guide.layerID;
 
             var nextGuide = document.guides.get(index);
 

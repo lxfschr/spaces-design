@@ -346,7 +346,6 @@ define(function (require, exports) {
     addLayers.writes = [locks.JS_DOC];
     addLayers.post = [_verifyLayerIndex, _verifyLayerSelection];
 
-
     /**
      * Get a list of selected layer indexes from photoshop, based on the provided document
      *
@@ -880,7 +879,6 @@ define(function (require, exports) {
     deleteSelected.writes = [locks.PS_DOC];
     deleteSelected.transfers = [removeLayers];
     deleteSelected.post = [_verifyLayerIndex, _verifyLayerSelection];
-
 
     /**
      * Groups the currently active layers
@@ -1951,7 +1949,6 @@ define(function (require, exports) {
     beforeStartup.reads = [];
     beforeStartup.writes = [locks.JS_SHORTCUT, locks.JS_POLICY, locks.PS_APP];
     beforeStartup.transfers = [shortcuts.addShortcut];
-
 
     /**
      * Send info about layers to search store
