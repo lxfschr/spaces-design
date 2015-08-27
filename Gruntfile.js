@@ -86,6 +86,20 @@ module.exports = function (grunt) {
                 "test/**/*.json"
             ]
         },
+        lintspaces: {
+            src: [
+                "*",
+                "src/**/*",
+                "test/**/*",
+                "!**/*.ogg",
+                "!**/*.otf",
+                "!**/*.png"
+            ],
+            options: {
+                newline: true,
+                newlineMaximum: 1
+            }
+        },
 
         clean: ["./build"],
         copy: {
@@ -112,13 +126,14 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks("grunt-jscs");
     grunt.loadNpmTasks("grunt-jsdoc");
     grunt.loadNpmTasks("grunt-jsonlint");
+    grunt.loadNpmTasks("grunt-lintspaces");
 
     grunt.loadNpmTasks("grunt-contrib-clean");
     grunt.loadNpmTasks("grunt-contrib-copy");
     grunt.loadNpmTasks("grunt-contrib-requirejs");
     grunt.loadNpmTasks("grunt-contrib-less");
 
-    grunt.registerTask("test", ["jshint", "jscs", "jsdoc", "jsonlint"]);
+    grunt.registerTask("test", ["jshint", "jscs", "jsdoc", "jsonlint", "lintspaces"]);
     grunt.registerTask("compile", ["clean", "copy:requirejs", "copy:html", "copy:img", "less", "requirejs"]);
     grunt.registerTask("build", ["test", "compile"]);
     grunt.registerTask("default", ["test"]);

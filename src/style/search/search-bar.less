@@ -81,7 +81,6 @@
 }
 
 .search-bar__dialog ::-webkit-input-placeholder {
-    font-style: italic;
     color: @item-disabled;
 }
 
@@ -122,8 +121,7 @@
 }
 
 .search-bar__dialog .select__option {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding: 0.5rem 0.8rem 0.7rem 1rem;
     display: flex;
     overflow: hidden;
     text-overflow:ellipsis;
@@ -146,7 +144,6 @@
     }
 }
 
-
 .search-bar__dialog .select__option__selected {
     color: @text-highlight;
     padding-left: .7rem;
@@ -155,6 +152,9 @@
     
     svg {
         fill: @focus-highlight;
+    }
+    .select__option__info {
+        color: @item-hover;
     }
 }
 
@@ -201,14 +201,13 @@
     margin-bottom: .25rem;
 }
 
-
 .search-bar__dialog .select__header:first-child {
     border: none;
     margin-top: .25rem;
 }
 
 .search-bar__dialog .select__option__info {
-    color: @underlines;
+    color: @item-disabled;
     line-height:2.1rem;
 }
 
@@ -237,7 +236,7 @@
     top: 1.2rem;
     right: 1.4rem;
     color: @item-active;
-    font-size:1.5rem;
+    font-size:1.6rem;
     font-weight: bold;
 
     &:hover {

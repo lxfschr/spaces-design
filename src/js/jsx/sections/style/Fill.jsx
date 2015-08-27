@@ -21,7 +21,6 @@
  * 
  */
 
-
 define(function (require, exports, module) {
     "use strict";
 
@@ -91,7 +90,7 @@ define(function (require, exports, module) {
                 this.props.document,
                 this.state.layers,
                 color,
-                isChecked
+                { enabled: isChecked }
             );
         },
 
@@ -116,9 +115,9 @@ define(function (require, exports, module) {
          */
         _colorChanged: function (color, coalesce) {
             this.getFlux().actions.shapes
-                .setFillColorThrottled(this.props.document, this.state.layers, color, coalesce);
+                .setFillColorThrottled(this.props.document, this.state.layers, color,
+                    { coalesce: coalesce });
         },
-
 
         /**
          * Handle the change of the opaque fill color
@@ -129,8 +128,12 @@ define(function (require, exports, module) {
          */
         _opaqueColorChanged: function (color, coalesce) {
             this.getFlux().actions.shapes
-                .setFillColorThrottled(this.props.document, this.state.layers,
-                    color, coalesce, true, true);
+                .setFillColorThrottled(this.props.document, this.state.layers, color,
+                    {
+                        coalesce: coalesce,
+                        ignoreAlpha: true,
+                        enabled: true
+                    });
         },
 
         /**
@@ -143,7 +146,7 @@ define(function (require, exports, module) {
         _alphaChanged: function (color, coalesce) {
             this.getFlux().actions.shapes
                 .setFillOpacityThrottled(this.props.document, this.state.layers,
-                    color.opacity, coalesce);
+                    color.opacity, { coalesce: coalesce });
         },
 
         /**

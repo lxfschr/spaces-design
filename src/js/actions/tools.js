@@ -112,11 +112,12 @@ define(function (require, exports) {
             currentTool = toolStore.getCurrentTool(),
             removePromise = currentPolicy ?
                 this.transfer(policy.removePointerPolicies, currentPolicy, true) : Promise.resolve(),
-            guidePromise = this.transfer(guides.resetGuidePolicies);
+            guidePromise; // We want to set these after border policies
 
         // Make sure to always remove the remaining policies
         if (!currentDocument || !currentTool || currentTool.id !== "newSelect") {
             _currentTransformPolicyID = null;
+            guidePromise = this.transfer(guides.resetGuidePolicies);
 
             return Promise.join(removePromise, guidePromise);
         }
@@ -130,6 +131,7 @@ define(function (require, exports) {
         // If selection is empty, remove existing policy
         if (!selection || selection.empty) {
             _currentTransformPolicyID = null;
+            guidePromise = this.transfer(guides.resetGuidePolicies);
 
             return Promise.join(removePromise, guidePromise);
         }
@@ -193,12 +195,14 @@ define(function (require, exports) {
         
         _currentTransformPolicyID = null;
         
-        return Promise.join(guidePromise, removePromise)
+        return removePromise
             .bind(this)
             .then(function () {
                 return this.transfer(policy.addPointerPolicies, pointerPolicyList);
             }).then(function (policyID) {
                 _currentTransformPolicyID = policyID;
+            
+                return this.transfer(guides.resetGuidePolicies);
             });
     };
     resetBorderPolicies.reads = [locks.JS_APP, locks.JS_DOC, locks.JS_TOOL, locks.JS_UI];
@@ -490,7 +494,6 @@ define(function (require, exports) {
 
     exports.beforeStartup = beforeStartup;
     exports.onReset = onReset;
-
 
     // This module must have a higher priority than the document module to avoid
     // duplicate current-document updates on startup, but lower priority than the

@@ -266,6 +266,10 @@ define(function (require, exports, module) {
                 windowWidth = window.document.body.clientWidth,
                 windowHeight = window.document.body.clientHeight;
 
+            if (!centerOffsets) {
+                return null;
+            }
+            
             return {
                 left: centerOffsets.left,
                 top: centerOffsets.top,
@@ -273,7 +277,6 @@ define(function (require, exports, module) {
                 right: windowWidth - centerOffsets.right
             };
         },
-
 
         /**
          * Inverts the given affine transformation matrix

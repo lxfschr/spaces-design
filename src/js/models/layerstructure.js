@@ -800,7 +800,6 @@ define(function (require, exports, module) {
         return bounds;
     }));
 
-
     /**
      * Create a new non-group layer model from a Photoshop layer descriptor and
      * add it to the structure.
@@ -1066,7 +1065,6 @@ define(function (require, exports, module) {
         return this._updateBounds(allBounds);
     };
 
-
     /**
      * Repositions and resizes the given layers, setting both their positions and dimensions to be passed in values.
      *
@@ -1088,10 +1086,8 @@ define(function (require, exports, module) {
             return allBounds;
         }.bind(this), new Map()));
 
-
         return this._updateBounds(allBounds);
     };
-
 
     /**
      * Translate the given layers, updating their top and left by passed in values.
@@ -1201,36 +1197,45 @@ define(function (require, exports, module) {
      */
     LayerStructure.prototype.createGroup = function (documentID, groupID, groupEndID, groupName,
         isArtboard, boundsDescriptor) {
+        // Creates the group head and end, needed for any type of group 
         var groupHead = Layer.fromGroupDescriptor(documentID, groupID, groupName, false,
                 isArtboard, boundsDescriptor),
             groupEnd = Layer.fromGroupDescriptor(documentID, groupEndID, "", true),
-            layersToMove = this.selectedNormalized.flatMap(this.descendants, this).toOrderedSet(),
-            layersToMoveIndices = layersToMove.map(this.indexOf, this),
-            layersToMoveIDs = collection.pluck(layersToMove, "id"),
-            groupHeadIndex = this.layers.size - layersToMoveIndices.last(),
-            newGroupIDs = Immutable.Seq([groupEndID, layersToMoveIDs, groupID]).flatten().reverse(),
-            removedIDs = collection
-                .difference(this.index, layersToMoveIDs) // Remove layers being moved
-                .reverse(), // Reverse because we want to slice from the end
+            groupHeadIndex,
+            newIDs;
+        
+        if (isArtboard) {
+            groupHeadIndex = this.layers.size - 1;
+        } else {
+            var layersToMove = this.selectedNormalized.flatMap(this.descendants, this).toOrderedSet(),
+                layersToMoveIndices = layersToMove.map(this.indexOf, this),
+                layersToMoveIDs = collection.pluck(layersToMove, "id");
+            
+            groupHeadIndex = this.layers.size - layersToMoveIndices.last();
+            
+            var newGroupIDs = Immutable.Seq([groupEndID, layersToMoveIDs, groupID]).flatten().reverse(),
+                removedIDs = collection
+                    .difference(this.index, layersToMoveIDs) // Remove layers being moved
+                    .reverse(); // Reverse because we want to slice from the end
             newIDs = removedIDs
                 .slice(0, groupHeadIndex) // First chunk is all layers up to top most selected one
                 .concat(newGroupIDs) // Then our new group
-                .concat(removedIDs.slice(groupHeadIndex)), // Then the rest
-            updatedLayers = this.layers.withMutations(function (layers) {
+                 .concat(removedIDs.slice(groupHeadIndex)); // Then the rest
+        }
+
+        var updatedLayers = this.layers.withMutations(function (layers) {
                 layers.set(groupID, groupHead);
                 layers.set(groupEndID, groupEnd);
             }),
             newLayerStructure = this.merge({
                 layers: updatedLayers
             });
-
-        // Add the new layers, and the new order
+            
         newLayerStructure = newLayerStructure
             .updateSelection(Immutable.Set.of(groupID));
 
         if (!isArtboard) {
-            newLayerStructure = newLayerStructure
-                .updateOrder(newIDs);
+            newLayerStructure = newLayerStructure.updateOrder(newIDs);
         }
 
         return newLayerStructure;

@@ -92,7 +92,6 @@ define(function (require, exports, module) {
             return true;
         },
 
-
         // On startup, we want to make sure center offsets take pinned toolbar
         componentDidMount: function () {
             var flux = this.getFlux(),
@@ -228,5 +227,3 @@ define(function (require, exports, module) {
     
     module.exports = Toolbar;
 });
-
-
