@@ -48,8 +48,8 @@ define(function (require, exports, module) {
                 events.document.DOCUMENT_RENAMED, this._handleDocumentRenamed,
                 events.document.CLOSE_DOCUMENT, this._closeDocument,
                 events.document.history.nonOptimistic.ADD_LAYERS, this._handleLayerAdd,
-                events.document.GUIDES_VISIBILITY_CHANGED, this._updateDocumentGuidesVisibility,
-                events.document.GUIDES_UPDATED, this._handleGuidesUpdated,
+                /*events.document.GUIDES_VISIBILITY_CHANGED, this._updateDocumentGuidesVisibility,
+                events.document.GUIDES_UPDATED, this._handleGuidesUpdated,*/
                 events.document.RESET_LAYERS, this._handleLayerReset,
                 events.document.history.amendment.RESET_LAYERS, this._handleLayerReset,
                 events.document.RESET_LAYERS_BY_INDEX, this._handleLayerResetByIndex,
@@ -100,9 +100,9 @@ define(function (require, exports, module) {
                 events.document.TYPE_LEADING_CHANGED, this._handleTypeLeadingChanged,
                 events.document.TYPE_ALIGNMENT_CHANGED, this._handleTypeAlignmentChanged,
                 events.document.TYPE_PROPERTIES_CHANGED, this._handleTypePropertiesChanged,
-                events.document.LAYER_EXPORT_ENABLED_CHANGED, this._handleLayerExportEnabledChanged,
+                events.document.LAYER_EXPORT_ENABLED_CHANGED, this._handleLayerExportEnabledChanged/*,
                 events.document.history.nonOptimistic.GUIDE_SET, this._handleGuideSet,
-                events.document.history.nonOptimistic.GUIDE_DELETED, this._handleGuideDeleted
+                events.document.history.nonOptimistic.GUIDE_DELETED, this._handleGuideDeleted*/
             );
 
             this._handleReset();
