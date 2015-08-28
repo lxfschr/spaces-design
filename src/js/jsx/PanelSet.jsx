@@ -38,6 +38,7 @@ define(function (require, exports, module) {
         PanelColumn = require("jsx!./PanelColumn"),
         TransformPanel = require("jsx!./sections/transform/TransformPanel"),
         StylePanel = require("jsx!./sections/style/StylePanel"),
+        PropertiesPanel = require("jsx!./sections/properties/PropertiesPanel"),
         ExportPanel = require("jsx!./sections/export/ExportPanel"),
         LayersPanel = require("jsx!./sections/layers/LayersPanel"),
         Panel3d = require("jsx!./sections/3d/Panel3d"),
@@ -52,6 +53,7 @@ define(function (require, exports, module) {
         PROPERTIES_COL: "propertiesVisible",
         TRANSFORM_PANEL: "transformVisible",
         STYLES_PANEL: "stylesVisible",
+        PROPERTIES_PANEL: "propertiesPanelVisible",
         EXPORT_PANEL: "exportVisible",
         LAYERS_PANEL: "layersVisible",
         PANEL_3D: "panel3dVisible",
@@ -98,6 +100,7 @@ define(function (require, exports, module) {
             fluxState[UI.EXPORT_PANEL] = preferences.get(UI.EXPORT_PANEL, true);
             fluxState[UI.LAYERS_PANEL] = preferences.get(UI.LAYERS_PANEL, true);
             fluxState[UI.PANEL_3D] = preferences.get(UI.PANEL_3D, true);
+            fluxState[UI.PROPERTIES_PANEL] = preferences.get(UI.PROPERTIES_PANEL, true);
             fluxState[UI.LIBRARIES_PANEL] = preferences.get(UI.LIBRARIES_PANEL, true);
       
             return fluxState;
@@ -134,6 +137,7 @@ define(function (require, exports, module) {
                 this.state[UI.EXPORT_PANEL] !== nextState[UI.EXPORT_PANEL] ||
                 this.state[UI.LAYERS_PANEL] !== nextState[UI.LAYERS_PANEL] ||
                 this.state[UI.PANEL_3D] !== nextState[UI.PANEL_3D] ||
+                this.state[UI.PROPERTIES_PANEL] !== nextState[UI.PROPERTIES_PANEL] ||
                 this.state[UI.LIBRARIES_PANEL] !== nextState[UI.LIBRARIES_PANEL] ||
                 this.state.activeDocumentInitialized !== nextState.activeDocumentInitialized ||
                 this.state.recentFilesInitialized !== nextState.recentFilesInitialized ||
@@ -218,6 +222,12 @@ define(function (require, exports, module) {
                                         document={document}
                                         onVisibilityToggle=
                                             {this._handlePanelVisibilityToggle.bind(this, UI.STYLES_PANEL)} />
+                                    <PropertiesPanel
+                                        ref={UI.PROPERTIES_PANEL}
+                                        visible={this.state[UI.PROPERTIES_PANEL]}
+                                        document={document}
+                                        onVisibilityToggle=
+                                            {this._handlePanelVisibilityToggle.bind(this, UI.PROPERTIES_PANEL)} />
                                     <ExportPanel
                                         ref={UI.EXPORT_PANEL}
                                         disabled={disabled}
