@@ -164,6 +164,7 @@ define(function (require, exports, module) {
      * @return {{top: number, left: number, bottom: number, right: number}}
      */
     Element.parseRawElement = function (rawElement, layerID, id) {
+        log.debug("rawElement.key3DNodeSubType: " + rawElement.key3DNodeSubType);
         var model = {
             layerID: layerID,
             id: id,

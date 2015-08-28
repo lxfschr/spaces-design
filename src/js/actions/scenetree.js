@@ -699,17 +699,17 @@ define(function (require, exports) {
             })
             .unshift(documentLib.referenceBy.id(document.id))
             .toArray();
-
-        var selectObj = elementLib.select(sceneNodeRef, false, modifier),
-            selectPromise = Promise.resolve().then(function () {
+        var selectedNames = collection.pluck(sceneNodeSpec, "name").toArray();
+        var selectObj = elementLib.select(selectedNames, false, modifier),
+            /*selectPromise = Promise.resolve().then(function () {
                 if (modifier && modifier !== "select") {
                     var resetPromise = this.transfer(resetSelection, document),
                         revealPromise = this.transfer(revealSceneNodes, document, sceneNodeSpec);
 
                     return Promise.join(resetPromise, revealPromise);
                 }
-            });
-            /*selectPromise = descriptor.playObject(selectObj) // ToDo make select scene node handler in ps.
+            });*/
+            selectPromise = descriptor.playObject(selectObj) // ToDo make select scene node handler in ps.
                 .bind(this)
                 .then(function () {
                     if (modifier && modifier !== "select") {
@@ -720,7 +720,7 @@ define(function (require, exports) {
                     }
                 }).then(function () {
                     return this.transfer(tools.resetBorderPolicies);
-                });*/
+                });
 
         return Promise.join(dispatchPromise, selectPromise, revealPromise);
     };
