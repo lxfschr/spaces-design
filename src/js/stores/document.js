@@ -60,6 +60,7 @@ define(function (require, exports, module) {
                 events.document.REORDER_LAYERS, this._handleLayerReorder,
                 events.document.SELECT_LAYERS_BY_ID, this._handleLayerSelectByID,
                 events.document.SELECT_SCENE_NODES_BY_ID, this._handleSceneNodeSelectByID,
+                events.document.SELECT_SCENE_NODES_BY_INDEX, this._handleSceneNodeSelectByIndex,
                 events.document.SELECT_LAYERS_BY_INDEX, this._handleLayerSelectByIndex,
                 events.document.VISIBILITY_CHANGED, this._handleVisibilityChanged,
                 events.document.history.optimistic.LOCK_CHANGED, this._handleLockChanged,
@@ -600,6 +601,21 @@ define(function (require, exports, module) {
         },
 
         /**
+         * Helper function to change layer selection given a Set of selected indexes.
+         *
+         * @private
+         * @param {Document} document
+         * @param {Immutable.Set<number>} selectedIndices
+         */
+        _updateSceneNodeSelectionByIndices: function (document, layerID, selectedIndices) {
+            var selectedIDs = selectedIndices.map(function (index) {
+                return document.layers.byID(layerID).sceneTree.byIndex(index + 1).id;
+            });
+
+            this._updateSceneNodeSelection(document, layerID, selectedIDs);
+        },
+
+        /**
          * Update selection state of layer models, referenced by id.
          *
          * @private
@@ -637,6 +653,20 @@ define(function (require, exports, module) {
                 selectedIndices = Immutable.Set(payload.selectedIndices);
 
             this._updateLayerSelectionByIndices(document, selectedIndices);
+        },
+
+        /**
+         * Update selection state of layer models, referenced by index.
+         *
+         * @private
+         * @param {{documentID: number, selectedIndices: Array.<number>}} payload
+         */
+        _handleSceneNodeSelectByIndex: function (payload) {
+            var document = this._openDocuments[payload.documentID],
+                layerID = payload.layerID,
+                selectedIndices = Immutable.Set(payload.selectedIndices);
+
+            this._updateSceneNodeSelectionByIndices(document, layerID, selectedIndices);
         },
 
         /**

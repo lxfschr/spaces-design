@@ -64,6 +64,7 @@ define(function (require, exports, module) {
                 events.document.SELECT_LAYERS_BY_ID, this._handleSelectionChange,
                 events.document.SELECT_LAYERS_BY_INDEX, this._handleSelectionChange,
                 events.document.SELECT_SCENE_NODES_BY_ID, this._handleSelectionChange,
+                events.document.SELECT_SCENE_NODES_BY_INDEX, this._handleSelectionChange,
                 events.document.history.optimistic.GROUP_SELECTED, this._handleSelectionChange,
                 events.document.CLOSE_DOCUMENT, this._handleDocumentChange,
                 events.document.SELECT_DOCUMENT, this._handleDocumentChange

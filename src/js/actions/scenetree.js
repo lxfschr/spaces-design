@@ -350,13 +350,13 @@ define(function (require, exports) {
 
 
     /**
-     * Get a list of selected layer indexes from photoshop, based on the provided document
+     * Get a list of selected scene node indexes from photoshop, based on the provided document
      *
      * @private
      * @param {Document} document
-     * @return {Promise.<Array.<number>>} A promised array of layer indexes
+     * @return {Promise.<Array.<number>>} A promised array of scene node indexes
      */
-    var _getSelectedLayerIndices = function (document) {
+    var _getSelectedSceneNodeIndices = function (document) {
         return descriptor.getProperty(documentLib.referenceBy.id(document.id), "targetLayers")
             .catch(function () {
                 // no targetLayers property means no document is open
@@ -368,21 +368,22 @@ define(function (require, exports) {
     };
 
     /**
-     * Resets the list of selected layers by asking photoshop for targetLayers
+     * Resets the list of selected scene nodes by asking photoshop for targetLayers
      *
      * @param {Document} document document of which to reset layers
      * @return {Promise}
      */
-    var resetSelection = function (document) {
+    var resetSelection = function (document, layer) {
         var payload = {
-            documentID: document.id
+            documentID: document.id,
+            layerID: layer.id
         };
 
-        return _getSelectedLayerIndices(document)
+        return _getSelectedSceneNodeIndices(document)
             .bind(this)
-            .then(function (selectedLayerIndices) {
-                payload.selectedIndices = selectedLayerIndices;
-                this.dispatch(events.document.SELECT_LAYERS_BY_INDEX, payload);
+            .then(function (selectedSceneNodeIndices) {
+                payload.selectedIndices = selectedSceneNodeIndices;
+                this.dispatch(events.document.SELECT_SCENE_NODES_BY_INDEX, payload);
             });
     };
     resetSelection.reads = [locks.PS_DOC, locks.JS_DOC];
@@ -630,14 +631,14 @@ define(function (require, exports) {
      * @param {Immutable.Iterable.<Layer>} sceneNodes
      * @return {Promise}
      */
-    var revealSceneNodes = function (document, sceneNodes) {
+    var revealSceneNodes = function (document, layer, sceneNodes) {
         if (sceneNodes instanceof Element) {
             sceneNodes = Immutable.List.of(sceneNodes);
         }
 
         var collapsedAncestorSet = sceneNodes.reduce(function (collapsedAncestors, sceneNode) {
-            if (document.layers.selected.first().sceneTree.hasCollapsedAncestor(sceneNode)) {
-                document.layers.selected.first().sceneTree.strictAncestors(sceneNode).forEach(function (ancestor) {
+            if (layer.sceneTree.hasCollapsedAncestor(sceneNode)) {
+                layer.sceneTree.strictAncestors(sceneNode).forEach(function (ancestor) {
                     if (!ancestor.expanded) {
                         collapsedAncestors.add(ancestor);
                     }
@@ -687,34 +688,19 @@ define(function (require, exports) {
         if (!modifier || modifier === "select") {
             payload.selectedIDs = collection.pluck(sceneNodeSpec, "id");
             dispatchPromise = this.dispatchAsync(events.document.SELECT_SCENE_NODES_BY_ID, payload);
-            revealPromise = this.transfer(revealSceneNodes, document, sceneNodeSpec);
+            revealPromise = this.transfer(revealSceneNodes, document, layer, sceneNodeSpec);
         } else {
             dispatchPromise = Promise.resolve();
             revealPromise = Promise.resolve();
         }
-
-        var sceneNodeRef = sceneNodeSpec
-            .map(function (sceneNode) {
-                return elementLib.referenceBy.id(sceneNode.id);
-            })
-            .unshift(documentLib.referenceBy.id(document.id))
-            .toArray();
         var selectedNames = collection.pluck(sceneNodeSpec, "name").toArray();
         var selectObj = elementLib.select(selectedNames, false, modifier),
-            /*selectPromise = Promise.resolve().then(function () {
-                if (modifier && modifier !== "select") {
-                    var resetPromise = this.transfer(resetSelection, document),
-                        revealPromise = this.transfer(revealSceneNodes, document, sceneNodeSpec);
-
-                    return Promise.join(resetPromise, revealPromise);
-                }
-            });*/
             selectPromise = descriptor.playObject(selectObj) // ToDo make select scene node handler in ps.
                 .bind(this)
                 .then(function () {
                     if (modifier && modifier !== "select") {
-                        var resetPromise = this.transfer(resetSelection, document),
-                            revealPromise = this.transfer(revealSceneNodes, document, sceneNodeSpec);
+                        var resetPromise = this.transfer(resetSelection, document, layer),
+                            revealPromise = this.transfer(revealSceneNodes, document, layer, sceneNodeSpec);
 
                         return Promise.join(resetPromise, revealPromise);
                     }
@@ -836,7 +822,7 @@ define(function (require, exports) {
             layers = Immutable.List.of(layers);
         }
 
-        return _getSelectedLayerIndices(document)
+        return _getSelectedSceneNodeIndices(document)
             .bind(this)
             .then(function (selectedLayerIndices) {
                 var payload = {
@@ -1301,7 +1287,7 @@ define(function (require, exports) {
     var resetIndex = function (document, suppressHistory, amendHistory) {
         return _getLayerIDsForDocumentID.call(this, document.id)
             .then(function (payload) {
-                return _getSelectedLayerIndices(document).then(function (selectedIndices) {
+                return _getSelectedSceneNodeIndices(document).then(function (selectedIndices) {
                         payload.selectedIndices = selectedIndices;
                         return payload;
                     });
