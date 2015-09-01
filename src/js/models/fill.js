@@ -116,6 +116,14 @@ define(function (require, exports, module) {
         return null;
     };
 
+    Fill.fromFloats = function(r, g, b) {
+
+        return new Fill({
+            color: Color.fromFloats(r,g,b),
+            type: contentLayerLib.contentTypes.SOLID_COLOR
+        });
+    }
+
     /**
      * Construct a Fill model from a Photoshop "set" descriptor.
      *

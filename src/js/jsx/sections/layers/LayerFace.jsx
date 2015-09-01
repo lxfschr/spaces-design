@@ -256,8 +256,6 @@ define(function (require, exports, module) {
                 isDropTarget = this.props.isDropTarget,
                 dropPosition = this.props.dropPosition,
                 isGroupStart = layer.kind === layer.layerKinds.GROUP || layer.isArtboard;
-            log.debug("layer: " + layer.name);
-            log.debug("isSelected: " + isSelected);
             var depth = layerStructure.depth(layer),
                 endOfGroupStructure = false,
                 isLastInGroup = false,

@@ -29,6 +29,7 @@ define(function (require, exports, module) {
     var Layer = require("./layer"),
         SceneTreeNode = require("./scenetreenode"),
         Bounds = require("./bounds"),
+        Fill = require("./Fill"),
         Element = require("./element");
 
     var objUtil = require("js/util/object"),
@@ -42,9 +43,9 @@ define(function (require, exports, module) {
      */
     var ElementStructure = Immutable.Record({
         /**
-         * All Element objects indexed by element name.
+         * All Element objects indexed by element id.
          *
-         * @type {Immutable.Map.<string, Element>}
+         * @type {Immutable.Map.<number, Element>}
          */
         elements: null,
 
@@ -53,7 +54,14 @@ define(function (require, exports, module) {
          *
          * @type {Immutable.List.<number>}
          */
-        index: null
+        index: null,
+
+        /**
+         * All material objects indexed by material name.
+         *
+         * @type {Immutable.Map.<string, Element>}
+         */
+        materials: null
     });
 
     /**
@@ -61,17 +69,26 @@ define(function (require, exports, module) {
      * @param  {object} sceneDescriptor
      * @return {object}
      */
-    var _extract3dSceneElements = function (sceneDescriptor) {
-        var sceneElements = {};
-        if(!sceneDescriptor) {
-            return sceneElements;
-        }
-        var scene = sceneDescriptor.key3DScene;
-        sceneElements.meshes = scene.$mshl;
-        sceneElements.lights = scene.$lite;
-        sceneElements.cameras = scene.$caml;
-        sceneElements.materials = scene.$mtll;
-        return sceneElements;
+    var _extractMaterials = function (materialsList) {
+        var materials = materialsList.reduce(function (materials, material) {
+            var model = {
+                name: material.name,
+                diffuse: Fill.fromFloats(material.$dred, material.$dgrn, material.$dblu),
+                specular: Fill.fromFloats(material.$sred, material.$sgrn, material.$sblu),
+                emissive: Fill.fromFloats(material.$ered, material.$egrn, material.$eblu),
+                ambient: Fill.fromFloats(material.$ared, material.$agrn, material.$ablu),
+                shininess: material.$shin,
+                reflection: material.$refl,
+                roughness: material.$rogh,
+                bump: material.$bump,
+                transparency: material.transparency,
+                refraction: material.$RfAc
+            };
+            materials.set(material.name, model);
+            return materials;
+        }, new Map());
+        materials = Immutable.Map(materials);
+        return materials;
     };
 
     var _extractID = function(element, frameList, meshList) {
@@ -144,27 +161,29 @@ define(function (require, exports, module) {
      */
     ElementStructure.fromLayerDescriptor = function (layerDescriptor) {
         var layer3D = layerDescriptor.layer3D;
-        var elements = new Map();
+        var sceneNodes = new Map();
         var index = new Immutable.List();
+        var materials = new Map();
         if(layer3D) {
             var scene = layer3D.key3DScene;
             var sceneTree = scene.key3DSceneTree[0].key3DTreeClassList;
             sceneTree = _insertGroupEnds(sceneTree);
             sceneTree = Immutable.List(sceneTree);
             var idx = 0;
-            elements = sceneTree.reduce(function (elements, element) {
+            materials = _extractMaterials(scene.$mtll);
+            sceneNodes = sceneTree.reduce(function (elements, element) {
                 var id = _extractID(element, scene.$KeFL, scene.$mshl);
                 elements.set(idx, Element.fromRawElement(element, layerDescriptor.layerID, idx));
                 idx++;
                 return elements;
-            }, elements);
-            elements = Immutable.Map(elements);
-            index = Immutable.List(elements.keys()).reverse();
+            }, sceneNodes);
+            sceneNodes = Immutable.Map(sceneNodes);
+            index = Immutable.List(sceneNodes.keys()).reverse();
         }
-
         return new ElementStructure({
-            elements: elements,
-            index: index
+            elements: sceneNodes,
+            index: index,
+            materials: materials
         });
     };
 

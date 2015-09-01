@@ -154,7 +154,6 @@ define(function (require, exports, module) {
          * @param {event} event React event
          */
         _handleSceneNodeClick: function (event) {
-            log.debug("in _handleSceneNodeClick()");
             event.stopPropagation();
             var modifier = "select";
             if (event.shiftKey) {

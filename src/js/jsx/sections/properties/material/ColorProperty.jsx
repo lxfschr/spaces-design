@@ -41,12 +41,13 @@ define(function (require, exports, module) {
         ToggleButton = require("jsx!js/jsx/shared/ToggleButton"),
         strings = require("i18n!nls/strings"),
         collection = require("js/util/collection");
+    var log = require("js/util/log");
 
     /**
-     * Fill Component displays information of a single fill for a given layer or 
+     * ColorProperty Component displays information of a single fill for a given layer or
      * set of layers.
      */
-    var Fill = React.createClass({
+    var ColorProperty = React.createClass({
         mixins: [FluxMixin],
 
         shouldComponentUpdate: function (nextProps, nextState) {
@@ -56,7 +57,7 @@ define(function (require, exports, module) {
 
         getInitialState: function () {
             return {
-                layers: Immutable.List(),
+                materials: Immutable.Map(),
                 fill: null
             };
         },
@@ -64,14 +65,11 @@ define(function (require, exports, module) {
         componentWillReceiveProps: function (nextProps) {
             var document = nextProps.document,
                 // We only care about vector layers.  If at least one exists, then this component should render
-                layers = document.layers.selected.filter(function (layer) {
-                    return layer.kind === layer.layerKinds.VECTOR;
-                }),
-                fills = collection.pluck(layers, "fill"),
+                materials = nextProps.materials,
+                fills = collection.pluck(materials, this.props.title).toList(),
                 downsample = this._downsampleFills(fills);
-
             this.setState({
-                layers: layers,
+                materials: materials,
                 fill: downsample
             });
         },
@@ -88,7 +86,7 @@ define(function (require, exports, module) {
 
             this.getFlux().actions.shapes.setFillEnabled(
                 this.props.document,
-                this.state.layers,
+                this.state.materials,
                 color,
                 { enabled: isChecked }
             );
@@ -103,7 +101,7 @@ define(function (require, exports, module) {
          */
         _opacityChanged: function (event, opacity) {
             this.getFlux().actions.shapes
-                .setFillOpacityThrottled(this.props.document, this.state.layers, opacity);
+                .setFillOpacityThrottled(this.props.document, this.state.materials, opacity);
         },
 
         /**
@@ -115,7 +113,7 @@ define(function (require, exports, module) {
          */
         _colorChanged: function (color, coalesce) {
             this.getFlux().actions.shapes
-                .setFillColorThrottled(this.props.document, this.state.layers, color,
+                .setFillColorThrottled(this.props.document, this.state.materials, color,
                     { coalesce: coalesce });
         },
 
@@ -128,7 +126,7 @@ define(function (require, exports, module) {
          */
         _opaqueColorChanged: function (color, coalesce) {
             this.getFlux().actions.shapes
-                .setFillColorThrottled(this.props.document, this.state.layers, color,
+                .setFillColorThrottled(this.props.document, this.state.materials, color,
                     {
                         coalesce: coalesce,
                         ignoreAlpha: true,
@@ -145,7 +143,7 @@ define(function (require, exports, module) {
          */
         _alphaChanged: function (color, coalesce) {
             this.getFlux().actions.shapes
-                .setFillOpacityThrottled(this.props.document, this.state.layers,
+                .setFillOpacityThrottled(this.props.document, this.state.materials,
                     color.opacity, { coalesce: coalesce });
         },
 
@@ -153,7 +151,7 @@ define(function (require, exports, module) {
          * Produce a set of arrays of separate fill display properties, transformed and ready for the sub-components
          *
          * @private
-         * @param {Immutable.List.<Fill>} fills
+         * @param {Immutable.List.<ColorProperty>} fills
          * @return {object}
          */
         _downsampleFills: function (fills) {
@@ -181,8 +179,10 @@ define(function (require, exports, module) {
         },
 
         render: function () {
+            var materials = this.state.materials;
+            var title = this.props.title;
             // If there are no vector layers, hide the component
-            if (!this.state.fill || this.state.layers.isEmpty()) {
+            if (!this.state.fill || this.state.materials.isEmpty()) {
                 return null;
             }
 
@@ -205,14 +205,13 @@ define(function (require, exports, module) {
                 );
             };
 
-            var colorInputID = "fill-" + this.props.document.id,
+            var colorInputID = this.props.title + this.props.document.id,
                 fill = this.state.fill;
-
             return (
                 <div className="fill-list__container">
                     <header className="fill-list__header sub-header">
                         <h3>
-                            {strings.STYLE.FILL.TITLE}
+                            {title}
                         </h3>
                         <Gutter />
                         <hr className="sub-header-rule"/>
@@ -224,7 +223,7 @@ define(function (require, exports, module) {
                                 <ColorInput
                                     id={colorInputID}
                                     className="fill"
-                                    context={collection.pluck(this.state.layers, "id")}
+                                    context={collection.pluck(this.state.materials, "id")}
                                     title={strings.TOOLTIPS.SET_FILL_COLOR}
                                     editable={!this.props.disabled}
                                     defaultValue={fill.colors}
@@ -272,5 +271,5 @@ define(function (require, exports, module) {
         }
     });
 
-    module.exports = Fill;
+    module.exports = ColorProperty;
 });

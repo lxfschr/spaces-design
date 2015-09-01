@@ -41,6 +41,7 @@ define(function (require, exports, module) {
         ToggleButton = require("jsx!js/jsx/shared/ToggleButton"),
         strings = require("i18n!nls/strings"),
         collection = require("js/util/collection");
+    var log = require("js/util/log");
 
     /**
      * Fill Component displays information of a single fill for a given layer or 
@@ -69,7 +70,6 @@ define(function (require, exports, module) {
                 }),
                 fills = collection.pluck(layers, "fill"),
                 downsample = this._downsampleFills(fills);
-
             this.setState({
                 layers: layers,
                 fill: downsample
@@ -207,7 +207,6 @@ define(function (require, exports, module) {
 
             var colorInputID = "fill-" + this.props.document.id,
                 fill = this.state.fill;
-
             return (
                 <div className="fill-list__container">
                     <header className="fill-list__header sub-header">

@@ -666,7 +666,6 @@ define(function (require, exports) {
      * @returns {Promise}
      */
     var select = function (document, layer, sceneNodeSpec, modifier) {
-        log.debug("in select()");
         if (sceneNodeSpec instanceof Element) {
             sceneNodeSpec = Immutable.List.of(sceneNodeSpec);
         }
