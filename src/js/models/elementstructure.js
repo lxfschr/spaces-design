@@ -26,7 +26,7 @@ define(function (require, exports, module) {
 
     var Immutable = require("immutable");
 
-    var Layer = require("./layer"),
+    var elementLib = require("adapter/lib/element"),
         SceneTreeNode = require("./scenetreenode"),
         Bounds = require("./bounds"),
         Fill = require("./Fill"),
@@ -64,6 +64,43 @@ define(function (require, exports, module) {
         materials: null
     });
 
+    var _extractMapsFromMaterial = function(material) {
+        var mapList = material.$mapl;
+        var maps =  mapList.reduce(function(maps, map) {
+            var model = {
+                name: map["$Nm  "],
+                objectName: map.$ObjN,
+                type: map.type,
+                strength: map.strength,
+                uScale: map.$uscl,
+                vScale: map.$vscl,
+                uOffset: map.$uoff,
+                vOffset: map.$voff,
+                minimum: map.minumum,
+                maximum: map.maximum,
+                angle: map.angle,
+                flags: map.$flag,
+                is3dsStyle: map.$msty,
+                id: map.ID,
+                paint3dType: map.key3dPaintType,
+                layerName: map.$LyrN,
+                samplerType: map.$sTyP,
+                samplerWrappU: map.$sWrU,
+                samplerWrapV: map.$sWrV,
+                samplerWrapW: map.$sWrW,
+                samplerMin: map.$sMin,
+                samplerMag: map.$sMag,
+                samplerMip: map.$sMip,
+                samplerUsed: map.$sMip
+
+            };
+            maps.set(map.type, model);
+            return maps;
+        }, new Map());
+        maps = Immutable.Map(maps);
+        return maps;
+    }
+
     /**
      * Extract the relevant 3d scene elements.
      * @param  {object} sceneDescriptor
@@ -71,18 +108,24 @@ define(function (require, exports, module) {
      */
     var _extractMaterials = function (materialsList) {
         var materials = materialsList.reduce(function (materials, material) {
+            var maps = _extractMapsFromMaterial(material);
+            log.debug("material.$rogh: " + material.$rogh);
             var model = {
                 name: material.name,
+                id: material.$mtID,
                 diffuse: Fill.fromFloats(material.$dred, material.$dgrn, material.$dblu),
                 specular: Fill.fromFloats(material.$sred, material.$sgrn, material.$sblu),
                 emissive: Fill.fromFloats(material.$ered, material.$egrn, material.$eblu),
                 ambient: Fill.fromFloats(material.$ared, material.$agrn, material.$ablu),
-                shininess: material.$shin,
-                reflection: material.$refl,
-                roughness: material.$rogh,
-                bump: material.$bump,
-                transparency: material.transparency,
-                refraction: material.$RfAc
+                shine: material.$shin * 100,
+                reflection: material.$refl * 100,
+                roughness: material.$rtgh * 100,
+                bump: maps.get(elementLib.materialMapTypes.BUMP).strength * 10 || 0,
+                opacity: 100 - material.transparency * 100,
+                refraction: material.$RfAc,
+                isHidden: material.$mIHd,
+                isGroundMaterial: material.$gMtr,
+                maps: maps
             };
             materials.set(material.name, model);
             return materials;
@@ -1028,6 +1071,25 @@ define(function (require, exports, module) {
 
         return this.mergeDeep({
             elements: updatedSceneNodes
+        });
+    };
+
+    /**
+     * Update basic properties of the given layers.
+     *
+     * @param {Immutable.Iterable.<number>} sceneNodeIDs
+     * @param {object} properties
+     * @return {ElementStructure}
+     */
+    ElementStructure.prototype.setMaterialProperties = function (materialIDs, properties) {
+        var nextProperties = Immutable.Map(properties),
+            updatedMaterials = Immutable.Map(materialIDs.reduce(function (material, materialID) {
+                material.set(materialID, nextProperties);
+                return material;
+            }.bind(this), new Map()));
+
+        return this.mergeDeep({
+            materials: updatedMaterials
         });
     };
 

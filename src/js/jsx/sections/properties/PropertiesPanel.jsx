@@ -168,27 +168,28 @@ define(function (require, exports, module) {
                 });
 
             var selectedLayers = this.props.document.layers.selectedWith3D;
+            var selectedLayer;
             var sceneNodeKindName;
             var selectedSceneNodes = new Immutable.List();
             var selectedElements = new Immutable.Map();
             if(selectedLayers.size == 1) {
-                var selectedLayer = selectedLayers.first();
+                selectedLayer = selectedLayers.first();
                 selectedSceneNodes = selectedLayer.sceneTree.selected;
                 if(selectedSceneNodes.size > 0) {
                     var selectedSceneNodesKind = selectedSceneNodes.first().kind;
                     if(selectedSceneNodesKind == selectedSceneNodes.first().elementKinds.MATERIAL) {
-                        sceneNodeKindName = "Material";
+                        sceneNodeKindName = "material";
                         var names = selectedSceneNodes.map(function(node) {return node.name});
                         selectedElements = selectedLayer.sceneTree.materials.filter(function(e) {return names.contains(e.name)});
                     }
                     else {
-                        sceneNodeKindName = "Unknown";
+                        sceneNodeKindName = "";
                     }
                 }
             }
             var containerContents = this.props.document && this.props.visible && !this.props.disabled && (
                 <div>
-                    <Material {...this.props}
+                    <Material {...this.props} layer={selectedLayer}
                         onFocus={this._handleFocus} materials={selectedElements}/>
                 </div>
             );
@@ -218,19 +219,7 @@ define(function (require, exports, module) {
                                 onDisabledDoubleClick={this._blockInput}>
                                 <SVGIcon
                                     viewbox="0 0 24 24"
-                                    CSSID="style-copy" />
-                            </Button>
-                            <Button
-                                className={pasteStyleClasses}
-                                title={strings.STYLE.PASTE}
-                                disabled={pasteStyleDisabled}
-                                onClick={this._handleStylePaste}
-                                onDisabledClick={this._blockInput}
-                                onDoubleClick={this._blockInput}
-                                onDisabledDoubleClick={this._blockInput}>
-                                <SVGIcon
-                                    viewbox="0 0 24 24"
-                                    CSSID="style-paste" />
+                                    CSSID={sceneNodeKindName} />
                             </Button>
                         </div>
                     </TitleHeader>

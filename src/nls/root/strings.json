@@ -16,6 +16,7 @@
         "ALIGN_LAYERS": "Align Layers",
         "DISTRIBUTE_LAYERS": "Distribute Layers",
         "SET_RADIUS": "Set Radius",
+        "SET_SHINE": "Set Shine",
         "ROTATE_LAYERS": "Rotate Layers",
         "DUPLICATE_LAYERS": "Duplicate Layers",
         "SET_LAYER_EFFECTS": "Set Layer Effects",
@@ -163,6 +164,8 @@
         "SWAP_POSITION": "Swap Position",
         "SET_RADIUS": "Set Border Radius",
         "SET_RADIUS_SLIDER": "Adjust Slider to Set Radius ",
+        "SET_SHINE": "Set Material Map Shininess",
+        "SET_SHINE_SLIDER": "Adjust Slider to Set Material Map Shininess",
         "SET_OPACITY": "Set Opacity",
         "VECTOR_SETTINGS": "Show Vector Settings",
         "SET_COMBINATION": "Set Shape Combination",
@@ -288,7 +291,16 @@
         "DIFFUSE": "diffuse",
         "SPECULAR": "specular",
         "EMISSIVE": "emissive",
-        "AMBIENT": "ambient"
+        "AMBIENT": "ambient",
+        "SHINE": "shine",
+        "REFLECTION": "reflection",
+        "ROUGHNESS": "roughness",
+        "BUMP": "bump",
+        "OPACITY": "opacity",
+        "REFRACTION": "refraction",
+        "NORMAL": "normal",
+        "ENVIRONMENT": "environment",
+        "TEXTURE": "texture"
     },
     "STYLE": {
         "BLEND": {

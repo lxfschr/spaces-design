@@ -28,19 +28,15 @@ define(function (require, exports, module) {
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React),
         Immutable = require("immutable"),
+        elementLib = require("adapter/lib/element"),
         classnames = require("classnames"),
         _ = require("lodash");
 
     var contentLayerLib = require("adapter/lib/contentLayer");
 
-    var Color = require("js/models/color"),
-        Gutter = require("jsx!js/jsx/shared/Gutter"),
-        Label = require("jsx!js/jsx/shared/Label"),
-        NumberInput = require("jsx!js/jsx/shared/NumberInput"),
-        ColorInput = require("jsx!js/jsx/shared/ColorInput"),
-        ToggleButton = require("jsx!js/jsx/shared/ToggleButton"),
+    var strings = require("i18n!nls/strings"),
         ColorProperty = require("jsx!./ColorProperty"),
-        strings = require("i18n!nls/strings"),
+        Slider = require("jsx!./Slider"),
         collection = require("js/util/collection");
     var log = require("js/util/log");
 
@@ -91,6 +87,12 @@ define(function (require, exports, module) {
                         <ColorProperty {...this.props} title={strings.PROPERTIES.SPECULAR} onFocus={this._handleFocus}/>
                         <ColorProperty {...this.props} title={strings.PROPERTIES.EMISSIVE} onFocus={this._handleFocus}/>
                         <ColorProperty {...this.props} title={strings.PROPERTIES.AMBIENT} onFocus={this._handleFocus}/>
+                        <Slider {...this.props} title={strings.PROPERTIES.SHINE} onFocus={this._handleFocus}/>
+                        <Slider {...this.props} title={strings.PROPERTIES.REFLECTION} onFocus={this._handleFocus}/>
+                        <Slider {...this.props} title={strings.PROPERTIES.ROUGHNESS} onFocus={this._handleFocus}/>
+                        <Slider {...this.props} title={strings.PROPERTIES.BUMP} onFocus={this._handleFocus}/>
+                        <Slider {...this.props} title={strings.PROPERTIES.OPACITY} onFocus={this._handleFocus}/>
+                        <Slider {...this.props} title={strings.PROPERTIES.REFRACTION} maxValue={3} onFocus={this._handleFocus}/>
                     </div>
                 );
 

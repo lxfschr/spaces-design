@@ -655,6 +655,50 @@ define(function (require, exports) {
     revealSceneNodes.transfers = [setGroupExpansion];
 
     /**
+     * Set the value of the rectangle shapes in the given materials of the given
+     * document to the given number of pixels. Currently, the command ignores
+     * document and materials paramters and acts on the selected materials of the
+     * active document.
+     *
+     * @param {Document} document
+     * @param {Immutable.Iterable.<Layer>} materials
+     * @param {number} value New uniform border value in pixels
+     * @param {boolean} coalesce Whether this history state should be coalesce with the previous one
+     */
+    var setMaterialProperty = function (document, layerID, materials, property, value, coalesce) {
+        log.debug("layerID: " + layerID);
+        log.debug("materialIDs: " + collection.pluck(materials, "id"));
+        log.debug("coalesce: " + coalesce);
+        log.debug("property: " + property);
+        log.debug("value: " + value);
+        var dispatchPromise = this.dispatchAsync(events.document.history.optimistic.MATERIAL_MAP_PROPERTY_CHANGED, {
+            documentID: document.id,
+            layerID: layerID,
+            materialIDs: collection.pluck(materials, "id"),
+            coalesce: coalesce,
+            property: property,
+            value: value
+        });
+
+        var materialMapDescriptor = elementLib.setRadius(value),
+            options = {
+                paintOptions: _paintOptions,
+                historyStateInfo: {
+                    name: strings.ACTIONS.SET_SHINE,
+                    target: documentLib.referenceBy.id(document.id),
+                    coalesce: !!coalesce,
+                    suppressHistoryStateNotification: !!coalesce
+                }
+            },
+            radiusPromise = Promise.resolve();
+            //radiusPromise = locking.playWithLockOverride(document, materials, materialMapDescriptor, options);
+
+        return Promise.join(dispatchPromise, radiusPromise);
+    };
+    setMaterialProperty.reads = [locks.PS_DOC, locks.JS_DOC];
+    setMaterialProperty.writes = [locks.PS_DOC, locks.JS_DOC];
+
+    /**
      * Selects the given layer with given modifiers
      *
      * @param {Document} document Owner document
@@ -2018,7 +2062,7 @@ define(function (require, exports) {
     exports.revealLayers = revealSceneNodes;
     exports.resetIndex = resetIndex;
     exports.editVectorMask = editVectorMask;
-
+    exports.setMaterialProperty = setMaterialProperty;
     exports.beforeStartup = beforeStartup;
     exports.onReset = onReset;
 

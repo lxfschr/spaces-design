@@ -81,6 +81,7 @@ define(function (require, exports, module) {
                 events.document.history.optimistic.RESIZE_DOCUMENT, this._handleDocumentResized,
                 events.document.LAYER_BOUNDS_CHANGED, this._handleLayerBoundsChanged,
                 events.document.history.optimistic.RADII_CHANGED, this._handleRadiiChanged,
+                events.document.history.optimistic.MATERIAL_MAP_PROPERTY_CHANGED, this._handleMaterialMapPropertyChanged,
                 events.document.history.optimistic.FILL_COLOR_CHANGED, this._handleFillPropertiesChanged,
                 events.document.history.optimistic.FILL_OPACITY_CHANGED, this._handleFillPropertiesChanged,
                 events.document.STROKE_ALIGNMENT_CHANGED, this._handleStrokePropertiesChanged,
@@ -767,6 +768,25 @@ define(function (require, exports, module) {
                 nextDocument = document.set("layers", nextLayers);
 
             this.setDocument(nextDocument, true);
+        },
+
+        /**
+         * Set the radii for the given layers in the given document.
+         *
+         * @private
+         * @param {{documentID: number, layerIDs: Array.<number>, radii: object}} payload
+         */
+        _handleMaterialMapPropertyChanged: function (payload) {
+            var documentID = payload.documentID,
+                layerID = payload.layerID,
+                materialIDs = payload.materialIDs,
+                property = payload.property,
+                value = payload.value,
+                document = this._openDocuments[documentID],
+                selectedLayer = document.layers.byID(layerID),
+                nextSceneTree = selectedLayer.sceneTree.setMaterialProperties(materialIDs, {shine: value});
+                this._updateLayerProperties(documentID, layerIDs, { sceneTree: nextSceneTree });
+            log.debug("nextSceneTree: " + nextSceneTree);
         },
 
         /**

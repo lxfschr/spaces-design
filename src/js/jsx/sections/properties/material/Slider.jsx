@@ -37,96 +37,77 @@ define(function (require, exports, module) {
         math = require("js/util/math"),
         strings = require("i18n!nls/strings"),
         collection = require("js/util/collection");
+    var log = require("js/util/log");
 
-    var Radius = React.createClass({
+    var Slider = React.createClass({
         mixins: [FluxMixin, Coalesce],
 
         propTypes: {
             document: React.PropTypes.object.isRequired,
-            layers: React.PropTypes.instanceOf(Immutable.Iterable).isRequired
+            materials: React.PropTypes.instanceOf(Immutable.Iterable).isRequired
         },
 
         shouldComponentUpdate: function (nextProps) {
-            var getRelevantProps = function (props) {
-                var layers = props.layers;
-
-                return collection.pluckAll(layers, ["id", "bounds", "radii"]);
-            };
-
-            return !Immutable.is(getRelevantProps(this.props), getRelevantProps(nextProps));
+            return !Immutable.is(this.props.materials, nextProps.materials);
         },
 
         /**
-         * Update the radius of the selected layers in response to user input.
+         * Update the radius of the selected materials in response to user input.
          *
-         * @param {Immutable.Iterable.<Layer>} layers
+         * @param {Immutable.Iterable.<Layer>} materials
          * @param {SyntheticEvent} event
          * @param {number=} value
          */
-        _handleRadiusChange: function (layers, event, value) {
+        _handleValueChange: function (event, value) {
             if (value === undefined) {
                 // In this case, the value is coming from the DOM element
                 value = math.parseNumber(event.target.value);
             }
 
             var coalesce = this.shouldCoalesce();
-            this.getFlux().actions.transform
-                .setRadiusThrottled(this.props.document, layers, value, coalesce);
+            this.getFlux().actions.scenetree
+                .setMaterialProperty(this.props.document, this.props.layer.id, this.props.materials, this.props.title, value, coalesce);
         },
 
         render: function () {
-            var layers = this.props.layers.filter(function (layer) {
-                    return layer.radii;
-                });
-
-            // If there is not at least one selected vector layer, don't render
-            if (layers.isEmpty()) {
+            var materials = this.props.materials,
+                title = this.props.title;
+            // If there is not at least one selected material, don't render
+            if (materials.isEmpty()) {
                 return null;
             }
-
-            var scalars = collection.pluck(layers, "radii")
-                .map(function (radii) {
-                    return radii.scalar || 0;
-                });
+            var scalars = collection.pluck(materials, title).toList();
 
             // The maximum border radius is one-half of the shortest side of
             // from all the selected shapes.
-            var maxRadius = collection.pluck(layers, "bounds")
-                .toSeq()
-                .filter(function (bounds) {
-                    return !!bounds;
-                })
-                .reduce(function (sides, bounds) {
-                    return sides.concat(Immutable.List.of(bounds.width / 2, bounds.height / 2));
-                }, Immutable.List())
-                .min();
+            var maxValue = this.props.maxValue ? this.props.maxValue : 100;
 
             return (
                 <div className="formline">
                     <Label
-                        title={strings.TOOLTIPS.SET_RADIUS}>
-                        {strings.TRANSFORM.RADIUS}
+                        title={strings.TOOLTIPS.SET_SHINE}>
+                        {title}
                     </Label>
                     <Gutter />
                     <NumberInput
                         size="column-4"
                         disabled={this.props.disabled}
                         value={scalars}
-                        onChange={this._handleRadiusChange.bind(this, layers)} />
+                        onChange={this._handleValueChange} />
                     <Gutter />
                     <Range
                         disabled={this.props.disabled}
                         min={0}
-                        max={maxRadius}
+                        max={maxValue}
                         value={scalars}
                         onMouseDown={this.startCoalescing}
                         onMouseUp={this.stopCoalescing}
-                        onChange={this._handleRadiusChange.bind(this, layers)} />
+                        onChange={this._handleValueChange} />
                     <Gutter />
                 </div>
             );
         }
     });
 
-    module.exports = Radius;
+    module.exports = Slider;
 });
