@@ -66,7 +66,7 @@ define(function (require, exports, module) {
 
             var coalesce = this.shouldCoalesce();
             this.getFlux().actions.scenetree
-                .setMaterialProperty(this.props.document, this.props.layer.id, this.props.materials, this.props.title, value, coalesce);
+                .setMaterialPropertyThrottled(this.props.document, this.props.layer.id, this.props.materials, this.props.title, value, coalesce);
         },
 
         render: function () {
@@ -81,7 +81,6 @@ define(function (require, exports, module) {
             // The maximum border radius is one-half of the shortest side of
             // from all the selected shapes.
             var maxValue = this.props.maxValue ? this.props.maxValue : 100;
-
             return (
                 <div className="formline">
                     <Label

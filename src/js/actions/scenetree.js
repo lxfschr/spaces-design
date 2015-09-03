@@ -666,30 +666,17 @@ define(function (require, exports) {
      * @param {boolean} coalesce Whether this history state should be coalesce with the previous one
      */
     var setMaterialProperty = function (document, layerID, materials, property, value, coalesce) {
-        log.debug("layerID: " + layerID);
-        log.debug("materialIDs: " + collection.pluck(materials, "id"));
-        log.debug("coalesce: " + coalesce);
-        log.debug("property: " + property);
-        log.debug("value: " + value);
         var dispatchPromise = this.dispatchAsync(events.document.history.optimistic.MATERIAL_MAP_PROPERTY_CHANGED, {
             documentID: document.id,
             layerID: layerID,
+            materialNames: collection.pluck(materials, "name"),
             materialIDs: collection.pluck(materials, "id"),
             coalesce: coalesce,
             property: property,
             value: value
         });
 
-        var materialMapDescriptor = elementLib.setRadius(value),
-            options = {
-                paintOptions: _paintOptions,
-                historyStateInfo: {
-                    name: strings.ACTIONS.SET_SHINE,
-                    target: documentLib.referenceBy.id(document.id),
-                    coalesce: !!coalesce,
-                    suppressHistoryStateNotification: !!coalesce
-                }
-            },
+        var materialMapDescriptor = elementLib.setMaterialProperty(property, value),
             radiusPromise = Promise.resolve();
             //radiusPromise = locking.playWithLockOverride(document, materials, materialMapDescriptor, options);
 

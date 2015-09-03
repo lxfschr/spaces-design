@@ -109,7 +109,6 @@ define(function (require, exports, module) {
     var _extractMaterials = function (materialsList) {
         var materials = materialsList.reduce(function (materials, material) {
             var maps = _extractMapsFromMaterial(material);
-            log.debug("material.$rogh: " + material.$rogh);
             var model = {
                 name: material.name,
                 id: material.$mtID,
@@ -127,7 +126,7 @@ define(function (require, exports, module) {
                 isGroundMaterial: material.$gMtr,
                 maps: maps
             };
-            materials.set(material.name, model);
+            materials.set(material.name, Immutable.Map(model));
             return materials;
         }, new Map());
         materials = Immutable.Map(materials);
@@ -1075,19 +1074,37 @@ define(function (require, exports, module) {
     };
 
     /**
+     * Set the border value of the given layers.
+     *
+     * @param {Immutable.Iteralble.<number>} materialNames
+     * @param {Radii} value
+     * @return {ElementStructure}
+     */
+    ElementStructure.prototype.setMaterialProperty = function (materialNames, property, value) {
+        var nextMaterials = Immutable.Map(materialNames.reduce(function (map, materialName) {
+            return map.set(materialName, Immutable.Map({
+                shine: value
+            }));
+        }, new Map()));
+
+        return this.mergeDeep({
+            materials: nextMaterials
+        });
+    };
+
+    /**
      * Update basic properties of the given layers.
      *
      * @param {Immutable.Iterable.<number>} sceneNodeIDs
      * @param {object} properties
      * @return {ElementStructure}
      */
-    ElementStructure.prototype.setMaterialProperties = function (materialIDs, properties) {
-        var nextProperties = Immutable.Map(properties),
-            updatedMaterials = Immutable.Map(materialIDs.reduce(function (material, materialID) {
-                material.set(materialID, nextProperties);
-                return material;
+    ElementStructure.prototype.setMaterialProperties = function (materialNames, properties) {
+        var nextProperties = properties,
+            updatedMaterials = Immutable.Map(materialNames.reduce(function (materials, materialName) {
+                materials.set(materialName, nextProperties.get(materialName));
+                return materials;
             }.bind(this), new Map()));
-
         return this.mergeDeep({
             materials: updatedMaterials
         });
@@ -1329,26 +1346,6 @@ define(function (require, exports, module) {
             .updateOrder(newIDs);
 
         return newElementStructure;
-    };
-
-    /**
-     * Set the border radii of the given layers.
-     *
-     * @param {Immutable.Iteralble.<number>} layerIDs
-     * @param {Radii} radii
-     * @return {ElementStructure}
-     */
-    ElementStructure.prototype.setBorderRadii = function (layerIDs, radii) {
-        var nextRadii = new Radii(radii),
-            nextLayers = Immutable.Map(layerIDs.reduce(function (map, layerID) {
-                return map.set(layerID, Immutable.Map({
-                    radii: nextRadii
-                }));
-            }, new Map()));
-
-        return this.mergeDeep({
-            layers: nextLayers
-        });
     };
 
     /**

@@ -48,7 +48,7 @@ define(function (require, exports, module) {
         mixins: [FluxMixin],
 
         shouldComponentUpdate: function (nextProps, nextState) {
-            return !Immutable.is(this.state.materials, nextState.materials) ||
+            return !Immutable.is(this.state.materials, nextProps.materials) ||
                 this.props.disabled !== nextProps.disabled;
         },
 

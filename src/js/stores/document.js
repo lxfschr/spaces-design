@@ -349,6 +349,7 @@ define(function (require, exports, module) {
             var document = this._openDocuments[documentID],
                 nextLayers = document.layers.setProperties(layerIDs, properties),
                 nextDocument = document.set("layers", nextLayers);
+
             this.setDocument(nextDocument, true);
         },
 
@@ -780,13 +781,20 @@ define(function (require, exports, module) {
             var documentID = payload.documentID,
                 layerID = payload.layerID,
                 materialIDs = payload.materialIDs,
+                materialNames = payload.materialNames,
                 property = payload.property,
                 value = payload.value,
                 document = this._openDocuments[documentID],
                 selectedLayer = document.layers.byID(layerID),
-                nextSceneTree = selectedLayer.sceneTree.setMaterialProperties(materialIDs, {shine: value});
-                this._updateLayerProperties(documentID, layerIDs, { sceneTree: nextSceneTree });
-            log.debug("nextSceneTree: " + nextSceneTree);
+                //nextSceneTree = selectedLayer.sceneTree.setMaterialProperty(materialIDs, property, value),
+                selectedMaterialProperties = materialNames.map(function(name) {
+                    var selectedMaterial = selectedLayer.sceneTree.materials.get(name);
+                    selectedMaterial  = selectedMaterial.set(property, value);
+
+                    return selectedMaterial;
+                }, this),
+                nextSceneTree = selectedLayer.sceneTree.setMaterialProperties(materialNames.toList(), selectedMaterialProperties);
+                this._updateLayerProperties(documentID, Immutable.List([layerID]), { sceneTree: nextSceneTree });
         },
 
         /**

@@ -92,7 +92,6 @@ define(function (require, exports, module) {
             if (!nextProps.visible && !this.props.visible) {
                 return false;
             }
-
             return true;
         },
 
@@ -180,19 +179,20 @@ define(function (require, exports, module) {
                     if(selectedSceneNodesKind == selectedSceneNodes.first().elementKinds.MATERIAL) {
                         sceneNodeKindName = "material";
                         var names = selectedSceneNodes.map(function(node) {return node.name});
-                        selectedElements = selectedLayer.sceneTree.materials.filter(function(e) {return names.contains(e.name)});
-                    }
-                    else {
-                        sceneNodeKindName = "";
+                        selectedElements = selectedLayer.sceneTree.materials.filter(function(e) {
+                            return names.contains(e.get("name"))});
                     }
                 }
             }
+
             var containerContents = this.props.document && this.props.visible && !this.props.disabled && (
                 <div>
                     <Material {...this.props} layer={selectedLayer}
                         onFocus={this._handleFocus} materials={selectedElements}/>
                 </div>
             );
+
+            var icon = sceneNodeKindName ? (<SVGIcon viewbox="0 0 24 24" CSSID={sceneNodeKindName} />) : null;
 
             return (
                 <section
@@ -217,9 +217,7 @@ define(function (require, exports, module) {
                                 onDisabledClick={this._blockInput}
                                 onDoubleClick={this._blockInput}
                                 onDisabledDoubleClick={this._blockInput}>
-                                <SVGIcon
-                                    viewbox="0 0 24 24"
-                                    CSSID={sceneNodeKindName} />
+                                {icon}
                             </Button>
                         </div>
                     </TitleHeader>
