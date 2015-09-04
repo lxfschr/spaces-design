@@ -74,7 +74,6 @@ define(function (require, exports, module) {
      */
     SceneTreeNode.fromElements = function (elements) {
         var nodes = new Map();
-
         var makeSceneTreeNodes = function (parent, index, depth) {
             var roots = [],
                 node,
@@ -88,7 +87,6 @@ define(function (require, exports, module) {
                 element = elements.get(index--);
                 nodeID = element.id;
                 elementKind = element.kind;
-
                 if (elementKind === elementLib.elementKinds.GROUP || element.isParent) {
                     previousSize = nodes.size;
                     children = makeSceneTreeNodes(nodeID, index, depth + 1);
@@ -114,7 +112,6 @@ define(function (require, exports, module) {
 
             return Immutable.List(roots);
         };
-
         var roots = makeSceneTreeNodes(null, elements.size - 1, 0);
         return {
             roots: roots,

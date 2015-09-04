@@ -60,8 +60,6 @@ define(function (require, exports, module) {
             this.props.isDropTarget !== nextProps.isDropTarget) {
             return true;
         }
-        /*log.debug("this.props.element.face: " + this.props.element.face);
-        log.debug("nextProps.element.face: " + nextProps.element.face);*/
         // Face change
         if (!Immutable.is(this.props.element.face, nextProps.element.face)) {
             return true;
@@ -248,7 +246,7 @@ define(function (require, exports, module) {
                 elementStructure = this.props.layer.sceneTree,
                 elementIndex = elementStructure.indexOf(element),
                 nameEditable = !layer.isBackground,
-                isSelected = element.selected, // ToDo - create selected property
+                isSelected = element.selected,
                 isChildOfSelected = !element.selected &&
                     elementStructure.parent(element) &&
                     elementStructure.parent(element).selected,
@@ -261,8 +259,6 @@ define(function (require, exports, module) {
                 endOfGroupStructure = false,
                 isLastInGroup = false,
                 dragStyle;
-            /*log.debug("element: " + element.name);
-            log.debug("isSelected: " + isSelected);*/
             if (isDragging && this.props.dragStyle) {
                 dragStyle = this.props.dragStyle;
             } else {
@@ -279,7 +275,7 @@ define(function (require, exports, module) {
 
                 dragStyle = {};
             }
-            
+
             var layerClasses = {
                 "layer": true,
                 "layer__group_start": isGroupStart,
@@ -334,8 +330,8 @@ define(function (require, exports, module) {
                     <div
                         style={dragStyle}
                         className={classnames(faceClasses)}
-                        data-layer-id={layer.id}
-                        data-kind={layer.kind}
+                        data-layer-id={element.id}
+                        data-kind={element.kind}
                         onMouseDown={!this.props.disabled && this.props.handleDragStart}
                         onClick={!this.props.disabled && this._handleSceneNodeClick}>
                         <Button
@@ -351,7 +347,7 @@ define(function (require, exports, module) {
                         </Button>
                         <span className="face__separator">
                             <TextInput
-                                title={layer.name + tooltipPadding}
+                                title={element.name + tooltipPadding}
                                 className="face__name"
                                 ref="layerName"
                                 type="text"

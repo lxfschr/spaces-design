@@ -68,7 +68,7 @@ define(function (require, exports, module) {
         var mapList = material.$mapl;
         var maps =  mapList.reduce(function(maps, map) {
             var model = {
-                name: map["$Nm  "],
+                name: map.name,
                 objectName: map.$ObjN,
                 type: map.type,
                 strength: map.strength,
@@ -163,7 +163,7 @@ define(function (require, exports, module) {
         var children = 0;
         var i = 0;
         while(i < list.length) {
-            if (list[i].key3DChildCount > 0) {
+            while(list[i].key3DChildCount > 0) {
                 i += list[i].key3DChildCount;
             }
             i++;
@@ -181,15 +181,43 @@ define(function (require, exports, module) {
             if(numChildren > 0 && node.key3DIsParent) {
                 var groupEndIndex = _getInsertionIndex(sceneTree.slice(i+1), numChildren);
                 var model = {
-                    key3DChildCount: 1,
+                    key3DChildCount: 0,
                     key3DExpansion: false,
                     key3DIsParent: false,
                     key3DNodeSubType: 0,
                     key3DNodeType: 13,
-                    key3DTreeParamName: "</Element group>"
+                    key3DTreeParamName: "</" + node.key3DTreeParamName + " group>"
 
                 };
                 sceneTree.splice(i+1+groupEndIndex, 0, model);
+            }
+        }
+        return sceneTree;
+    };
+
+    var _insertTextures = function(sceneTree, materials){
+        for(var i = 0; i < sceneTree.length; i++) {
+            var node = sceneTree[i];
+            if(node.key3DNodeType === elementLib.elementKinds.MATERIAL) {
+                var material = materials.get(node.key3DTreeParamName);
+                var numChildren = 0;
+                material.get("maps").forEach(function(map) {
+                    if(map.name) {
+                        numChildren++;
+                        var model = {
+                            key3DChildCount: 0,
+                            key3DExpansion: true,
+                            key3DIsParent: false,
+                            key3DNodeSubType: map.type,
+                            key3DNodeType: 14,
+                            key3DTreeParamName: elementLib.mapTypeToString(map.type)
+
+                        };
+                        sceneTree.splice(i+numChildren, 0, model);
+                    }
+                    node.key3DIsParent = true;
+                });
+                node.key3DChildCount = numChildren;
             }
         }
         return sceneTree;
@@ -209,18 +237,29 @@ define(function (require, exports, module) {
         if(layer3D) {
             var scene = layer3D.key3DScene;
             var sceneTree = scene.key3DSceneTree[0].key3DTreeClassList;
-            sceneTree = _insertGroupEnds(sceneTree);
-            sceneTree = Immutable.List(sceneTree);
-            var idx = 0;
             materials = _extractMaterials(scene.$mtll);
+            sceneTree = _insertTextures(sceneTree, materials);
+            sceneTree = _insertGroupEnds(sceneTree);
+            /*sceneTree.push({
+                key3DChildCount: 0,
+                key3DExpansion: false,
+                key3DIsParent: false,
+                key3DNodeSubType: 0,
+                key3DNodeType: 13,
+                key3DTreeParamName: "</Element group>"
+
+            });*/
+            sceneTree = Immutable.List(sceneTree);
+            var indexes = [];
+            var idx = 0;
             sceneNodes = sceneTree.reduce(function (elements, element) {
-                var id = _extractID(element, scene.$KeFL, scene.$mshl);
                 elements.set(idx, Element.fromRawElement(element, layerDescriptor.layerID, idx));
+                indexes.push(idx);
                 idx++;
                 return elements;
             }, sceneNodes);
             sceneNodes = Immutable.Map(sceneNodes);
-            index = Immutable.List(sceneNodes.keys()).reverse();
+            index = Immutable.List(indexes.reverse());
         }
         return new ElementStructure({
             elements: sceneNodes,
@@ -615,14 +654,13 @@ define(function (require, exports, module) {
     };
 
     /**
-     * Get the depth of the given layer in the layer hierarchy.
+     * Get the depth of the given sceneNode in the sceneNode hierarchy.
      *
-     * @param {Layer} layer
+     * @param {Layer} sceneNode
      * @return {?number}
      */
-    ElementStructure.prototype.depth = function (layer) {
-        var node = this.nodes.get(layer.id, null);
-
+    ElementStructure.prototype.depth = function (sceneNode) {
+        var node = this.nodes.get(sceneNode.id, null);
         if (!node) {
             return null;
         } else {

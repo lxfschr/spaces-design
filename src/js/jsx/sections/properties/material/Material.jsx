@@ -98,7 +98,6 @@ define(function (require, exports, module) {
 
             // If there are no materials, hide the component
             /*if (this.state.materials.isEmpty()) {
-                log.debug("this.state.materials.isEmpty(): " + this.state.materials.isEmpty());
                 return null;
             }*/
 
