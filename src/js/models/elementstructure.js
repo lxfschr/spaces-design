@@ -61,7 +61,14 @@ define(function (require, exports, module) {
          *
          * @type {Immutable.Map.<string, Element>}
          */
-        materials: null
+        materials: null,
+
+        /**
+         * All map objects indexed by map id.
+         *
+         * @type {Immutable.Map.<number, Element>}
+         */
+        maps: null
     });
 
     var _extractMapsFromMaterial = function(material) {
@@ -133,8 +140,13 @@ define(function (require, exports, module) {
         return materials;
     };
 
-    var _extractID = function(element, frameList, meshList) {
+    var _extractID = function(element, frameList, meshList, maps) {
         var i;
+        if(element.key3DNodeType === elementLib.elementKinds.MAP) {
+            return element.id;
+        }
+
+
         for(i = 0; i < frameList.length; i++) {
             var frame = frameList[i];
             if(frame.name === element.key3DTreeParamName) {
@@ -209,8 +221,9 @@ define(function (require, exports, module) {
                             key3DExpansion: true,
                             key3DIsParent: false,
                             key3DNodeSubType: map.type,
-                            key3DNodeType: 14,
-                            key3DTreeParamName: elementLib.mapTypeToString(map.type)
+                            key3DNodeType: elementLib.elementKinds.MAP,
+                            key3DTreeParamName: elementLib.mapTypeToString(map.type),
+                            id: map.id
 
                         };
                         sceneTree.splice(i+numChildren, 0, model);
@@ -221,6 +234,17 @@ define(function (require, exports, module) {
             }
         }
         return sceneTree;
+    };
+
+    var _extractMaps = function(materials) {
+        var maps = materials.reduce(function (maps, material) {
+            material.get("maps").forEach(function(map) {
+                maps.set(map.id, map);
+            });
+            return maps;
+        }, new Map());
+        maps = Immutable.Map(maps);
+        return maps;
     };
 
     /**
@@ -234,26 +258,20 @@ define(function (require, exports, module) {
         var sceneNodes = new Map();
         var index = new Immutable.List();
         var materials = new Map();
+        var maps = new Map();
         if(layer3D) {
             var scene = layer3D.key3DScene;
             var sceneTree = scene.key3DSceneTree[0].key3DTreeClassList;
             materials = _extractMaterials(scene.$mtll);
+            maps = _extractMaps(materials);
             sceneTree = _insertTextures(sceneTree, materials);
             sceneTree = _insertGroupEnds(sceneTree);
-            /*sceneTree.push({
-                key3DChildCount: 0,
-                key3DExpansion: false,
-                key3DIsParent: false,
-                key3DNodeSubType: 0,
-                key3DNodeType: 13,
-                key3DTreeParamName: "</Element group>"
-
-            });*/
             sceneTree = Immutable.List(sceneTree);
             var indexes = [];
             var idx = 0;
             sceneNodes = sceneTree.reduce(function (elements, element) {
-                elements.set(idx, Element.fromRawElement(element, layerDescriptor.layerID, idx));
+                var id = _extractID(element, scene.$KeFL, scene.$mshl, maps);
+                elements.set(idx, Element.fromRawElement(element, layerDescriptor.layerID, idx, id));
                 indexes.push(idx);
                 idx++;
                 return elements;
@@ -264,7 +282,8 @@ define(function (require, exports, module) {
         return new ElementStructure({
             elements: sceneNodes,
             index: index,
-            materials: materials
+            materials: materials,
+            maps: maps
         });
     };
 

@@ -60,6 +60,8 @@ define(function (require, exports, module) {
             this.props.isDropTarget !== nextProps.isDropTarget) {
             return true;
         }
+        /*log.debug("this.props.element.face: " + this.props.element.face);
+        log.debug("nextProps.element.face: " + nextProps.element.face);*/
         // Face change
         if (!Immutable.is(this.props.element.face, nextProps.element.face)) {
             return true;
@@ -276,6 +278,16 @@ define(function (require, exports, module) {
                 dragStyle = {};
             }
 
+            /*log.debug("element: " + element.name);
+            log.debug("elementIndex: " + elementIndex);
+            log.debug("isSelected: " + isSelected);
+            log.debug("isChildOfSelected: " + isChildOfSelected);
+            log.debug("isStrictDescendantOfSelected: " + isStrictDescendantOfSelected);
+            log.debug("isGroupStart: " + isGroupStart);
+            log.debug("depth: " + depth);
+            log.debug("endOfGroupStructure: " + endOfGroupStructure);
+            log.debug("isLastInGroup: " + isLastInGroup);
+            log.debug("endOfGroupStructure: " + endOfGroupStructure);*/
             var layerClasses = {
                 "layer": true,
                 "layer__group_start": isGroupStart,

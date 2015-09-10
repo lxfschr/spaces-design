@@ -38,6 +38,7 @@ define(function (require, exports, module) {
         SVGIcon = require("jsx!js/jsx/shared/SVGIcon"),
         Material = require("jsx!./material/Material"),
         strings = require("i18n!nls/strings"),
+        elementLib = require("adapter/lib/element"),
         synchronization = require("js/util/synchronization");
     var log = require("js/util/log");
 
@@ -176,7 +177,7 @@ define(function (require, exports, module) {
                 selectedSceneNodes = selectedLayer.sceneTree.selected;
                 if(selectedSceneNodes.size > 0) {
                     var selectedSceneNodesKind = selectedSceneNodes.first().kind;
-                    if(selectedSceneNodesKind == selectedSceneNodes.first().elementKinds.MATERIAL) {
+                    if(selectedSceneNodesKind == elementLib.elementKinds.MATERIAL) {
                         sceneNodeKindName = "material";
                         var names = selectedSceneNodes.map(function(node) {return node.name});
                         selectedElements = selectedLayer.sceneTree.materials.filter(function(e) {
