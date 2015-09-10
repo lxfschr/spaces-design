@@ -716,8 +716,8 @@ define(function (require, exports) {
             revealPromise;
             
         if (!modifier || modifier === "select") {
-            payload.selectedIDs = collection.pluck(sceneNodeSpec, "id");
-            dispatchPromise = this.dispatchAsync(events.document.SELECT_SCENE_NODES_BY_ID, payload);
+            payload.selectedIndicies = collection.pluck(sceneNodeSpec, "index");
+            dispatchPromise = this.dispatchAsync(events.document.SELECT_SCENE_NODES_BY_INDEX, payload);
             revealPromise = this.transfer(revealSceneNodes, document, layer, sceneNodeSpec);
         } else {
             dispatchPromise = Promise.resolve();

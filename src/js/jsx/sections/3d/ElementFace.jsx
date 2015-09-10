@@ -342,7 +342,7 @@ define(function (require, exports, module) {
                     <div
                         style={dragStyle}
                         className={classnames(faceClasses)}
-                        data-layer-id={element.id}
+                        data-layer-id={element.index}
                         data-kind={element.kind}
                         onMouseDown={!this.props.disabled && this.props.handleDragStart}
                         onClick={!this.props.disabled && this._handleSceneNodeClick}>

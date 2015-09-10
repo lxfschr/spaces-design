@@ -85,7 +85,7 @@ define(function (require, exports, module) {
 
             while (index >= 0) {
                 element = elements.get(index--);
-                nodeID = element.id;
+                nodeID = element.index;
                 elementKind = element.kind;
                 if (elementKind === elementLib.elementKinds.GROUP || element.isParent) {
                     previousSize = nodes.size;

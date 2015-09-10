@@ -44,10 +44,10 @@ define(function (require, exports, module) {
         layerID: null,
 
         /**
-         * Id of element
+         * Index of element
          * @type {number}
          */
-        id: null,
+        index: null,
 
         /**
          * A unique key for the element.
@@ -113,7 +113,7 @@ define(function (require, exports, module) {
         face: function () {
             var self = this;
             return new Immutable.Map({
-                id: self.id,
+                index: self.index,
                 name: self.name,
                 kind: self.kind,
                 subType: self.subType,
@@ -148,11 +148,11 @@ define(function (require, exports, module) {
      * Create a new Element object from the given layer descriptor.
      *
      * @param {object} rawElement Photoshop 3D element
-     * @param {number} layerID Photoshop layer id
+     * @param {number} layerID Photoshop layer index
      * @return {Element}
      */
-    Element.fromRawElement = function (rawElement, layerID, id) {
-        var model = this.parseRawElement(rawElement, layerID, id);
+    Element.fromRawElement = function (rawElement, layerID, index) {
+        var model = this.parseRawElement(rawElement, layerID, index);
         return new Element(model);
     };
 
@@ -160,14 +160,14 @@ define(function (require, exports, module) {
      * Parses given raw element to construct a usable object
      *
      * @param {object} rawElement
-     * @param {number} layerID Photoshop layer id
+     * @param {number} layerID Photoshop layer index
      * @return {{top: number, left: number, bottom: number, right: number}}
      */
-    Element.parseRawElement = function (rawElement, layerID, id) {
+    Element.parseRawElement = function (rawElement, layerID, index) {
         var model = {
             layerID: layerID,
-            id: id,
-            key: layerID + "." + id,
+            index: index,
+            key: layerID + "." + index,
             name: rawElement.key3DTreeParamName,
             kind: rawElement.key3DNodeType,
             isParent: rawElement.key3DIsParent,

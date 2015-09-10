@@ -372,11 +372,8 @@ define(function (require, exports, module) {
          * @type {Immutable.Map.<number, number>}
          */
         "reverseIndex": function () {
-            var reverseIndex = this.index.reduce(function (reverseIndex, elementID, i) {
-                return reverseIndex.set(elementID, i + 1);
-            }, new Map());
-
-            return Immutable.Map(reverseIndex);
+            var reverseIndex = this.index.reverse();
+            return reverseIndex;
         },
 
         /**
@@ -653,7 +650,7 @@ define(function (require, exports, module) {
      * @return {?number}
      */
     ElementStructure.prototype.indexOf = function (layer) {
-        return this.reverseIndex.get(layer.id, null);
+        return layer.index;
     };
 
     /**
@@ -663,7 +660,7 @@ define(function (require, exports, module) {
      * @return {?Layer}
      */
     ElementStructure.prototype.parent = function (layer) {
-        var node = this.nodes.get(layer.id, null);
+        var node = this.nodes.get(layer.index, null);
 
         if (!node || node.parent === null) {
             return null;
@@ -679,7 +676,7 @@ define(function (require, exports, module) {
      * @return {?number}
      */
     ElementStructure.prototype.depth = function (sceneNode) {
-        var node = this.nodes.get(sceneNode.id, null);
+        var node = this.nodes.get(sceneNode.index, null);
         if (!node) {
             return null;
         } else {
@@ -704,11 +701,11 @@ define(function (require, exports, module) {
      * @return {?Immutable.List.<Layer>}
      */
     Object.defineProperty(ElementStructure.prototype, "children", objUtil.cachedLookupSpec(function (layer) {
-        var node = this.nodes.get(layer.id, null);
+        var node = this.nodes.get(layer.index, null);
 
         if (node && node.children) {
             return node.children.map(function (child) {
-                return this.byID(child.id);
+                return this.byID(child.index);
             }, this);
         } else {
             return Immutable.List();
@@ -990,7 +987,7 @@ define(function (require, exports, module) {
             if (i === 0 && replace) {
                 // Replace the single selected layer (derived above)
                 var replaceIndex = this.indexOf(replaceLayer) - 1; // FFS
-                nextLayers = nextLayers.delete(replaceLayer.id);
+                nextLayers = nextLayers.delete(replaceLayer.index);
 
                 if (layerIndex === replaceIndex) {
                     nextIndex = nextIndex.splice(layerIndex, 1, layerID);
@@ -1060,11 +1057,11 @@ define(function (require, exports, module) {
                     nextLayer = Element.fromDescriptor(document, descriptor, previousLayer.selected);
 
                 // update layers map
-                layers.delete(previousLayer.id);
-                layers.set(nextLayer.id, nextLayer);
+                layers.delete(previousLayer.index);
+                layers.set(nextLayer.index, nextLayer);
 
                 // replace the layer ID in the index
-                nextIndex = nextIndex.set(i - 1, nextLayer.id);
+                nextIndex = nextIndex.set(i - 1, nextLayer.index);
             }, this);
         }.bind(this));
 
@@ -1194,9 +1191,9 @@ define(function (require, exports, module) {
      */
     ElementStructure.prototype.resizeLayers = function (layerSizes) {
         var allBounds = Immutable.Map(layerSizes.reduce(function (allBounds, layerData) {
-            var layer = this.byID(layerData.layer.id);
+            var layer = this.byID(layerData.layer.index);
             if (layer.bounds) {
-                allBounds.set(layer.id,
+                allBounds.set(layer.index,
                     layer.bounds.updateSizeAndPosition(layerData.x, layerData.y, layerData.w, layerData.h)
                 );
             }
@@ -1234,9 +1231,9 @@ define(function (require, exports, module) {
      */
     ElementStructure.prototype.repositionLayers = function (layerPositions) {
         var allBounds = Immutable.Map(layerPositions.reduce(function (allBounds, layerData) {
-            var layer = this.byID(layerData.layer.id);
+            var layer = this.byID(layerData.layer.index);
             if (layer.bounds) {
-                allBounds.set(layer.id, layer.bounds.updatePosition(layerData.x, layerData.y));
+                allBounds.set(layer.index, layer.bounds.updatePosition(layerData.x, layerData.y));
             }
 
             return allBounds;
@@ -1299,15 +1296,14 @@ define(function (require, exports, module) {
      * Update the selection property to be select iff the layer ID is contained
      * in the given set.
      *
-     * @param {Immutable.Set.<string>} selectedIDs
+     * @param {Immutable.Set.<string>} selectedIndicies
      * @return {ElementStructure}
      */
-    ElementStructure.prototype.updateSelection = function (selectedIDs) {
+    ElementStructure.prototype.updateSelection = function (selectedIndicies) {
         var updatedSceneNodes = this.elements.map(function (element) {
-            var selected = selectedIDs.has(element.id);
+            var selected = selectedIndicies.has(element.index);
             return element.set("selected", selected);
         });
-
         return this.set("elements", updatedSceneNodes);
     };
 
@@ -1584,7 +1580,7 @@ define(function (require, exports, module) {
         var nextLayers = this.layers.map(function (layer) {
             var layerEffects = layer.getLayerEffectsByType(layerEffectType);
             var nextLayer = layer;
-            var isSelectedLayer = layerIDs.indexOf(layer.id) !== -1;
+            var isSelectedLayer = layerIDs.indexOf(layer.index) !== -1;
 
             if (isSelectedLayer && layerEffects) {
                 var nextLayerEffects = layerEffects.filter(function (layerEffect, layerEffectIndex) {
@@ -1613,7 +1609,7 @@ define(function (require, exports, module) {
         var nextLayers = this.layers.map(function (layer) {
             var layerEffects = layer.getLayerEffectsByType(layerEffectType);
             var nextLayer = layer;
-            var isSelectedLayer = layerIDs.indexOf(layer.id) !== -1;
+            var isSelectedLayer = layerIDs.indexOf(layer.index) !== -1;
 
             if (isSelectedLayer && layerEffects) {
                 var nextLayerEffects = Immutable.List();

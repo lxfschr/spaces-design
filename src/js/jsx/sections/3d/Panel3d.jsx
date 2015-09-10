@@ -543,12 +543,12 @@ define(function (require, exports, module) {
                     .filter(function (element) {
                         // Do not render descendants of collapsed layers unless
                         // they have been mounted previously
-                        if (this._mountedLayerIDs.has(element.id)) {
+                        if (this._mountedLayerIDs.has(element.index)) {
                             return true;
                         } else if (selectedLayer.sceneTree.hasCollapsedAncestor(element)) {
                             return false;
                         } else {
-                            this._mountedLayerIDs.add(element.id);
+                            this._mountedLayerIDs.add(element.index);
                             return true;
                         }
                     }, this)
@@ -585,7 +585,7 @@ define(function (require, exports, module) {
                         <DummyElementFace
                             key="dummy"
                             document={doc}
-                            zone={doc.id}
+                            zone={doc.index}
                             isValid={this._validDropTarget}
                             keyObject={{ key: "dummy" }}
                             onDrop={this._handleDrop}

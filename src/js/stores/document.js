@@ -577,11 +577,11 @@ define(function (require, exports, module) {
          * @private
          * @param {Document} document
          * @param {number} layerID
-         * @param {Immutable.Set<string>} selectedIDs
+         * @param {Immutable.Set<string>} selectedIndicies
          */
-        _updateSceneNodeSelection: function (document, layerID, selectedIDs) {
+        _updateSceneNodeSelection: function (document, layerID, selectedIndicies) {
             var selectedLayer = document.layers.byID(layerID);
-            var nextSceneNodes = selectedLayer.sceneTree.updateSelection(selectedIDs),
+            var nextSceneNodes = selectedLayer.sceneTree.updateSelection(selectedIndicies),
                 nextLayers = document.layers.setProperties(Immutable.List([selectedLayer.id]), {sceneTree: nextSceneNodes}),
                 nextDocument = document.set("layers", nextLayers);
             this.setDocument(nextDocument, true);
@@ -594,27 +594,12 @@ define(function (require, exports, module) {
          * @param {Document} document
          * @param {Immutable.Set<number>} selectedIndices
          */
-        _updateLayerSelectionByIndices: function (document, selectedIndices) {
-            var selectedIDs = selectedIndices.map(function (index) {
-                    return document.layers.byIndex(index + 1).id;
-                });
-
-            this._updateLayerSelection(document, selectedIDs);
-        },
-
-        /**
-         * Helper function to change layer selection given a Set of selected indexes.
-         *
-         * @private
-         * @param {Document} document
-         * @param {Immutable.Set<number>} selectedIndices
-         */
         _updateSceneNodeSelectionByIndices: function (document, layerID, selectedIndices) {
-            var selectedIDs = selectedIndices.map(function (index) {
-                return document.layers.byID(layerID).sceneTree.byIndex(index + 1).id;
+            var selectedIndicies = selectedIndices.map(function (index) {
+                return index;
             });
 
-            this._updateSceneNodeSelection(document, layerID, selectedIDs);
+            this._updateSceneNodeSelection(document, layerID, selectedIndicies);
         },
 
         /**
@@ -652,9 +637,10 @@ define(function (require, exports, module) {
          */
         _handleLayerSelectByIndex: function (payload) {
             var document = this._openDocuments[payload.documentID],
+                layerID = payload.layerID,
                 selectedIndices = Immutable.Set(payload.selectedIndices);
 
-            this._updateLayerSelectionByIndices(document, selectedIndices);
+            this._updateSceneNodeSelection(document, layerID, selectedIndices);
         },
 
         /**
@@ -666,9 +652,9 @@ define(function (require, exports, module) {
         _handleSceneNodeSelectByIndex: function (payload) {
             var document = this._openDocuments[payload.documentID],
                 layerID = payload.layerID,
-                selectedIndices = Immutable.Set(payload.selectedIndices);
+                selectedIndicies = Immutable.Set(payload.selectedIndicies);
 
-            this._updateSceneNodeSelectionByIndices(document, layerID, selectedIndices);
+            this._updateSceneNodeSelectionByIndices(document, layerID, selectedIndicies);
         },
 
         /**
