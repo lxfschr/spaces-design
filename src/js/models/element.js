@@ -50,6 +50,12 @@ define(function (require, exports, module) {
         index: null,
 
         /**
+         * ID of element
+         * @type {number}
+         */
+        id: null,
+
+        /**
          * A unique key for the element.
          * @param {string}
          */
@@ -114,6 +120,7 @@ define(function (require, exports, module) {
             var self = this;
             return new Immutable.Map({
                 index: self.index,
+                id: self.id,
                 name: self.name,
                 kind: self.kind,
                 subType: self.subType,
@@ -151,8 +158,8 @@ define(function (require, exports, module) {
      * @param {number} layerID Photoshop layer index
      * @return {Element}
      */
-    Element.fromRawElement = function (rawElement, layerID, index) {
-        var model = this.parseRawElement(rawElement, layerID, index);
+    Element.fromRawElement = function (rawElement, layerID, index, id) {
+        var model = this.parseRawElement(rawElement, layerID, index, id);
         return new Element(model);
     };
 
@@ -163,8 +170,9 @@ define(function (require, exports, module) {
      * @param {number} layerID Photoshop layer index
      * @return {{top: number, left: number, bottom: number, right: number}}
      */
-    Element.parseRawElement = function (rawElement, layerID, index) {
+    Element.parseRawElement = function (rawElement, layerID, index, id) {
         var model = {
+            id: id,
             layerID: layerID,
             index: index,
             key: layerID + "." + index,

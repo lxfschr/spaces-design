@@ -168,10 +168,13 @@ define(function (require, exports, module) {
                 });
 
             var selectedLayers = this.props.document.layers.selectedWith3D;
-            var selectedLayer;
-            var sceneNodeKindName;
+            var selectedLayer,
+                sceneNodeKindName,
+                names;
+
             var selectedSceneNodes = new Immutable.List();
-            var selectedElements = new Immutable.Map();
+            var materials = new Immutable.Map(),
+                maps = new Immutable.Map();
             if(selectedLayers.size == 1) {
                 selectedLayer = selectedLayers.first();
                 selectedSceneNodes = selectedLayer.sceneTree.selected;
@@ -179,9 +182,14 @@ define(function (require, exports, module) {
                     var selectedSceneNodesKind = selectedSceneNodes.first().kind;
                     if(selectedSceneNodesKind == elementLib.elementKinds.MATERIAL) {
                         sceneNodeKindName = "material";
-                        var names = selectedSceneNodes.map(function(node) {return node.name});
-                        selectedElements = selectedLayer.sceneTree.materials.filter(function(e) {
+                        names = selectedSceneNodes.map(function(node) {return node.name});
+                        materials = selectedLayer.sceneTree.materials.filter(function(e) {
                             return names.contains(e.get("name"))});
+                    } else if(selectedSceneNodesKind == elementLib.elementKinds.MAP) {
+                        sceneNodeKindName = "map";
+                        maps = selectedSceneNodes.map(function(node) {
+                            return selectedLayer.sceneTree.maps.get(node.id);
+                        });
                     }
                 }
             }
@@ -189,7 +197,7 @@ define(function (require, exports, module) {
             var containerContents = this.props.document && this.props.visible && !this.props.disabled && (
                 <div>
                     <Material {...this.props} layer={selectedLayer}
-                        onFocus={this._handleFocus} materials={selectedElements}/>
+                        onFocus={this._handleFocus} materials={materials}/>
                 </div>
             );
 

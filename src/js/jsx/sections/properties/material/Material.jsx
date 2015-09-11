@@ -81,6 +81,7 @@ define(function (require, exports, module) {
         render: function () {
             var materials = this.state.materials;
 
+
             var containerContents = this.props.document && this.props.visible && !this.props.disabled && (
                     <div>
                         <ColorProperty {...this.props} title={strings.PROPERTIES.DIFFUSE} onFocus={this._handleFocus}/>
