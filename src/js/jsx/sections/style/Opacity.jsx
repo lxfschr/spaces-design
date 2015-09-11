@@ -31,6 +31,7 @@ define(function (require, exports, module) {
 
     var NumberInput = require("jsx!js/jsx/shared/NumberInput"),
         collection = require("js/util/collection");
+    var log = require("js/util/log");
 
     var Opacity = React.createClass({
         mixins: [FluxMixin],
@@ -55,7 +56,7 @@ define(function (require, exports, module) {
         },
 
         render: function () {
-            var opacities = collection.pluck(this.props.layers, "opacity");
+            var opacities = collection.pluck(this.props.layers, "opacity").toList();
             return (
                 <NumberInput
                     value={opacities}

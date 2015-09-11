@@ -79,7 +79,7 @@ define(function (require, exports, module) {
          *
          * @private
          * @param {Color} color new fill color
-         * @param {boolean} coalesce         
+         * @param {boolean} coalesce
          */
         _opaqueColorChanged: function (color, coalesce) {
             this.getFlux().actions.shapes
@@ -96,7 +96,7 @@ define(function (require, exports, module) {
          *
          * @private
          * @param {Color} color new fill color, from which only the alpha is extracted
-         * @param {boolean} coalesce         
+         * @param {boolean} coalesce
          */
         _alphaChanged: function (color, coalesce) {
             this.getFlux().actions.shapes
@@ -116,7 +116,7 @@ define(function (require, exports, module) {
                     width: "100%",
                     backgroundColor: colorTiny ? colorTiny.toRgbString() : "transparent"
                 };
-                
+
                 return (
                     <div
                         className="fill__preview"
@@ -124,8 +124,13 @@ define(function (require, exports, module) {
                 );
             };
 
-            var colorInputID = "fill-" + this.props.document.id,
-                fill = this.props.fill;
+            var colorInputID;
+            if(this.props.title) {
+                colorInputID = this.props.title + "-" + this.props.document.id;
+            } else {
+                colorInputID = "fill-" + this.props.document.id;
+            }
+            var fill = this.props.fill;
 
             return (
                 <ColorInput
@@ -143,9 +148,9 @@ define(function (require, exports, module) {
             );
         }
     });
-    
+
     /**
-     * FillVisibility Component displays visibility information of a single fill for a given layer or 
+     * FillVisibility Component displays visibility information of a single fill for a given layer or
      * set of layers.
      */
     var FillVisibility = React.createClass({
