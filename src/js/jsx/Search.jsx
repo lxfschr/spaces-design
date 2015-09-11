@@ -21,7 +21,6 @@
  * 
  */
 
-
 define(function (require, exports, module) {
     "use strict";
 
@@ -36,7 +35,8 @@ define(function (require, exports, module) {
     /**
      * Unique identifier for the Search Dialog
      *
-     * @const {string}
+     * @const
+     * @type {string}
      */
     var SEARCH_BAR_DIALOG_ID = "search-bar-dialog";
 
@@ -54,9 +54,10 @@ define(function (require, exports, module) {
          * TODO Note that in React v13 this could be injected by the Dialog directly into the children components
          *
          * @private
+         * @return {Promise}
          */
         _closeSearchBar: function () {
-            this.getFlux().actions.dialog.closeDialog(SEARCH_BAR_DIALOG_ID);
+            return this.getFlux().actions.dialog.closeDialog(SEARCH_BAR_DIALOG_ID);
         },
 
         /**
@@ -67,9 +68,12 @@ define(function (require, exports, module) {
          * @param {string} itemID ID of selected option
          */
         _handleOption: function (itemID) {
-            this._closeSearchBar();
-            var searchStore = this.getFlux().store("search");
-            searchStore.handleExecute(itemID);
+            this._closeSearchBar()
+                .bind(this)
+                .then(function () {
+                    var searchStore = this.getFlux().store("search");
+                    searchStore.handleExecute(itemID);
+                });
         },
 
         render: function () {

@@ -42,28 +42,33 @@ define(function (require, exports) {
         strings = require("i18n!nls/strings");
 
     /**
+     * Merges shape specific options into given options
      * play/batchPlay options that allow the canvas to be continually updated, 
      * and history state to be consolidated 
      *
      * @private
-     * @param {object} documentRef  a reference to the document 
+     * @param {object} options
+     * @param {Document} document Owner document
      * @param {string} name localized name to put into the history state
-     * @param {boolean=} coalesce Whether to coalesce this operations history state
      * @return {object} options
      */
-    var _options = function (documentRef, name, coalesce) {
-        return {
+    var _mergeOptions = function (options, document, name) {
+        options = options || {
+            coalesce: false
+        };
+
+        return _.merge(options, {
             paintOptions: {
                 immediateUpdate: true,
                 quality: "draft"
             },
             historyStateInfo: {
                 name: name,
-                target: documentRef,
-                coalesce: !!coalesce,
-                suppressHistoryStateNotification: !!coalesce
+                target: documentLib.referenceBy.id(document.id),
+                coalesce: !!options.coalesce,
+                suppressHistoryStateNotification: !!options.coalesce
             }
-        };
+        });
     };
 
     /**
@@ -75,7 +80,7 @@ define(function (require, exports) {
      * @param {object} strokeProperties a pseudo stroke object containing only new props
      * @param {string} eventName name of the event to emit afterwards
      * @param {boolean=} coalesce optionally include this in the payload to drive history coalescing
-     * @return Promise
+     * @return {Promise}
      */
     var _strokeChangeDispatch = function (document, layers, strokeProperties, eventName, coalesce) {
         var payload = {
@@ -97,7 +102,7 @@ define(function (require, exports) {
      * @param {object} fillProperties a pseudo fill object containing only new props
      * @param {string} eventName name of the event to emit afterwards
      * @param {boolean=} coalesce optionally include this in the payload to drive history coalescing
-     * @return Promise
+     * @return {Promise}
      */
     var _fillChangeDispatch = function (document, layers, fillProperties, eventName, coalesce) {
         // TODO layers param needs to be made fa real
@@ -160,27 +165,27 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {Stroke} stroke Stroke properties to apply
-     * @param {boolean=} enabled
+     * @param {object} options
+     * @param {boolean=} options.enabled Default true
      * @return {Promise}
      */
-    var setStroke = function (document, layers, stroke, enabled) {
+    var setStroke = function (document, layers, stroke, options) {
         // if enabled is not provided, assume it is true
         // derive the type of event to be dispatched based on this parameter's existence
-        var eventName,
-            enabledChanging;
-        if (enabled === undefined || enabled === null) {
-            enabled = true;
+        var eventName;
+
+        if (options.enabled === undefined || options.enabled === null) {
+            options.enabled = true;
             eventName = events.document.history.optimistic.STROKE_CHANGED;
         } else {
             eventName = events.document.STROKE_ENABLED_CHANGED;
-            enabledChanging = true;
         }
 
         var layerRef = contentLayerLib.referenceBy.current,
             strokeObj = contentLayerLib.setStroke(layerRef, stroke),
-            strokeJSObj = stroke.toJS(),
-            documentRef = documentLib.referenceBy.id(document.id),
-            options = _options(documentRef, strings.ACTIONS.SET_STROKE);
+            strokeJSObj = stroke.toJS();
+
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_STROKE);
 
         if (_allStrokesExist(layers)) {
             // toJS gets rid of color so we re-insert it here
@@ -221,13 +226,14 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {Color} color color of the strokes, since photoshop does not provide a way to simply enable a stroke
-     * @param {boolean=} enabled
+     * @param {object} options
+     * @param {boolean=} options.enabled
      * @return {Promise}
      */
-    var setStrokeEnabled = function (document, layers, color, enabled) {
+    var setStrokeEnabled = function (document, layers, color, options) {
         // TODO is it reasonable to not require a color, but instead to derive it here based on the selected layers?
         // the only problem with that is having to define a default color here if none can be derived
-        return setStrokeColor.call(this, document, layers, color, false, enabled);
+        return setStrokeColor.call(this, document, layers, color, options);
     };
     setStrokeEnabled.reads = [];
     setStrokeEnabled.writes = [locks.PS_DOC, locks.JS_DOC];
@@ -242,13 +248,15 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {Color} color
-     * @param {boolean=} coalesce Whether to coalesce this operation's history state
-     * @param {boolean=} enabled optional enabled flag, default=true. If supplied, causes a resetBounds afterwards
-     * @param {boolean=} ignoreAlpha Whether to ignore the alpha value of the
+     * @param {object} options
+     * @param {boolean=} options.enabled optional enabled flag, default=true.
+     *                                  If supplied, causes a resetBounds afterwards
+     * @param {boolean=} options.coalesce Whether to coalesce this operation's history state
+     * @param {boolean=} options.ignoreAlpha Whether to ignore the alpha value of the
      *  supplied color and only update the opaque color.
      * @return {Promise}
      */
-    var setStrokeColor = function (document, layers, color, coalesce, enabled, ignoreAlpha) {
+    var setStrokeColor = function (document, layers, color, options) {
         // if a color is provided, adjust the alpha to one that can be represented as a fraction of 255
         color = color ? color.normalizeAlpha() : null;
 
@@ -256,8 +264,8 @@ define(function (require, exports) {
         // derive the type of event to be dispatched based on this parameter's existence
         var eventName,
             enabledChanging;
-        if (enabled === undefined || enabled === null) {
-            enabled = true;
+        if (options.enabled === undefined || options.enabled === null) {
+            options.enabled = true;
             eventName = events.document.history.optimistic.STROKE_COLOR_CHANGED;
         } else {
             eventName = events.document.STROKE_ENABLED_CHANGED;
@@ -266,23 +274,23 @@ define(function (require, exports) {
 
         // remove the alpha component based on ignoreAlpha param
         var psColor = color.toJS();
-        if (ignoreAlpha) {
+        if (options.ignoreAlpha) {
             delete psColor.a;
         }
 
         var layerRef = contentLayerLib.referenceBy.current,
-            strokeObj = contentLayerLib.setStrokeFillTypeSolidColor(layerRef, enabled ? psColor : null),
-            documentRef = documentLib.referenceBy.id(document.id),
-            options = _options(documentRef, strings.ACTIONS.SET_STROKE_COLOR, coalesce);
+            strokeObj = contentLayerLib.setStrokeFillTypeSolidColor(layerRef, options.enabled ? psColor : null);
+
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_STROKE_COLOR);
 
         if (_allStrokesExist(layers)) {
             // optimistically dispatch the change event    
             var dispatchPromise = _strokeChangeDispatch.call(this,
                 document,
                 layers,
-                { enabled: enabled, color: color, ignoreAlpha: ignoreAlpha },
+                { enabled: options.enabled, color: color, ignoreAlpha: options.ignoreAlpha },
                 eventName,
-                coalesce);
+                options.coalesce);
 
             var colorPromise = layerActionsUtil.playSimpleLayerActions(document, layers, strokeObj, true, options);
 
@@ -312,13 +320,14 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {string} alignmentType type as inside,outside, or center
+     * @param {object} options
      * @return {Promise}
      */
-    var setStrokeAlignment = function (document, layers, alignmentType) {
+    var setStrokeAlignment = function (document, layers, alignmentType, options) {
         var layerRef = contentLayerLib.referenceBy.current,
-            strokeObj = contentLayerLib.setStrokeAlignment(layerRef, alignmentType),
-            documentRef = documentLib.referenceBy.id(document.id),
-            options = _options(documentRef, strings.ACTIONS.SET_STROKE_ALIGNMENT);
+            strokeObj = contentLayerLib.setStrokeAlignment(layerRef, alignmentType);
+
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_STROKE_ALIGNMENT);
 
         if (_allStrokesExist(layers)) {
             // optimistically dispatch the change event    
@@ -353,14 +362,15 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {number} opacity opacity as a percentage [0,100]
-     * @param {boolean=} coalesce Whether to coalesce this operation's history state
+     * @param {object} options
+     * @param {boolean=} options.coalesce Whether to coalesce this operation's history state
      * @return {Promise}
      */
-    var setStrokeOpacity = function (document, layers, opacity, coalesce) {
+    var setStrokeOpacity = function (document, layers, opacity, options) {
         var layerRef = contentLayerLib.referenceBy.current,
-            strokeObj = contentLayerLib.setStrokeOpacity(layerRef, opacity),
-            documentRef = documentLib.referenceBy.id(document.id),
-            options = _options(documentRef, strings.ACTIONS.SET_STROKE_OPACITY, coalesce);
+            strokeObj = contentLayerLib.setStrokeOpacity(layerRef, opacity);
+
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_STROKE_OPACITY);
 
         if (_allStrokesExist(layers)) {
             // optimistically dispatch the change event    
@@ -369,7 +379,7 @@ define(function (require, exports) {
                 layers,
                 { opacity: opacity, enabled: true },
                 events.document.history.optimistic.STROKE_OPACITY_CHANGED,
-                coalesce);
+                options.coalesce);
 
             var opacityPromise = layerActionsUtil.playSimpleLayerActions(document, layers, strokeObj, true, options);
 
@@ -394,13 +404,14 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {number} width stroke width, in pixels
+     * @param {object} options
      * @return {Promise}
      */
-    var setStrokeWidth = function (document, layers, width) {
+    var setStrokeWidth = function (document, layers, width, options) {
         var layerRef = contentLayerLib.referenceBy.current,
-            strokeObj = contentLayerLib.setShapeStrokeWidth(layerRef, width),
-            documentRef = documentLib.referenceBy.id(document.id),
-            options = _options(documentRef, strings.ACTIONS.SET_STROKE_WIDTH);
+            strokeObj = contentLayerLib.setShapeStrokeWidth(layerRef, width);
+
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_STROKE_WIDTH);
 
         if (_allStrokesExist(layers)) {
             // dispatch the change event    
@@ -436,11 +447,17 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {Color} color
-     * @param {boolean=} enabled
+     * @param {object} options
+     * @param {boolean=} options.enabled
      * @return {Promise}
      */
-    var setFillEnabled = function (document, layers, color, enabled) {
-        return setFillColor.call(this, document, layers, color, false, enabled);
+    var setFillEnabled = function (document, layers, color, options) {
+        options = _.merge(options, {
+            coalesce: false,
+            ignoreAlpha: false
+        });
+
+        return setFillColor.call(this, document, layers, color, options);
     };
     setFillEnabled.reads = [locks.PS_DOC, locks.JS_DOC];
     setFillEnabled.writes = [locks.PS_DOC, locks.JS_DOC];
@@ -451,36 +468,37 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {Color} color
-     * @param {boolean=} coalesce Whether to coalesce this operation's history state
-     * @param {boolean=} enabled optional enabled flag, default=true
-     * @param {boolean=} ignoreAlpha Whether to ignore the alpha value of the
+     * @param {object} options
+     * @param {boolean=} options.coalesce Whether to coalesce this operation's history state
+     * @param {boolean=} options.enabled optional enabled flag, default=true
+     * @param {boolean=} options.ignoreAlpha Whether to ignore the alpha value of the
      *  supplied color and only update the opaque color.
      * @return {Promise}
      */
-    var setFillColor = function (document, layers, color, coalesce, enabled, ignoreAlpha) {
+    var setFillColor = function (document, layers, color, options) {
         // if a color is provided, adjust the alpha to one that can be represented as a fraction of 255
         color = color ? color.normalizeAlpha() : null;
         // if enabled is not provided, assume it is true
-        enabled = (enabled === undefined) ? true : enabled;
+        options.enabled = (options.enabled === undefined) ? true : options.enabled;
 
         // dispatch the change event    
         var dispatchPromise = _fillChangeDispatch.call(this,
             document,
             layers,
-            { color: color, enabled: enabled, ignoreAlpha: ignoreAlpha },
+            { color: color, enabled: options.enabled, ignoreAlpha: options.ignoreAlpha },
             events.document.history.optimistic.FILL_COLOR_CHANGED,
-            coalesce);
+            options.coalesce);
 
         // build the playObject
         var contentLayerRef = contentLayerLib.referenceBy.current,
             layerRef = layerLib.referenceBy.current,
-            fillColorObj = contentLayerLib.setShapeFillTypeSolidColor(contentLayerRef, enabled ? color : null),
-            documentRef = documentLib.referenceBy.id(document.id),
-            options = _options(documentRef, strings.ACTIONS.SET_FILL_COLOR, coalesce);
+            fillColorObj = contentLayerLib.setShapeFillTypeSolidColor(contentLayerRef, options.enabled ? color : null);
+            
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_FILL_COLOR);
 
         // submit to Ps
         var colorPromise;
-        if (enabled && !ignoreAlpha) {
+        if (options.enabled && !options.ignoreAlpha) {
             var fillOpacityObj = layerLib.setFillOpacity(layerRef, color.opacity);
             colorPromise = layerActionsUtil.playSimpleLayerActions(document, layers, [fillColorObj, fillOpacityObj],
                 true, options);
@@ -500,23 +518,21 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers
      * @param {number} opacity Opacity percentage [0,100]
-     * @param {boolean=} coalesce Whether to coalesce this operation's history state
+     * @param {object} options
+     * @param {boolean=} options.coalesce Whether to coalesce this operation's history state
      * @return {Promise}
      */
-    var setFillOpacity = function (document, layers, opacity, coalesce) {
-        // dispatch the change event
+    var setFillOpacity = function (document, layers, opacity, options) {
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_FILL_OPACITY);
+            
         var dispatchPromise = _fillChangeDispatch.call(this,
-            document,
-            layers,
-            { opacity: opacity, enabled: true },
-            events.document.history.optimistic.FILL_OPACITY_CHANGED,
-            coalesce);
-        
-        // build the playObject
-        var layerRef = layerLib.referenceBy.current,
+                document,
+                layers,
+                { opacity: opacity, enabled: true },
+                events.document.history.optimistic.FILL_OPACITY_CHANGED,
+                !!options.coalesce),
+            layerRef = layerLib.referenceBy.current,
             fillObj = layerLib.setFillOpacity(layerRef, opacity),
-            documentRef = documentLib.referenceBy.id(document.id),
-            options = _options(documentRef, strings.ACTIONS.SET_FILL_OPACITY, coalesce),
             opacityPromise = layerActionsUtil.playSimpleLayerActions(document, layers, fillObj, true, options);
 
         return Promise.join(dispatchPromise, opacityPromise);
@@ -587,12 +603,17 @@ define(function (require, exports) {
     /**
      * Combine paths using UNION operation
      *
-     * @param {Document} document 
-     * @param {Immutable.List.<Layer>} layers 
+     * @param {?Document=} document Default is current document
+     * @param {?Immutable.List.<Layer>} layers Default is selected layers
      * @return {Promise}
      */
     var combineUnion = function (document, layers) {
-        if (layers.isEmpty()) {
+        var appStore = this.flux.store("application");
+
+        document = document || appStore.getCurrentDocument();
+        layers = layers || document ? document.layers.selected : null;
+
+        if (!document || !layers || layers.isEmpty()) {
             return Promise.resolve();
         } else if (layers.size === 1) {
             return _playCombine.call(this, document, layers, pathLib.combinePathsUnion());
@@ -607,12 +628,17 @@ define(function (require, exports) {
     /**
      * Combine paths using SUBTRACT operation
      *
-     * @param {Document} document 
-     * @param {Immutable.List.<Layer>} layers 
+     * @param {?Document} document Default is current document
+     * @param {?Immutable.List.<Layer>} layers Default is selected layers
      * @return {Promise}
      */
     var combineSubtract = function (document, layers) {
-        if (layers.isEmpty()) {
+        var appStore = this.flux.store("application");
+
+        document = document || appStore.getCurrentDocument();
+        layers = layers || document ? document.layers.selected : null;
+
+        if (!document || !layers || layers.isEmpty()) {
             return Promise.resolve();
         } else if (layers.size === 1) {
             return _playCombine.call(this, document, layers, pathLib.combinePathsSubtract());
@@ -627,12 +653,17 @@ define(function (require, exports) {
     /**
      * Combine paths using INTERSECT operation
      *
-     * @param {Document} document 
-     * @param {Immutable.List.<Layer>} layers 
+     * @param {?Document} document Default is current document
+     * @param {?Immutable.List.<Layer>} layers Default is selected layers
      * @return {Promise}
      */
     var combineIntersect = function (document, layers) {
-        if (layers.isEmpty()) {
+        var appStore = this.flux.store("application");
+
+        document = document || appStore.getCurrentDocument();
+        layers = layers || document ? document.layers.selected : null;
+
+        if (!document || !layers || layers.isEmpty()) {
             return Promise.resolve();
         } else if (layers.size === 1) {
             return _playCombine.call(this, document, layers, pathLib.combinePathsIntersect());
@@ -647,12 +678,17 @@ define(function (require, exports) {
     /**
      * Combine paths using DIFFERENCE operation
      *
-     * @param {Document} document 
-     * @param {Immutable.List.<Layer>} layers 
+     * @param {?Document} document Default is current document
+     * @param {?Immutable.List.<Layer>} layers Default is selected layers
      * @return {Promise}
      */
     var combineDifference = function (document, layers) {
-        if (layers.isEmpty()) {
+        var appStore = this.flux.store("application");
+
+        document = document || appStore.getCurrentDocument();
+        layers = layers || document ? document.layers.selected : null;
+
+        if (!document || !layers || layers.isEmpty()) {
             return Promise.resolve();
         } else if (layers.size === 1) {
             return _playCombine.call(this, document, layers, pathLib.combinePathsDifference());
@@ -663,86 +699,6 @@ define(function (require, exports) {
     combineDifference.reads = [];
     combineDifference.writes = [locks.PS_DOC, locks.JS_DOC];
     combineDifference.transfers = [layerActions.resetLayers, layerActions.resetLayersByIndex];
-
-    /**
-     * Called by the menu items, runs the union operation on 
-     * selected layers of current document
-     *
-     * @return {Promise}
-     */
-    var combineUnionSelectedInCurrentDocument = function () {
-        var applicationStore = this.flux.store("application"),
-            currentDocument = applicationStore.getCurrentDocument();
-
-        if (!currentDocument) {
-            return Promise.resolve();
-        }
-
-        return this.transfer(combineUnion, currentDocument, currentDocument.layers.selected);
-    };
-    combineUnionSelectedInCurrentDocument.reads = [locks.JS_APP];
-    combineUnionSelectedInCurrentDocument.writes = [];
-    combineUnionSelectedInCurrentDocument.transfers = [combineUnion];
-
-    /**
-     * Called by the menu items, runs the subtract operation on 
-     * selected layers of current document
-     *
-     * @return {Promise}
-     */
-    var combineSubtractSelectedInCurrentDocument = function () {
-        var applicationStore = this.flux.store("application"),
-            currentDocument = applicationStore.getCurrentDocument();
-
-        if (!currentDocument) {
-            return Promise.resolve();
-        }
-
-        return this.transfer(combineSubtract, currentDocument, currentDocument.layers.selected);
-    };
-    combineSubtractSelectedInCurrentDocument.reads = [locks.JS_APP];
-    combineSubtractSelectedInCurrentDocument.writes = [];
-    combineSubtractSelectedInCurrentDocument.transfer = [combineSubtract];
-
-    /**
-     * Called by the menu items, runs the intersect operation on 
-     * selected layers of current document
-     *
-     * @return {Promise}
-     */
-    var combineIntersectSelectedInCurrentDocument = function () {
-        var applicationStore = this.flux.store("application"),
-            currentDocument = applicationStore.getCurrentDocument();
-
-        if (!currentDocument) {
-            return Promise.resolve();
-        }
-
-        return this.transfer(combineIntersect, currentDocument, currentDocument.layers.selected);
-    };
-    combineIntersectSelectedInCurrentDocument.reads = [locks.JS_APP];
-    combineIntersectSelectedInCurrentDocument.writes = [];
-    combineIntersectSelectedInCurrentDocument.transfers = [combineIntersect];
-
-    /**
-     * Called by the menu items, runs the difference operation on 
-     * selected layers of current document
-     *
-     * @return {Promise}
-     */
-    var combineDifferenceSelectedInCurrentDocument = function () {
-        var applicationStore = this.flux.store("application"),
-            currentDocument = applicationStore.getCurrentDocument();
-
-        if (!currentDocument) {
-            return Promise.resolve();
-        }
-
-        return this.transfer(combineDifference, currentDocument, currentDocument.layers.selected);
-    };
-    combineDifferenceSelectedInCurrentDocument.reads = [locks.JS_APP];
-    combineDifferenceSelectedInCurrentDocument.writes = [];
-    combineDifferenceSelectedInCurrentDocument.transfers = [combineDifference];
 
     exports.setStrokeEnabled = setStrokeEnabled;
     exports.setStrokeWidth = setStrokeWidth;
@@ -759,9 +715,4 @@ define(function (require, exports) {
     exports.combineSubtract = combineSubtract;
     exports.combineIntersect = combineIntersect;
     exports.combineDifference = combineDifference;
-
-    exports.combineUnionSelectedInCurrentDocument = combineUnionSelectedInCurrentDocument;
-    exports.combineSubtractSelectedInCurrentDocument = combineSubtractSelectedInCurrentDocument;
-    exports.combineIntersectSelectedInCurrentDocument = combineIntersectSelectedInCurrentDocument;
-    exports.combineDifferenceSelectedInCurrentDocument = combineDifferenceSelectedInCurrentDocument;
 });

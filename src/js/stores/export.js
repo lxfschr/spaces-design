@@ -25,10 +25,36 @@ define(function (require, exports, module) {
     "use strict";
 
     var Fluxxor = require("fluxxor"),
-        Immutable = require("immutable");
+        Immutable = require("immutable"),
+        _ = require("lodash");
 
     var DocumentExports = require("js/models/documentexports"),
         events = require("../events");
+
+    /**
+     * Holding cell for various state properties
+     *
+     * @type {Immutable.Record}
+     */
+    var State = Immutable.Record({
+        /**
+         * Export Service is available?
+         * @type {boolean}
+         */
+        serviceAvailable: false,
+
+        /**
+         * Export Service is busy?
+         * @type {boolean}
+         */
+        serviceBusy: false,
+
+        /**
+         * that
+         * @type {boolean}
+         */
+        useArtboardPrefix: false
+    });
 
     var ExportStore = Fluxxor.createStore({
 
@@ -39,10 +65,11 @@ define(function (require, exports, module) {
         _documentExportsMap: null,
 
         /**
-         * Export Service is available?
-         * @type {boolean}
+         * state
+         *
+         * @type {State}
          */
-        _serviceAvailable: false,
+        _state: new State(),
 
         /**
          * Loads saved preferences from local storage and binds flux actions.
@@ -54,9 +81,12 @@ define(function (require, exports, module) {
             this.bindActions(
                 events.RESET, this._deleteExports,
                 events.export.ASSET_CHANGED, this._assetUpdated,
-                events.export.DELETE_LAYER_ASSET, this._deleteLayerAsset,
+                events.export.history.optimistic.ASSET_CHANGED, this._assetUpdated,
+                events.export.history.optimistic.ASSET_ADDED, this._assetAdded,
+                events.export.history.optimistic.DELETE_ASSET, this._deleteAsset,
                 events.export.SET_AS_REQUESTED, this._setAssetsRequested,
-                events.export.SERVICE_STATUS_CHANGED, this._serviceStatusChanged,
+                events.export.SERVICE_STATUS_CHANGED, this._setState,
+                events.export.SET_STATE_PROPERTY, this._setState,
                 events.document.DOCUMENT_UPDATED, this._documentUpdated
             );
         },
@@ -76,10 +106,34 @@ define(function (require, exports, module) {
          * Get the DocumentExports model object associated to the provided documentID
          *
          * @param {number} documentID
+         * @param {boolean=} initialize Optional, if true then create documentExports on the fly if necessary
          * @return {?DocumentExports}
          */
-        getDocumentExports: function (documentID) {
-            return this._documentExportsMap.get(documentID);
+        getDocumentExports: function (documentID, initialize) {
+            var documentExports = this._documentExportsMap.get(documentID);
+            if (!documentExports && initialize) {
+                return new DocumentExports();
+            } else {
+                return documentExports;
+            }
+        },
+
+        /**
+         * Update a given DocumentExports
+         * This should only be called by other stores.
+         *
+         * @param {number} documentID
+         * @param {DocumentExports} nextDocumentExports
+         */
+        setDocumentExports: function (documentID, nextDocumentExports) {
+            var oldDocumentExports = this.getDocumentExports(documentID);
+
+            if (Immutable.is(oldDocumentExports, nextDocumentExports)) {
+                return;
+            }
+
+            this._documentExportsMap = this._documentExportsMap.set(documentID, nextDocumentExports);
+            this.emit("change");
         },
 
         /**
@@ -88,20 +142,22 @@ define(function (require, exports, module) {
          * @return {{serviceAvailable: boolean}}
          */
         getState: function () {
-            return {
-                serviceAvailable: this._serviceAvailable
-            };
+            return this._state;
         },
 
         /**
-         * Event handler: Sets the serviceAvailable flag based on the provided payload
+         * Generate a prefix for the given layer, based on the index,
+         * using the internal state to determine if a prefix is warranted;
+         * null otherwise
          *
-         * @private
-         * @param {{serviceAvailable: boolean}} payload
+         * @param {Layer} layer
+         * @param {number} index
+         * @return {?string}
          */
-        _serviceStatusChanged: function (payload) {
-            this._serviceAvailable = !!payload.serviceAvailable;
-            this.emit("change");
+        getExportPrefix: function (layer, index) {
+            if (this._state.useArtboardPrefix && layer.isArtboard) {
+                return _.padLeft(index + 1, 3, "0");
+            }
         },
 
         /**
@@ -124,19 +180,28 @@ define(function (require, exports, module) {
          * Missing props will be ignored
          * 
          * @private
-         * @param {{documentID: !number, layerIDs: number|Array.<number>, assetPropArray: Array.<object>}} payload 
+         * @param {object} payload
+         * @param {!number} payload.documentID
+         * @param {Immutable.Iterable.<number>=} payload.layerIDs
+         * @param {Array.<object>} payload.assetPropArray
          */
         _assetUpdated: function (payload) {
             var documentID = payload.documentID,
-                layerIDs = Array.isArray(payload.layerIDs) ? payload.layerIDs : [payload.layerIDs];
+                layerIDs = payload.layerIDs;
 
             if (!documentID) {
-                throw new Error ("Can not update an asset without a valid documentID (%s)", documentID);
+                throw new Error("Can not update an asset without a valid documentID (%s)", documentID);
             }
 
             var curDocumentExports = this.getDocumentExports(documentID) || new DocumentExports(),
-                nextDocumentExports = curDocumentExports.mergeLayerAssets(layerIDs, payload.assetPropsArray);
+                nextDocumentExports;
 
+            if (layerIDs) {
+                nextDocumentExports = curDocumentExports.mergeLayerAssets(layerIDs, payload.assetPropsArray);
+            } else {
+                nextDocumentExports = curDocumentExports.mergeRootAssets(payload.assetPropsArray);
+            }
+            
             if (!curDocumentExports.equals(nextDocumentExports)) {
                 this._documentExportsMap = this._documentExportsMap.set(documentID, nextDocumentExports);
                 this.emit("change");
@@ -144,23 +209,67 @@ define(function (require, exports, module) {
         },
 
         /**
-         * Event handler: Delete the layer's asset at the given index
-         *
+         * Event handler: Insert export assets for the given document
+         * Given an array of props, splice them in to the existing layer or document asset list
+         * 
          * @private
-         * @param {{documentID: number, layerID: number, assetIndex: number}} payload
+         * @param {object} payload
+         * @param {!number} payload.documentID
+         * @param {Immutable.Iterable.<number>=} payload.layerIDs
+         * @param {Array.<object>} payload.assetPropArray
+         * @param {number} payload.assetIndex
          */
-        _deleteLayerAsset: function (payload) {
+        _assetAdded: function (payload) {
             var documentID = payload.documentID,
-                layerID = payload.layerID,
+                layerIDs = payload.layerIDs,
+                props = payload.assetPropsArray,
                 assetIndex = payload.assetIndex;
 
-            if (!documentID || !layerID || !Number.isFinite(assetIndex)) {
-                throw new Error("Can not delete asset without all three payload values %s, %s, %s",
-                    documentID, layerID, assetIndex);
+            if (!documentID) {
+                throw new Error("Can not update an asset without a valid documentID (%s)", documentID);
             }
 
             var curDocumentExports = this.getDocumentExports(documentID) || new DocumentExports(),
-                nextDocumentExports = curDocumentExports.removeLayerAsset(layerID, assetIndex);
+                nextDocumentExports;
+
+            if (layerIDs) {
+                nextDocumentExports = curDocumentExports.spliceLayerAssets(layerIDs, props, assetIndex);
+            } else {
+                nextDocumentExports = curDocumentExports.spliceRootAssets(props, assetIndex);
+            }
+            
+            if (!curDocumentExports.equals(nextDocumentExports)) {
+                this._documentExportsMap = this._documentExportsMap.set(documentID, nextDocumentExports);
+                this.emit("change");
+            }
+        },
+
+        /**
+         * Event handler: Delete an asset at the given index
+         * If layerIDs is provided, delete assets in layers with these IDs
+         * Otherwise delete a root asset
+         *
+         * @private
+         * @param {{documentID: number, layerIDs: Immutable.Iterable.<number>=, assetIndex: number}} payload
+         */
+        _deleteAsset: function (payload) {
+            var documentID = payload.documentID,
+                layerIDs = payload.layerIDs,
+                assetIndex = payload.assetIndex;
+
+            if (!documentID || !Number.isFinite(assetIndex)) {
+                throw new Error("Can not delete asset without a doc and a valid asset index: %s, %s",
+                    documentID, assetIndex);
+            }
+
+            var curDocumentExports = this.getDocumentExports(documentID) || new DocumentExports(),
+                nextDocumentExports;
+
+            if (layerIDs) {
+                nextDocumentExports = curDocumentExports.removeLayerAsset(layerIDs, assetIndex);
+            } else {
+                nextDocumentExports = curDocumentExports.removeRootAsset(assetIndex);
+            }
 
             if (!curDocumentExports.equals(nextDocumentExports)) {
                 this._documentExportsMap = this._documentExportsMap.set(documentID, nextDocumentExports);
@@ -169,21 +278,28 @@ define(function (require, exports, module) {
         },
 
         /**
-         * Event handler: For the given document and set of layers, mark the associated assets as "requested"
+         * Helper function that updates some assets into the "requested" status
+         * If layerIDs is supplied then layers' assets will be updated
+         * Otherwise, the root level assets are updated
          *
          * @private
-         * @param {{documentID: number, layerIDs: Array.<number>}} payload [description]
+         * @param {{documentID: number, layerIDs: Immutable.Iterable.<number>=}} payload [description]
          */
         _setAssetsRequested: function (payload) {
-            var documentID = payload.documentID,
-                layerIDs = Immutable.Set(payload.layerIDs);
+            var documentID = payload.documentID;
 
             if (!documentID) {
                 throw new Error("Can not set document assets as 'requested' without a documentID");
             }
 
             var curDocumentExports = this.getDocumentExports(documentID) || new DocumentExports(),
-                nextDocumentExports = curDocumentExports.setLayerExportsRequested(layerIDs);
+                nextDocumentExports;
+
+            if (payload.hasOwnProperty("layerIDs")) {
+                nextDocumentExports = curDocumentExports.setLayerExportsRequested(payload.layerIDs);
+            } else {
+                nextDocumentExports = curDocumentExports.setRootExportsRequested();
+            }
 
             if (!curDocumentExports.equals(nextDocumentExports)) {
                 this._documentExportsMap = this._documentExportsMap.set(documentID, nextDocumentExports);
@@ -197,8 +313,20 @@ define(function (require, exports, module) {
          */
         _deleteExports: function () {
             this._documentExportsMap = new Immutable.Map();
-        }
+        },
 
+        /**
+         * Event handler: Update internal state properties
+         *
+         * @param {object} payload State-like object
+         */
+        _setState: function (payload) {
+            var newState = this._state.merge(payload);
+            if (newState !== this._state) {
+                this._state = newState;
+                this.emit("change");
+            }
+        }
     });
 
     module.exports = ExportStore;

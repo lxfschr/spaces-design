@@ -34,9 +34,7 @@ define(function (require, exports, module) {
 
     var os = require("adapter/os");
 
-    var Gutter = require("jsx!js/jsx/shared/Gutter"),
-        TextInput = require("jsx!js/jsx/shared/TextInput"),
-        Dialog = require("jsx!js/jsx/shared/Dialog"),
+    var Dialog = require("jsx!js/jsx/shared/Dialog"),
         ColorPicker = require("jsx!js/jsx/shared/ColorPicker"),
         Color = require("js/models/color"),
         Coalesce = require("js/jsx/mixin/Coalesce"),
@@ -47,7 +45,8 @@ define(function (require, exports, module) {
     /**
      * Keys on which to dismiss the color picker dialog 
      * 
-     * @const {Array.<key: {string}, modifiers: {object}>} 
+     * @const
+     * @type {Array.<key: {string}, modifiers: {object}>} 
      */
     var DISSMISS_ON_KEYS = [
         { key: os.eventKeyCode.ESCAPE, modifiers: null },
@@ -105,6 +104,7 @@ define(function (require, exports, module) {
             }
         },
 
+        /** @ignore */
         _getID: function () {
             return "colorpicker-" + this.props.id;
         },
@@ -121,6 +121,11 @@ define(function (require, exports, module) {
                 colorTiny = tinycolor(value),
                 color = Color.fromTinycolor(colorTiny),
                 colorFormat;
+
+            // Only allow fully opaque colors
+            if (this.props.opaque) {
+                color = color.opaque();
+            }
 
             if (colorTiny.isValid()) {
                 colorFormat = colorTiny.getFormat();
@@ -226,6 +231,10 @@ define(function (require, exports, module) {
                     color = Color.DEFAULT;
                     swatchClassProps["color-input__invalid-color"] = true;
                 } else {
+                    if (this.props.opaque) {
+                        value = value.opaque();
+                    }
+
                     // naive tinycolor toString
                     colorTiny = tinycolor(value.toJS());
                     color = value;
@@ -269,7 +278,6 @@ define(function (require, exports, module) {
                             {this.props.swatchOverlay(colorTiny)}
                         </div>
                     </div>
-                    <Gutter />
                     <Dialog
                         ref="dialog"
                         id={this._getID()}
@@ -282,26 +290,13 @@ define(function (require, exports, module) {
                         dismissOnWindowClick>
                         <ColorPicker
                             ref="colorpicker"
+                            opaque={this.props.opaque}
                             color={color}
                             onMouseDown={this.startCoalescing}
                             onMouseUp={this.stopCoalescing}
                             onAlphaChange={this._handleAlphaChanged}
                             onColorChange={this._handleColorChanged} />
                     </Dialog>
-                    <div className="compact-stats">
-                        <div className="compact-stats__header">
-                            <TextInput
-                                live={this.props.editable}
-                                editable={this.props.editable}
-                                value={label}
-                                singleClick={true}
-                                onChange={this._handleInputChanged}
-                                onFocus={this._handleFocus}
-                                onClick={this._handleInputClicked}
-                                size="column-15" />
-                        </div>
-                        {this.props.children}
-                    </div>
                 </div>
             );
         },
@@ -315,7 +310,7 @@ define(function (require, exports, module) {
             }
         },
 
-        /*
+        /**
          * Force the color picker to update on history state changes.
          *
          * @private

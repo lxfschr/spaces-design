@@ -37,6 +37,29 @@ define(function (require, exports, module) {
         Text = require("./text");
 
     /**
+     * Possible smart object types for a layer
+     *
+     * @type {number}
+     */
+    var smartObjectTypes = Object.defineProperties({}, {
+        EMBEDDED: {
+            writeable: false,
+            enumerable: true,
+            value: 0
+        },
+        LOCAL_LINKED: {
+            writeable: false,
+            enumerable: true,
+            value: 1
+        },
+        CLOUD_LINKED: {
+            writeable: false,
+            enumerable: true,
+            value: 2
+        }
+    });
+
+    /**
      * A model of Photoshop layer.
      *
      * @constructor
@@ -158,6 +181,11 @@ define(function (require, exports, module) {
         layerKinds: layerLib.layerKinds,
 
         /**
+         * @type {object}
+         */
+        smartObjectTypes: smartObjectTypes,
+
+        /**
          * @type {boolean}
          */
         proportionalScaling: null,
@@ -202,6 +230,8 @@ define(function (require, exports, module) {
 
     Layer.layerKinds = layerLib.layerKinds;
 
+    Layer.smartObjectTypes = smartObjectTypes;
+
     /**
      * Array of available layer effect types
      *
@@ -229,17 +259,17 @@ define(function (require, exports, module) {
          * @type {Immutable.Map.<string, *>}
          */
         face: function () {
-            var self = this;
             return new Immutable.Map({
-                id: self.id,
-                name: self.name,
-                kind: self.kind,
-                visible: self.visible,
-                locked: self.locked,
-                expanded: self.expanded,
-                selected: self.selected,
-                isArtboard: self.isArtboard,
-                isBackground: self.isBackground
+                id: this.id,
+                name: this.name,
+                kind: this.kind,
+                visible: this.visible,
+                locked: this.locked,
+                expanded: this.expanded,
+                selected: this.selected,
+                isArtboard: this.isArtboard,
+                isBackground: this.isBackground,
+                isLinked: this.isLinked
             });
         },
         /**
@@ -289,7 +319,7 @@ define(function (require, exports, module) {
      * Static method to generate the appropriate LayerEffect based on a provided type
      *
      * @param {string} layerEffectType
-     * @return {LayerEffect}  instance of a layer effect such as a Shadow
+     * @return {Shadow}  instance of a layer effect such as a Shadow
      */
     Layer.newLayerEffectByType = function (layerEffectType) {
         if (layerEffectType === "dropShadow" || layerEffectType === "innerShadow") {
@@ -447,14 +477,14 @@ define(function (require, exports, module) {
             proportionalScaling: layerDescriptor.proportionalScaling,
             isArtboard: layerDescriptor.artboardEnabled,
             vectorMaskEnabled: layerDescriptor.vectorMaskEnabled,
-            exportEnabled: layerDescriptor.exportEnabled
+            exportEnabled: layerDescriptor.exportEnabled,
+            isLinked: _extractIsLinked(layerDescriptor)
         };
 
         object.assignIf(model, "blendMode", _extractBlendMode(layerDescriptor));
-        object.assignIf(model, "isLinked", _extractIsLinked(layerDescriptor));
         object.assignIf(model, "usedToHaveLayerEffect", _extractHasLayerEffect(layerDescriptor));
         object.assignIf(model, "smartObject", layerDescriptor.smartObject);
-
+        
         return new Layer(model);
     };
 
@@ -485,14 +515,13 @@ define(function (require, exports, module) {
                 proportionalScaling: layerDescriptor.proportionalScaling,
                 isArtboard: layerDescriptor.artboardEnabled,
                 vectorMaskEnabled: layerDescriptor.vectorMaskEnabled,
-                exportEnabled: layerDescriptor.exportEnabled
+                exportEnabled: layerDescriptor.exportEnabled,
+                isLinked: _extractIsLinked(layerDescriptor)
             };
 
         object.assignIf(model, "blendMode", _extractBlendMode(layerDescriptor));
-        object.assignIf(model, "isLinked", _extractIsLinked(layerDescriptor));
         object.assignIf(model, "usedToHaveLayerEffect", _extractHasLayerEffect(layerDescriptor));
         object.assignIf(model, "smartObject", layerDescriptor.smartObject);
-
 
         return this.merge(model);
     };
@@ -527,6 +556,43 @@ define(function (require, exports, module) {
      */
     Layer.prototype.isVector = function () {
         return this.kind === this.layerKinds.VECTOR;
+    };
+
+    /**
+     * Returns the smart object type for smart object layers, null otherwise
+     *
+     * @return {?SmartObjectType}
+     */
+    Layer.prototype.smartObjectType = function () {
+        if (!this.isSmartObject()) {
+            return null;
+        }
+
+        if (!this.smartObject.linked) {
+            return smartObjectTypes.EMBEDDED;
+        } else if (this.smartObject.link._obj === "ccLibrariesElement") {
+            return smartObjectTypes.CLOUD_LINKED;
+        } else {
+            return smartObjectTypes.LOCAL_LINKED;
+        }
+    };
+    
+    /**
+     * Return true if the layer is a smart object that links to a CC Libiraries element.
+     * 
+     * @return {boolean}
+     */
+    Layer.prototype.isCloudLinkedSmartObject = function () {
+        return this.smartObjectType() === smartObjectTypes.CLOUD_LINKED;
+    };
+    
+    /**
+     * Return the reference of the layer's linked CC Libraries element. 
+     * 
+     * @return {?string}
+     */
+    Layer.prototype.getLibraryElementReference = function () {
+        return this.isCloudLinkedSmartObject() ? this.smartObject.link.elementReference : null;
     };
 
     module.exports = Layer;

@@ -21,41 +21,61 @@
  *
  */
 
-.split-button__item__selected {
-    opacity: 0.95 !important;
-}
+.split-button {
+    &__item {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: @item-inactive;
+        
+        margin: 0 auto;
+        flex-grow: 1;
 
-.split-button__item__disabled {
-    opacity: 0.20 !important;
-}
+        svg {
+            box-sizing: content-box;
+            width: 1.6rem;
+            height: 1.6rem;
+            fill: @item-inactive;
+            stroke: none;
+            color: @item-inactive;
+          use {
+            width: 1.6rem;
+            height: 1.6rem;
+          }
+        }
 
-.split-button__item:hover {
-    opacity: 1;
-}
+        &:hover {
+            color: @item-hover;
+            svg {
+                fill: @item-hover;
+            }
+        }
 
-.split-button__item {
-    display: flex;
-    align-items: center;
-    justify-content: center;    
-    opacity: 0.55;
-    
-    svg {
-        box-sizing: content-box;        
-        width: 1.6rem;
-        height: 1.6rem;        
-        fill: @warm-white;
-        stroke: none;
-        color: @warm-gray;
-      use {
-        width: 1.6rem;
-        height: 1.6rem;
-      }
+        &__selected {
+            color: @item-hover;
+            svg {
+                fill: @item-hover;
+            }
+        }
+
+        &__disabled, &__disabled:hover {
+            color: @item-disabled;
+            svg {
+                fill: @item-disabled;
+            }
+        }
+
+        &__fixed {
+            margin: 0;
+            flex-grow: 0;
+        }
     }
+
 }
 
-.vector-operations{
-    .split-button__item {        
-        svg{
+.vector-operations {
+    .split-button__item {
+        svg {
             width: 1.4rem;
             height: 1.4rem;
         }

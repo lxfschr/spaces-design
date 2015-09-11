@@ -21,7 +21,6 @@
  * 
  */
 
-
 define(function (require, exports, module) {
     "use strict";
 
@@ -39,7 +38,8 @@ define(function (require, exports, module) {
     /**
      * Valid methods of positioning the dialog
      * 
-     * @const {{string: string}}
+     * @const
+     * @type {{string: string}}
      */
     var POSITION_METHODS = {
         CENTER: "center",
@@ -319,6 +319,7 @@ define(function (require, exports, module) {
             this.getFlux().store("dialog").deregisterDialog(this.props.id);
         },
 
+        /** @ignore */
         isOpen: function () {
             return this.state.open;
         }

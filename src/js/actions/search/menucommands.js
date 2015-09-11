@@ -104,7 +104,7 @@ define(function (require, exports) {
             shortcut += keyCodeStrings[keyCode];
         }
 
-        return "(" + shortcut + ") ";
+        return " " + shortcut + "\u00a0\u00a0\u00a0\u00a0";
     };
     
     /**
@@ -164,7 +164,7 @@ define(function (require, exports) {
         menuActions._playMenuCommand.call(this, id);
     };
 
-    /*
+    /**
      * Find SVG class for menu commands
      * If this needs to vary based on the item, use category list as parameter 
      * (see getSVGCallback type in search store)
@@ -175,7 +175,7 @@ define(function (require, exports) {
         return "menu-commands";
     };
     
-    /*
+    /**
      * Register recent document info for search
      */
     var registerMenuCommandSearch = function () {

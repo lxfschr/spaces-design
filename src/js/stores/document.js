@@ -29,6 +29,7 @@ define(function (require, exports, module) {
         _ = require("lodash");
 
     var Document = require("../models/document"),
+        Guide = require("../models/guide"),
         events = require("../events");
 
     var DocumentStore = Fluxxor.createStore({
@@ -47,7 +48,9 @@ define(function (require, exports, module) {
                 events.document.CLOSE_DOCUMENT, this._closeDocument,
                 events.document.history.nonOptimistic.ADD_LAYERS, this._handleLayerAdd,
                 events.document.GUIDES_VISIBILITY_CHANGED, this._updateDocumentGuidesVisibility,
+                events.document.GUIDES_UPDATED, this._handleGuidesUpdated,
                 events.document.RESET_LAYERS, this._handleLayerReset,
+                events.document.history.amendment.RESET_LAYERS, this._handleLayerReset,
                 events.document.RESET_LAYERS_BY_INDEX, this._handleLayerResetByIndex,
                 events.document.history.nonOptimistic.RESET_BOUNDS, this._handleBoundsReset,
                 events.document.RESET_BOUNDS, this._handleBoundsReset,
@@ -82,19 +85,22 @@ define(function (require, exports, module) {
                 events.document.history.optimistic.STROKE_CHANGED, this._handleStrokePropertiesChanged,
                 events.document.history.optimistic.STROKE_COLOR_CHANGED, this._handleStrokePropertiesChanged,
                 events.document.history.optimistic.STROKE_OPACITY_CHANGED, this._handleStrokePropertiesChanged,
-                events.document.history.nonOptimistic.STROKE_ADDED, this._handleStrokePropertiesChanged,
+                events.document.history.nonOptimistic.STROKE_ADDED, this._handleStrokeAdded,
                 events.document.history.optimistic.LAYER_EFFECT_CHANGED, this._handleLayerEffectPropertiesChanged,
                 events.document.history.optimistic.LAYER_EFFECT_DELETED, this._handleDeletedLayerEffect,
                 events.document.history.optimistic.LAYER_EFFECTS_BATCH_CHANGED, this._handleLayerEffectsBatchChanged,
                 events.document.TYPE_FACE_CHANGED, this._handleTypeFaceChanged,
                 events.document.TYPE_SIZE_CHANGED, this._handleTypeSizeChanged,
                 events.document.history.optimistic.TYPE_COLOR_CHANGED, this._handleTypeColorChanged,
-                events.document.history.amendment.TYPE_COLOR_CHANGED, this._handleTypeColorChanged,
+                events.document.TYPE_COLOR_CHANGED, this._handleTypeColorChanged,
                 events.document.TYPE_TRACKING_CHANGED, this._handleTypeTrackingChanged,
                 events.document.TYPE_LEADING_CHANGED, this._handleTypeLeadingChanged,
                 events.document.TYPE_ALIGNMENT_CHANGED, this._handleTypeAlignmentChanged,
                 events.document.TYPE_PROPERTIES_CHANGED, this._handleTypePropertiesChanged,
-                events.document.LAYER_EXPORT_ENABLED_CHANGED, this._handleLayerExportEnabledChanged
+                events.document.history.amendment.LAYER_EXPORT_ENABLED_CHANGED, this._handleLayerExportEnabledChanged,
+                events.document.history.nonOptimistic.GUIDE_SET, this._handleGuideSet,
+                events.document.history.nonOptimistic.GUIDE_DELETED, this._handleGuideDeleted,
+                events.document.history.nonOptimistic.GUIDES_CLEARED, this._handleGuidesCleared
             );
 
             this._handleReset();
@@ -137,9 +143,10 @@ define(function (require, exports, module) {
          */
         _makeDocument: function (docObj) {
             var rawDocument = docObj.document,
-                rawLayers = docObj.layers;
+                rawLayers = docObj.layers,
+                rawGuides = docObj.guides;
 
-            return Document.fromDescriptors(rawDocument, rawLayers);
+            return Document.fromDescriptors(rawDocument, rawLayers, rawGuides);
         },
 
         /**
@@ -171,7 +178,7 @@ define(function (require, exports, module) {
          * Reset a single document model from the given document and layer descriptors.
          *
          * @private
-         * @param {{document: object, layers: Array.<object>}} payload
+         * @param {{document: object, layers: Array.<object>, guides: Array.<object>}} payload
          */
         _documentUpdated: function (payload) {
             var doc = this._makeDocument(payload);
@@ -183,7 +190,7 @@ define(function (require, exports, module) {
          * Remove a single document model for the given document ID
          *
          * @private
-         * @param {{documentID: number} payload
+         * @param {{documentID: number}} payload
          */
         _closeDocument: function (payload) {
             var documentID = payload.documentID;
@@ -284,7 +291,7 @@ define(function (require, exports, module) {
          * Reset the given layer models.
          *
          * @private
-         * @param {{documentID: number, layers: Immutable.Iterable.<{layerID: number, descriptor: object}>} payload
+         * @param {{documentID: number, layers: Immutable.Iterable.<{layerID: number, descriptor: object}>}} payload
          */
         _handleLayerReset: function (payload) {
             var documentID = payload.documentID,
@@ -300,7 +307,7 @@ define(function (require, exports, module) {
          * Reset the given layer bounds models.
          *
          * @private
-         * @param {{documentID: number, layers: Immutable.Iterable.<{layerID: number, descriptor: object}>} payload
+         * @param {{documentID: number, layers: Immutable.Iterable.<{layerID: number, descriptor: object}>}} payload
          */
         _handleBoundsReset: function (payload) {
             var documentID = payload.documentID,
@@ -416,7 +423,6 @@ define(function (require, exports, module) {
             this._updateLayerProperties(documentID, layerIDs, { blendMode: mode });
         },
 
-
         /**
          * Rename the given layer in the given document.
          *
@@ -435,11 +441,11 @@ define(function (require, exports, module) {
         /**
          * Update the "exportEnabled" flag for a set of layers
          *
-         * @param {{documentID: number, layerIDs: Array.<number>, exportEnabled: boolean}} payload
+         * @param {{documentID: number, layerIDs: Immutable.Iterable.<number>, exportEnabled: boolean}} payload
          */
         _handleLayerExportEnabledChanged: function (payload) {
             var documentID = payload.documentID,
-                layerIDs = Immutable.Set(payload.layerIDs),
+                layerIDs = payload.layerIDs,
                 exportEnabled = payload.exportEnabled;
 
             this._updateLayerProperties(documentID, layerIDs, { exportEnabled: exportEnabled });
@@ -655,7 +661,7 @@ define(function (require, exports, module) {
          * Update the proportional flag of affected layers
          *
          * @private
-         * @param {{documentID: number, layerIDs: Array.<number>, propotional: bool} payload
+         * @param {{documentID: number, layerIDs: Array.<number>, propotional: bool}} payload
          */
         _handleSetLayersProportional: function (payload) {
             var documentID = payload.documentID,
@@ -736,6 +742,24 @@ define(function (require, exports, module) {
         },
 
         /**
+         * Adds a stroke to the specified document and layers
+         * This also handles updating strokes where we're refetching from Ps
+         *
+         * @private
+         * @param {{documentID: !number, strokeStyleDescriptor: object}} payload
+         */
+        _handleStrokeAdded: function (payload) {
+            var documentID = payload.documentID,
+                layerIDs = payload.layerIDs,
+                strokeStyleDescriptor = payload.strokeStyleDescriptor,
+                document = this._openDocuments[documentID],
+                nextLayers = document.layers.addStroke(layerIDs, strokeStyleDescriptor),
+                nextDocument = document.set("layers", nextLayers);
+
+            this.setDocument(nextDocument, true);
+        },
+
+        /**
          * Update the provided properties of all layer effects of given index of the given layers of the given document
          *
          * example payload:
@@ -807,7 +831,6 @@ define(function (require, exports, module) {
 
             this.setDocument(nextDocument, true);
         },
-
 
         /**
          * Delete the selected layer effects of selected layers of the given document
@@ -901,6 +924,7 @@ define(function (require, exports, module) {
                 color = payload.color,
                 opaqueColor = null,
                 opacity = null,
+                ignoreAlpha = payload.ignoreAlpha,
                 document = this._openDocuments[documentID];
 
             if (color !== null) {
@@ -908,10 +932,17 @@ define(function (require, exports, module) {
                 opacity = color.opacity;
             }
             
-            var nextLayers = document.layers
-                    .setCharacterStyleProperties(layerIDs, { color: opaqueColor })
-                    .setProperties(layerIDs, { opacity: opacity }),
-                nextDocument = document.set("layers", nextLayers);
+            var nextLayers = document.layers.setCharacterStyleProperties(layerIDs, {
+                color: opaqueColor
+            });
+
+            if (!ignoreAlpha) {
+                nextLayers = nextLayers.setProperties(layerIDs, {
+                    opacity: opacity
+                });
+            }
+
+            var nextDocument = document.set("layers", nextLayers);
 
             this.setDocument(nextDocument, true);
         },
@@ -1009,6 +1040,92 @@ define(function (require, exports, module) {
                     .setCharacterStyleProperties(layerIDs, characterProperties)
                     .setParagraphStyleProperties(layerIDs, paragraphProperties),
                 nextDocument = document.set("layers", nextLayers);
+
+            this.setDocument(nextDocument, true);
+        },
+
+        /**
+         * Updates the overall guides information of the document
+         *
+         * @private
+         * @param {{document: Document, guides: Array.<object>}} payload
+         */
+        _handleGuidesUpdated: function (payload) {
+            var document = payload.document,
+                guideDescriptors = payload.guides,
+                nextGuides = Guide.fromDescriptors(document, guideDescriptors),
+                nextDocument = document.set("guides", nextGuides);
+
+            this.setDocument(nextDocument);
+        },
+
+        /**
+         * Updates a guide with new information, or creates a new guide
+         * 
+         * @private
+         * @param {{documentID: number, index: number, guide: object}} payload
+         */
+        _handleGuideSet: function (payload) {
+            var documentID = payload.documentID,
+                index = payload.index,
+                document = this._openDocuments[documentID],
+                guide = payload.guide,
+                orientation = guide.orientation,
+                position = guide.position;
+
+            var nextGuide = document.guides.get(index);
+
+            if (nextGuide) {
+                nextGuide = nextGuide.merge({
+                    orientation: orientation,
+                    position: position
+                });
+            } else {
+                var layerID = guide.layerID,
+                    isDocumentGuide = guide.isDocumentGuide,
+                    model = {
+                        documentID: documentID,
+                        orientation: orientation,
+                        position: position,
+                        isDocumentGuide: isDocumentGuide,
+                        layerID: layerID
+                    };
+                
+                nextGuide = new Guide(model);
+            }
+
+            var nextDocument = document.setIn(["guides", index], nextGuide);
+
+            this.setDocument(nextDocument, true);
+        },
+
+        /**
+         * Deletes the guide at the given index
+         * 
+         * @private
+         * @param {{documentID: number, index: number}} payload
+         */
+        _handleGuideDeleted: function (payload) {
+            var documentID = payload.documentID,
+                index = payload.index,
+                document = this._openDocuments[documentID];
+
+            var nextDocument = document.deleteIn(["guides", index]);
+
+            this.setDocument(nextDocument, true);
+        },
+
+        /**
+         * Clears all the guides
+         *
+         * @private
+         * @param {{documentID: number}} payload
+         */
+        _handleGuidesCleared: function (payload) {
+            var documentID = payload.documentID,
+                document = this._openDocuments[documentID];
+
+            var nextDocument = document.set("guides", Immutable.List());
 
             this.setDocument(nextDocument, true);
         }

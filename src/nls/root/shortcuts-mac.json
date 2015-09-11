@@ -31,6 +31,7 @@
             "SEARCH": "f"
         },
         "LAYER": {
+            "CREATE_ARTBOARD": "b",
             "EDIT_VECTOR_MASK": "k"
         },
         "ARRANGE": {
@@ -50,7 +51,7 @@
             "ZOOM_TO_SELECTION": "2",
             "CENTER_SELECTION": "3",
             "TOGGLE_SMART_GUIDES": ";",
-            "TOGGLE_GUIDES": "g"
+            "TOGGLE_GUIDES": ";"
         },
         "WINDOW": {
             "NEXT_DOCUMENT": "`",

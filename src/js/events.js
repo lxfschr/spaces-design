@@ -49,7 +49,6 @@ define(function (require, exports, module) {
                     BLEND_MODE_CHANGED: "blendModeChanged",
                     REORDER_LAYERS: "reorderLayers",
                     REPOSITION_LAYERS: "repositionLayers",
-                    NUDGE_LAYERS: "nudgeLayers",
                     RESIZE_LAYERS: "resizeLayers",
                     SET_LAYERS_PROPORTIONAL: "setLayersProportional",
                     STROKE_COLOR_CHANGED: "strokeColorChanged",
@@ -69,11 +68,15 @@ define(function (require, exports, module) {
                     UNGROUP_SELECTED: "ungroupSelectedLayers",
                     ADD_LAYERS: "addLayers",
                     COMBINE_SHAPES: "combineShapes",
-                    DELETE_LAYERS: "deleteLayersNonOptimistic" // eg: ps deletes the entire layer after last path del
+                    DELETE_LAYERS: "deleteLayersNonOptimistic", // eg: ps deletes the entire layer after last path del,
+                    GUIDE_SET: "guideSet",
+                    GUIDES_CLEARED: "guidesCleared",
+                    GUIDE_DELETED: "guideDeleted"
                 },
                 amendment: {
-                    TYPE_COLOR_CHANGED: "typeColorChangedAmendment",
-                    REORDER_LAYERS: "reorderLayersAmendment"
+                    REORDER_LAYERS: "reorderLayersAmendment",
+                    RESET_LAYERS: "resetLayersAmendement",
+                    LAYER_EXPORT_ENABLED_CHANGED: "layerExportEnabledChanged"
                 }
             },
             DELETE_LAYERS_NO_HISTORY: "deleteLayersNoHistory",
@@ -83,7 +86,6 @@ define(function (require, exports, module) {
             VISIBILITY_CHANGED: "layerVisibilityChanged",
             REORDER_LAYERS: "reorderLayersNoHistory",
             LAYER_BOUNDS_CHANGED: "layerBoundsChanged",
-            LAYER_EXPORT_ENABLED_CHANGED: "layerExportEnabledChanged",
             RESET_BOUNDS: "resetBoundsNoHistory", // slightly different than above LAYER_BOUNDS_CHANGED
             RESET_LAYERS: "resetLayers",
             RESET_LAYERS_BY_INDEX: "resetLayersByIndex",
@@ -94,6 +96,7 @@ define(function (require, exports, module) {
             CLOSE_DOCUMENT: "closeDocument",
             DOCUMENT_RENAMED: "renameDocument",
             DOCUMENT_UPDATED: "updateDocument",
+            GUIDES_UPDATED: "guidesUpdated",
             // The following stroke/type events rely on subsequent bounds fetch
             STROKE_ENABLED_CHANGED: "strokeEnabledChanged",
             STROKE_WIDTH_CHANGED: "strokeWidthChanged",
@@ -103,13 +106,21 @@ define(function (require, exports, module) {
             TYPE_TRACKING_CHANGED: "typeTrackingChanged",
             TYPE_LEADING_CHANGED: "typeLeadingChanged",
             TYPE_ALIGNMENT_CHANGED: "typeAlignmentChanged",
-            TYPE_PROPERTIES_CHANGED: "typePropertiesChanged"
+            TYPE_PROPERTIES_CHANGED: "typePropertiesChanged",
+            TYPE_COLOR_CHANGED: "typeColorChangedNoHistory"
         },
         export: {
-            ASSET_CHANGED: "exportAssetChanged",
-            DELETE_LAYER_ASSET: "exportDeleteLayerAsset",
+            ASSET_CHANGED: "exportAssetChangedQuietly",
             SERVICE_STATUS_CHANGED: "exportServiceStatusChanged",
-            SET_AS_REQUESTED: "exportSetStatusRequested"
+            SET_AS_REQUESTED: "exportSetStatusRequested",
+            SET_STATE_PROPERTY: "setUseArtboardPrefix",
+            history: {
+                optimistic: {
+                    ASSET_CHANGED: "exportAssetChanged",
+                    ASSET_ADDED: "exportAssetAdded",
+                    DELETE_ASSET: "exportDeleteLayerAsset"
+                }
+            }
         },
         tool: {
             SELECT_TOOL: "selectTool",
@@ -118,7 +129,6 @@ define(function (require, exports, module) {
         ui: {
             TRANSFORM_UPDATED: "transformUpdated",
             PANELS_RESIZED: "panelsResized",
-            TOOLBAR_PINNED: "toolbarPinned",
             TOGGLE_OVERLAYS: "toggleOverlays",
             SUPERSELECT_MARQUEE: "superselectMarquee"
         },
@@ -130,7 +140,9 @@ define(function (require, exports, module) {
             REMOVE_SHORTCUT: "removeShortcut"
         },
         style: {
-            COPY_STYLE: "copyStyle"
+            COPY_STYLE: "copyStyle",
+            SHOW_HUD: "showStyleHUD",
+            HIDE_HUD: "hideStyleHUD"
         },
         dialog: {
             OPEN_DIALOG: "openDialog",
@@ -158,12 +170,22 @@ define(function (require, exports, module) {
             DELETE_DOCUMENT_HISTORY: "deleteDocumentHistory"
         },
         libraries: {
-            LIBRARIES_UPDATED: "librariesUpdated",
-            CONNECTION_FAILED: "libraryConnectionFailed",
+            LIBRARIES_LOADED: "librariesLoaded",
+            LIBRARIES_UNLOADED: "librariesUnloaded",
             ASSET_CREATED: "libraryAssetCreated",
+            ASSET_REMOVED: "libraryAssetRemoved",
+            ASSET_RENAMED: "libraryAssetRenamed",
+            OPEN_GRAPHIC_FOR_EDIT: "libraryOpenGraphicForEdit",
+            UPDATING_GRAPHIC_CONTENT: "libraryUpdatingGraphicContent",
+            UPDATED_GRAPHIC_CONTENT: "libraryUpdatedGraphicContent",
+            CLOSED_GRAPHIC_DOCUMENT: "libraryClosedGraphicDocument",
+            DELETED_GRAPHIC_TEMP_FILES: "libraryDeletedGraphicTempFiles",
             LIBRARY_CREATED: "libraryCreated",
             LIBRARY_REMOVED: "libraryRemoved",
-            LIBRARY_SELECTED: "librarySelected"
+            LIBRARY_RENAMED: "libraryRenamed",
+            LIBRARY_SELECTED: "librarySelected",
+            SYNC_LIBRARIES: "librarySyncLibraries",
+            SYNCING_LIBRARIES: "librarySyncingLibraries"
         },
         search: {
             REGISTER_SEARCH_PROVIDER: "registerSearchProvider"

@@ -21,7 +21,6 @@
  * 
  */
 
-
 /*
  * Handles all search modules.
  *
@@ -308,7 +307,7 @@ define(function (require, exports, module) {
             return Immutable.List();
         },
 
-        /*
+        /**
          * Find SVG for item with specified categories 
          * 
          * @param {Array.<string>} categories

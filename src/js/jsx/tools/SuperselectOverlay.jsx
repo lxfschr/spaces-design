@@ -21,7 +21,6 @@
  * 
  */
 
-
 define(function (require, exports, module) {
     "use strict";
 
@@ -32,10 +31,12 @@ define(function (require, exports, module) {
         d3 = require("d3"),
         _ = require("lodash");
 
-    var OS = require("adapter/os");
+    var UI = require("adapter/ps/ui"),
+        OS = require("adapter/os");
 
     var system = require("js/util/system"),
         mathUtil = require("js/util/math"),
+        keyUtil = require("js/util/key"),
         uiUtil = require("js/util/ui");
 
     // Used for debouncing the overlay drawing
@@ -135,7 +136,7 @@ define(function (require, exports, module) {
         componentDidMount: function () {
             this._currentMouseX = null;
             this._currentMouseY = null;
-            this._marqueeResult = [];
+            this._marqueeResult = null;
 
             this._drawDebounced();
             
@@ -383,13 +384,16 @@ define(function (require, exports, module) {
                 return;
             }
 
+            var runMarquee = !!this._marqueeRect;
+            
+            this.getFlux().actions.superselect.marqueeSelect(
+                this.state.document, runMarquee,
+                this._marqueeResult, event.shiftKey
+            );
+            
             this._currentMouseDown = false;
-
-            if (this._marqueeRect) {
-                var superselect = this.getFlux().actions.superselect;
-                superselect.marqueeSelect(this.state.document, this._marqueeResult, event.shiftKey);
-                this._marqueeRect = null;
-            }
+            this._marqueeRect = null;
+            this._marqueeResult = null;
         },
 
         /**
@@ -401,17 +405,70 @@ define(function (require, exports, module) {
         },
 
         /**
+         * Checks to see if the given position is under
+         * any always_propagate policies, where mouse events should go to PS
+         * and we shouldn't highlight layers
+         *
+         * @param {number} x
+         * @param {number} y
+         *
+         * @return {boolean} True if the pointer is under an always propagate policy
+         */
+        _positionUnderAlwaysPropagatePolicy: function (x, y) {
+            var policyStore = this.getFlux().store("policy"),
+                modifierStore = this.getFlux().store("modifier"),
+                modifiers = modifierStore.getState(),
+                modifierBits = keyUtil.modifiersToBits(modifiers),
+                pointerPolicies = policyStore.getMasterPointerPolicyList(),
+                underAlways = false;
+
+            // As soon as we find a policy that intersects and matches modifiers, we can return
+            pointerPolicies.some(function (policy) {
+                if (!policy.area || policy.modifiers !== modifierBits) {
+                    return false;
+                }
+
+                var area = {
+                        left: policy.area[0],
+                        top: policy.area[1],
+                        right: policy.area[0] + policy.area[2],
+                        bottom: policy.area[1] + policy.area[3]
+                    },
+                    intersects = area.left < x && area.right > x &&
+                        area.top < y && area.bottom > y;
+
+                if (intersects) {
+                    if (policy.action === UI.policyAction.ALWAYS_PROPAGATE) {
+                        underAlways = true;
+                    } else {
+                        underAlways = false;
+                    }
+                }
+
+                return intersects;
+            }, this);
+
+            return underAlways;
+        },
+
+        /**
          * Goes through all layer bounds and highlights the top one the cursor is on
          */
         updateMouseOverHighlights: function () {
+            if (!this.state.document) {
+                return;
+            }
+
             var marquee = this.state.marqueeEnabled,
+                layerTree = this.state.document.layers,
                 scale = this._scale,
                 uiStore = this.getFlux().store("ui"),
                 mouseX = this._currentMouseX,
                 mouseY = this._currentMouseY,
                 canvasMouse = uiStore.transformWindowToCanvas(mouseX, mouseY),
-                highlightFound = false;
-
+                highlightFound = false,
+                underPolicy = this._positionUnderAlwaysPropagatePolicy(mouseX, mouseY);
+            
             // Yuck, we gotta traverse backwards, and D3 doesn't offer reverse iteration
             _.forEachRight(d3.selectAll(".artboard-name-rect")[0], function (element) {
                 var layer = d3.select(element),
@@ -423,7 +480,7 @@ define(function (require, exports, module) {
                     intersects = layerLeft < canvasMouse.x && layerRight > canvasMouse.x &&
                         layerTop < canvasMouse.y && layerBottom > canvasMouse.y;
 
-                if (!marquee && !highlightFound && intersects) {
+                if (!underPolicy && !marquee && !highlightFound && intersects) {
                     d3.select("#layer-" + layerID)
                         .classed("layer-bounds-hover", true)
                         .style("stroke-width", 1.0 * scale);
@@ -435,28 +492,38 @@ define(function (require, exports, module) {
                 }
             });
 
-            // Yuck, we gotta traverse the list backwards, and D3 doesn't offer reverse iteration
-            _.forEachRight(d3.selectAll(".layer-bounds")[0], function (element) {
-                var layer = d3.select(element),
-                    layerSelected = layer.attr("layer-selected") === "true",
-                    layerLeft = mathUtil.parseNumber(layer.attr("x")),
-                    layerTop = mathUtil.parseNumber(layer.attr("y")),
-                    layerRight = layerLeft + mathUtil.parseNumber(layer.attr("width")),
-                    layerBottom = layerTop + mathUtil.parseNumber(layer.attr("height")),
-                    intersects = layerLeft < canvasMouse.x && layerRight > canvasMouse.x &&
-                        layerTop < canvasMouse.y && layerBottom > canvasMouse.y;
+            uiUtil.hitTestLayers(this.state.document.id, canvasMouse.x, canvasMouse.y)
+                .bind(this)
+                .then(function (hitLayerIDs) {
+                    return hitLayerIDs.findLast(function (id) {
+                        return !this.state.document.layers.byID(id).isArtboard;
+                    }, this);
+                })
+                .then(function (topID) {
+                    // Yuck, we gotta traverse the list backwards, and D3 doesn't offer reverse iteration
+                    _.forEachRight(d3.selectAll(".layer-bounds")[0], function (element) {
+                        var layer = d3.select(element),
+                            layerID = mathUtil.parseNumber(layer.attr("layer-id")),
+                            layerSelected = layer.attr("layer-selected") === "true",
+                            layerModel = layerTree.byID(layerID);
 
-                if (!marquee && !highlightFound && intersects) {
-                    if (!layerSelected) {
-                        layer.classed("layer-bounds-hover", true)
-                            .style("stroke-width", 1.0 * scale);
-                    }
-                    highlightFound = true;
-                } else {
-                    layer.classed("layer-bounds-hover", true)
-                        .style("stroke-width", 0.0);
-                }
-            });
+                        // Sometimes, the DOM elements may be out of date, and be of different documents
+                        if (!layerModel) {
+                            return;
+                        }
+                        
+                        if (!underPolicy && !marquee && !highlightFound && layerID === topID) {
+                            if (!layerSelected) {
+                                layer.classed("layer-bounds-hover", true)
+                                    .style("stroke-width", 1.0 * scale);
+                            }
+                            highlightFound = true;
+                        } else {
+                            layer.classed("layer-bounds-hover", true)
+                                .style("stroke-width", 0.0);
+                        }
+                    });
+                });
         },
 
         /**

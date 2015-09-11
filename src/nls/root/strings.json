@@ -2,6 +2,7 @@
     "ACTIONS": {
         "ADD_STROKE": "Add Stroke",
         "ADD_FILL": "Add Fill",
+        "APPLY_LIBRARY_COLOR": "Apply Library Color",
         "SET_STROKE_COLOR": "Set Stroke Color",
         "SET_STROKE": "Set Stroke",
         "SET_STROKE_OPACITY": "Set Stroke Opacity",
@@ -24,6 +25,10 @@
         "NUDGE_LAYERS": "Nudge Layers",
         "SWAP_LAYERS": "Swap Layers",
         "COMBINE_SHAPES": "Combine Shapes",
+        "PASTE_LAYER_STYLE": "Paste Layer Style",
+        "SAMPLE_GRAPHICS": "Sample Graphics",
+        "SAMPLE_COLOR": "Sample Color",
+        "SAMPLE_STROKE": "Sample Stroke",
         "SET_PROPORTIONAL_SCALE": "Set Proportional Scaling",
         "SET_TYPE_FACE": "Set Type Face",
         "SET_TYPE_COLOR": "Set Type Color",
@@ -31,7 +36,8 @@
         "SET_TYPE_LEADING": "Set Type Leading",
         "SET_TYPE_TRACKING": "Set Type Tracking",
         "SET_TYPE_ALIGNMENT": "Set Type Alignment",
-        "UNGROUP_LAYERS": "Ungroup layers"
+        "UNGROUP_LAYERS": "Ungroup layers",
+        "MODIFY_EXPORT_ASSETS": "Updated Export Asset Configurations"
     },
     "APP_NAME": "Photoshop",
     "FIRST_LAUNCH": {
@@ -119,6 +125,8 @@
     },
     "TITLE_PAGES": "Layers",
     "TITLE_STYLE": "Style",
+    "TITLE_EFFECTS": "Effects",
+    "TITLE_APPEARANCE": "Appearance",        
     "TITLE_EXPORT": "Export",
     "TITLE_LIBRARIES": "Libraries",
     "NO_DOC": {
@@ -229,8 +237,11 @@
         "LIBRARY_VIEW_ON_WEBSITE": "View on Website",
         "LIBRARY_CLICK_TO_APPLY": "Click to apply",
         "LIBRARY_DELETE": "Delete",
+        "EXPORT_EXPORT_ASSETS": "Export these assets",
         "EXPORT_ADD_ASSET": "Add export asset",
-        "EXPORT_REMOVE_ASSET": "Remove asset configuration"
+        "EXPORT_REMOVE_ASSET": "Remove asset configuration",
+        "EXPORT_IOS_PRESETS": "Add 3 iOS assets + SVG",
+        "EXPORT_HDPI_PRESETS": "Add 6 HDPI assets + SVG"
     },
     "LAYER_KIND": {
         "0": "Any Layer",
@@ -251,11 +262,22 @@
     },
     "COLOR_PICKER": {
         "FORMAT": "Format",
+        "RGB_MODEL": {
+            "R": "R",
+            "G": "G",
+            "B": "B"
+        },
+        "HSB_MODEL": {
+            "H": "H",
+            "S": "S",
+            "B": "B"
+        },
         "MODE": {
             "SOLID": "Solid",
             "GRADIENT": "Gradient",
             "PATTERN": "Pattern"
-        }
+        },
+        "OPACITY": "Opacity"
     },
     "TRANSFORM": {
         "X": "X",
@@ -352,14 +374,16 @@
         "PASTE": "Paste style"
     },
     "EXPORT": {
-        "EXPORT_LIST_ARTBOARDS": "Artboards",
-        "EXPORT_LIST_LAYERS": "Layers",
+        "EXPORT_LIST_ALL_ARTBOARDS": "All Artboards",
+        "EXPORT_LIST_ALL_ASSETS": "All Assets",
         "BUTTON_EXPORT": "Export",
         "BUTTON_CANCEL": "Cancel",
-        "SELECT_SINGLE_LAYER": "Please select a single layer",
         "TITLE_SCALE": "Scale",
         "TITLE_SUFFIX": "Suffix",
-        "TITLE_SETTINGS": "Settings"
+        "TITLE_SETTINGS": "Settings",
+        "EXPORT_DOCUMENT_FILENAME": "document",
+        "ONLY_UNSUPPORTED_LAYERS_SELECTED": "No supported layers selected",
+        "NO_ASSETS": "No exports configured"
     },
     "TEMPLATES": {
         "IPHONE_6_PLUS": "iPhone 6+",
@@ -447,7 +471,8 @@
         "CREATE_LIBRARY": "Create New Library",
         "RENAME_LIBRARY": "Rename \"%s\"",
         "DELETE_LIBRARY": "Delete \"%s\"",
-        "DELETE_LIBRARY_SHARED_CONFIRM": "Your collaborators will no longer have access to this library if you delete it. Are you sure you want to delete \"%s\"?",
+        "DELETE_LIBRARY_CONFIRM": "Are you sure you want to delete \"%s\"?",
+        "DELETE_SHARED_LIBRARY_CONFIRM": "Your collaborators will no longer have access to this library if you delete it. Are you sure you want to delete \"%s\"?",
         "LEAVE_LIBRARY": "Leave \"%s\"",
         "LEAVE_LIBRARY_CONFIRM": "Are you sure you want to leave \"%s\"?",
         "DELETE_ASSET": "Delete \"%s\"",
@@ -455,15 +480,15 @@
         "GRAPHICS": "Graphics",
         "COLORS": "Colors",
         "COLOR_THEMES": "Color Themes",
-        "CHAR_STYLES": "Text Styles",
+        "CHAR_STYLES": "Character Styles",
         "LAYER_STYLES": "Layer Styles",
         "BRUSHES": "Brushes",
-        "BRUSHES_UNSUPPORTED_1": "You have 1 brush. Brushes are not supported in Design Space.",
-        "BRUSHES_UNSUPPORTED_N": "You have %s brushes. Brushes are not supported in Design Space.",
+        "BRUSHES_UNSUPPORTED": "Brushes are not supported in Design Space.",
         "BTN_CANCEL": "Cancel",
-        "BTN_SAVE": "Save",
+        "BTN_CREATE": "Create",
         "BTN_RENAME": "Rename",
         "BTN_DELETE": "Delete",
+        "BTN_LEAVE": "Leave",
         "CLICK_TO_APPLY": "Click to apply",
         "LIBRARY_NAME": "Library Name",
         "INTRO_TITLE": "Your Content. Anywhere.",

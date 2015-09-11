@@ -21,7 +21,6 @@
  * 
  */
 
-
 define(function (require, exports, module) {
     "use strict";
 
@@ -36,8 +35,6 @@ define(function (require, exports, module) {
 
     var Color = require("js/models/color"),
         StrokeAlignment = require("jsx!./StrokeAlignment"),
-        Gutter = require("jsx!js/jsx/shared/Gutter"),
-        Label = require("jsx!js/jsx/shared/Label"),
         NumberInput = require("jsx!js/jsx/shared/NumberInput"),
         ColorInput = require("jsx!js/jsx/shared/ColorInput"),
         ToggleButton = require("jsx!js/jsx/shared/ToggleButton"),
@@ -63,11 +60,17 @@ define(function (require, exports, module) {
             };
         },
 
-        componentWillReceiveProps: function (nextProps) {
-            var document = nextProps.document,
+        /**
+         * Setup state for the stroke and layers for child components
+         *
+         * @private
+         * @param {Object} props
+         */
+        _setStrokeState: function (props) {
+            var document = props.document,
                 // We only care about vector layers. If at least one exists, then this component should render
                 layers = document.layers.selected.filter(function (layer) {
-                    return layer.kind === layer.layerKinds.VECTOR;
+                    return layer.isVector;
                 }),
                 strokes = collection.pluck(layers, "stroke"),
                 downsample = this._downsampleStrokes(strokes);
@@ -76,6 +79,14 @@ define(function (require, exports, module) {
                 layers: layers,
                 stroke: downsample
             });
+        },
+
+        componentWillMount: function () {
+            this._setStrokeState(this.props);
+        },
+        
+        componentWillReceiveProps: function (nextProps) {
+            this._setStrokeState(nextProps);
         },
 
         /**
@@ -90,7 +101,7 @@ define(function (require, exports, module) {
                 this.props.document,
                 this.state.layers,
                 this.state.stroke && this.state.stroke.colors.first() || Color.DEFAULT,
-                isChecked
+                { enabled: isChecked }
             );
         },
 
@@ -128,7 +139,7 @@ define(function (require, exports, module) {
         _alphaChanged: function (color, coalesce) {
             this.getFlux().actions.shapes
                 .setStrokeOpacityThrottled(this.props.document, this.state.layers,
-                    color.opacity, coalesce);
+                    color.opacity, { coalesce: coalesce });
         },
 
         /**
@@ -154,11 +165,15 @@ define(function (require, exports, module) {
             // Otherwise left undefined, it will not cause a bounds change
             var strokes = collection.pluck(this.state.layers, "stroke"),
                 isEnabledChanging = !collection.uniformValue(collection.pluck(strokes, "enabled")),
-                enabled = isEnabledChanging || undefined;
+                enabled = isEnabledChanging || undefined,
+                options = {
+                    coalesce: !!coalesce,
+                    ignoreAlpha: !!ignoreAlpha,
+                    enabled: enabled
+                };
 
             this.getFlux().actions.shapes
-                .setStrokeColorThrottled(this.props.document, this.state.layers, color, coalesce,
-                    enabled, ignoreAlpha);
+                .setStrokeColorThrottled(this.props.document, this.state.layers, color, options);
         },
 
         /**
@@ -205,17 +220,14 @@ define(function (require, exports, module) {
                 return null;
             }
 
-            var stroke = this.state.stroke;
-
-            var strokeClasses = classnames({
-                "stroke-list__stroke": true,
-                "stroke-list__stroke__disabled": this.props.disabled
-            });
+            var stroke = this.state.stroke,
+                strokeClasses = classnames("control-group__vertical",
+                    "control-group__vertical",
+                    "control-group__no-label",
+                    "column-10");
 
             var strokeOverlay = function (colorTiny) {
                 var strokeStyle = {
-                    width: "100%",
-                    height: (collection.uniformValue(stroke.widths) || 0) + "%",
                     backgroundColor: colorTiny ? colorTiny.toRgbString() : "transparent"
                 };
 
@@ -229,93 +241,49 @@ define(function (require, exports, module) {
             var colorInputID = "stroke-" + this.props.document.id;
 
             return (
-                <div className="stroke-list__container">
-                    <header className="stroke-list__header sub-header">
-                        <h3>
-                            {strings.STYLE.STROKE.TITLE}
-                        </h3>
-                        <Gutter />
-                        <hr className="sub-header-rule"/>
-                    </header>
-                    <div className="stroke-list__list-container">
-                        <div className={strokeClasses}>
-                            <div className="formline">
-                                <Gutter />
-                                <ColorInput
-                                    id={colorInputID}
-                                    className="stroke"
-                                    context={collection.pluck(this.state.layers, "id")}
-                                    title={strings.TOOLTIPS.SET_STROKE_COLOR}
-                                    editable={!this.props.disabled}
-                                    defaultValue={stroke.colors}
-                                    onChange={this._colorChanged}
-                                    onFocus={this.props.onFocus}
-                                    onColorChange={this._opaqueColorChanged}
-                                    onAlphaChange={this._alphaChanged}
-                                    onClick={!this.props.disabled ? this._toggleColorPicker : _.noop}
-                                    swatchOverlay={strokeOverlay}>
-
-                                    <div className="compact-stats__body">
-                                        <div className="compact-stats__body__column">
-                                            <Label
-                                                title={strings.TOOLTIPS.SET_STROKE_OPACITY}
-                                                size="column-4">
-                                                {strings.STYLE.STROKE.ALPHA}
-                                            </Label>
-                                            <NumberInput
-                                                value={stroke.opacityPercentages}
-                                                onChange={this._opacityChanged}
-                                                onFocus={this.props.onFocus}
-                                                min={0}
-                                                max={100}
-                                                step={1}
-                                                bigstep={10}
-                                                disabled={this.props.disabled}
-                                                size="column-3" />
-                                        </div>
-                                        <Gutter />
-                                        <div className="compact-stats__body__column">
-                                            <Label
-                                                title={strings.TOOLTIPS.SET_STROKE_SIZE}
-                                                size="column-4">
-                                                {strings.STYLE.STROKE.SIZE}
-                                            </Label>
-                                            <NumberInput
-                                                value={stroke.widths}
-                                                onChange={this._widthChanged}
-                                                onFocus={this.props.onFocus}
-                                                min={0}
-                                                step={1}
-                                                bigstep={5}
-                                                disabled={this.props.disabled}
-                                                size="column-3" />
-                                        </div>
-                                        <Gutter />
-                                        <div className="compact-stats__body__column">
-                                            <Label
-                                                title={strings.TOOLTIPS.SET_STROKE_ALIGNMENT}
-                                                size="column-4">
-                                                {strings.STYLE.STROKE.ALIGNMENT}
-                                            </Label>
-                                            <StrokeAlignment
-                                                {...this.props}
-                                                layers={this.state.layers}
-                                                alignments={stroke.alignments}/>
-                                        </div>
-                                    </div>
-                                </ColorInput>
-                                <Gutter />
-                                <ToggleButton
-                                    title={strings.TOOLTIPS.TOGGLE_STROKE}
-                                    name="toggleStrokeEnabled"
-                                    buttonType="layer-not-visible"
-                                    selected={stroke.enabledFlags}
-                                    onClick={!this.props.disabled ? this._toggleStrokeEnabled : _.noop}
-                                    size="column-2"
-                                />
-                                <Gutter />
-                            </div>
-                        </div>
+                <div className="formline">
+                    <div className="control-group__vertical">
+                        <ColorInput
+                            id={colorInputID}
+                            className="stroke"
+                            context={collection.pluck(this.state.layers, "id")}
+                            title={strings.TOOLTIPS.SET_STROKE_COLOR}
+                            editable={!this.props.disabled}
+                            defaultValue={stroke.colors}
+                            onChange={this._colorChanged}
+                            onFocus={this.props.onFocus}
+                            onColorChange={this._opaqueColorChanged}
+                            onAlphaChange={this._alphaChanged}
+                            onClick={!this.props.disabled ? this._toggleColorPicker : _.noop}
+                            swatchOverlay={strokeOverlay} />
+                    </div>
+                    <div className="control-group__vertical control-group__no-label column-9">
+                        <NumberInput
+                            value={stroke.widths}
+                            onChange={this._widthChanged}
+                            onFocus={this.props.onFocus}
+                            min={0}
+                            step={1}
+                            bigstep={5}
+                            disabled={this.props.disabled}
+                            size="column-6" />
+                    </div>
+                    <div className={strokeClasses}>
+                        <StrokeAlignment
+                            document={this.props.document}
+                            layers={this.state.layers}
+                            alignments={stroke.alignments} />
+                    </div>
+                    <div className="control-group__vertical control-group__no-label">
+                        <ToggleButton
+                            title={strings.TOOLTIPS.TOGGLE_STROKE}
+                            name="toggleStrokeEnabled"
+                            buttonType="layer-not-visible"
+                            selected={stroke.enabledFlags}
+                            selectedButtonType={"layer-visible"}
+                            onClick={!this.props.disabled ? this._toggleStrokeEnabled : _.noop}
+                            size="column-2"
+                        />
                     </div>
                 </div>
             );

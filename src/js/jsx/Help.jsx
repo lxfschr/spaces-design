@@ -21,7 +21,6 @@
  * 
  */
 
-
 define(function (require, exports, module) {
     "use strict";
 
@@ -37,14 +36,16 @@ define(function (require, exports, module) {
     /**
      * Unique identifier for the First Launch Dialog
      *
-     * @const {String}
+     * @const 
+     * @type {string}
      */
     var FIRST_LAUNCH_DIALOG_ID = "first-launch-dialog";
     
     /**
      * Unique identifier for the Keyboard Shortcut Dialog
      *
-     * @const {String}
+     * @const
+     * @type {string}
      */
     var KEYBOARD_SHORTCUT_DIALOG_ID = "keyboard-shortcut-dialog";
         

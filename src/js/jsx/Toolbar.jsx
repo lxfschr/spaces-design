@@ -30,10 +30,7 @@ define(function (require, exports, module) {
         StoreWatchMixin = Fluxxor.StoreWatchMixin,
         classnames = require("classnames");
 
-    var ToolbarIcon = require("jsx!js/jsx/ToolbarIcon"),
-        Button = require("jsx!js/jsx/shared/Button"),
-        SVGIcon = require("jsx!js/jsx/shared/SVGIcon"),
-        menu = require("i18n!nls/menu");
+    var ToolbarIcon = require("jsx!js/jsx/ToolbarIcon");
 
     var Toolbar = React.createClass({
         mixins: [FluxMixin, StoreWatchMixin("tool", "application", "preferences")],
@@ -95,23 +92,9 @@ define(function (require, exports, module) {
             return true;
         },
 
-
         // On startup, we want to make sure center offsets take pinned toolbar
         componentDidMount: function () {
-            var flux = this.getFlux(),
-                preferences = flux.store("preferences").getState(),
-                pinned = preferences.get("toolbarPinned", true);
-
-            if (pinned) {
-                // NOTE: The toolbar width is offset by one below to account for
-                // the gap between the toolbar and the panel. This isn't perfect
-                // because the gap might not necessarily be exactly one pixel.
-                // This calculation should be improved in the next UI refactor.
-                var toolbarWidth = React.findDOMNode(this).clientWidth,
-                    newWidth = pinned ? toolbarWidth + 1 : 0;
-
-                flux.actions.ui.updateToolbarWidth(newWidth);
-            }
+            this._updateToolbarWidth();
         },
 
         componentWillUpdate: function (nextProps, nextState) {
@@ -130,11 +113,7 @@ define(function (require, exports, module) {
             }
 
             if (this.state.pinned !== nextState.pinned) {
-                // NOTE: See comment above about the width offset below.
-                var toolbarWidth = React.findDOMNode(this).clientWidth,
-                    newWidth = nextState.pinned ? toolbarWidth + 1 : 0;
-
-                flux.actions.ui.updateToolbarWidth(newWidth);
+                this._updateToolbarWidth();
             }
         },
 
@@ -181,14 +160,6 @@ define(function (require, exports, module) {
                     <ul>
                         {tools}
                     </ul>
-                    <Button
-                        className="toolbar__backToPs"
-                        title={menu.WINDOW.RETURN_TO_STANDARD}
-                        onClick={this._handleBackToPSClick}>
-                        <SVGIcon
-                            viewbox="0 0 18 16"
-                            CSSID="workspace" />
-                    </Button>
                 </div>
             );
         },
@@ -212,15 +183,6 @@ define(function (require, exports, module) {
         },
 
         /**
-         * Close Design Space
-         *
-         * @private
-         */
-        _handleBackToPSClick: function () {
-            this.getFlux().actions.menu.native({ commandID: 5999 });
-        },
-
-        /**
          * Handle toolbar button clicks by selecting the given tool and
          * collapsing the toolbar.
          * 
@@ -232,8 +194,13 @@ define(function (require, exports, module) {
                     this.getFlux().actions.tools.select(tool);
                     
                     // HACK: These lines are to eliminate the blink that occurs when the toolbar changes state
-                    var node = React.findDOMNode(this);
-                    node.querySelector(".tool-selected").classList.remove("tool-selected");
+                    var node = React.findDOMNode(this),
+                        selectedNode = node.querySelector(".tool-selected");
+
+                    if (selectedNode) {
+                        selectedNode.classList.remove("tool-selected");
+                    }
+
                     node.querySelector("#" + tool.id).classList.add("tool-selected");
                 }
 
@@ -243,10 +210,39 @@ define(function (require, exports, module) {
             } else {
                 this._expandToolbar();
             }
+        },
+
+        /**
+         * Returns the current width of the toolbar. Returns 0 if the toolbar
+         * is unpinned.
+         *
+         * @return {number}
+         */
+        getToolbarWidth: function () {
+            var flux = this.getFlux(),
+                preferences = flux.store("preferences").getState(),
+                pinned = preferences.get("toolbarPinned", true);
+
+            if (!pinned) {
+                return 0;
+            }
+
+            var toolbarNode = React.findDOMNode(this);
+            return toolbarNode ? toolbarNode.clientWidth : 0;
+        },
+
+        /**
+         * Updates the toolbar panel width.
+         *
+         * @private
+         */
+        _updateToolbarWidth: function () {
+            var flux = this.getFlux(),
+                newWidth = this.getToolbarWidth();
+
+            flux.actions.ui.updateToolbarWidth(newWidth);
         }
     });
     
     module.exports = Toolbar;
 });
-
-

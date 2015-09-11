@@ -213,24 +213,27 @@
         "COMBINE": {
             "$enable-rule": "layers-selected-all-shapes",
             "COMBINE_UNION": {
-                "$action": "shapes.combineUnionSelectedInCurrentDocument",
+                "$action": "shapes.combineUnion",
                 "$enable-rule": "layers-selected-all-shapes"
             },
             "COMBINE_SUBTRACT": {
-                "$action": "shapes.combineSubtractSelectedInCurrentDocument",
+                "$action": "shapes.combineSubtract",
                 "$enable-rule": "layers-selected-all-shapes"
             },
             "COMBINE_INTERSECT": {
-                "$action": "shapes.combineIntersectSelectedInCurrentDocument",
+                "$action": "shapes.combineIntersect",
                 "$enable-rule": "layers-selected-all-shapes"
             },
             "COMBINE_DIFFERENCE": {
-                "$action": "shapes.combineDifferenceSelectedInCurrentDocument",
+                "$action": "shapes.combineDifference",
                 "$enable-rule": "layers-selected-all-shapes"
             }
         },
         "CREATE_ARTBOARD": {
             "$action": "layers.createArtboard",
+            "$enable-rule": "supported-document"
+        },
+        "NEW_ARTBOARD_FROM_TEMPLATE": {
             "$enable-rule": "supported-document"
         },
         "EDIT_VECTOR_MASK": {
@@ -262,7 +265,7 @@
         },
         "GROUP_LAYERS": {
             "$action": "layers.groupSelectedInCurrentDocument",
-            "$enable-rule": "layer-selected,no-background"
+            "$enable-rule": "layer-selected,no-background,no-artboards"
         },
         "UNGROUP_LAYERS": {
             "$action": "layers.ungroupSelected",
@@ -338,7 +341,6 @@
             "$action": "ui.zoom",
             "$payload": {
                 "zoom": 1,
-                "pan": true,
                 "preserveFocus": true
             },
             "$enable-rule": "have-document"
@@ -367,6 +369,10 @@
         },
         "TOGGLE_SMART_GUIDES": {
             "$action": "documents.toggleSmartGuidesVisibility",
+            "$enable-rule": "supported-document"
+        },
+        "CLEAR_GUIDES": {
+            "$action": "guides.clearGuides",
             "$enable-rule": "supported-document"
         }
     },

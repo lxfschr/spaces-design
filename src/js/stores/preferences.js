@@ -30,7 +30,6 @@ define(function (require, exports, module) {
     var events = require("../events"),
         log = require("js/util/log");
 
-
     /**
      * The key at which the preferences index is stored.
      * 
@@ -154,6 +153,11 @@ define(function (require, exports, module) {
                 value = payload.value;
 
             try {
+                // Skip if the value remains unchanged, to avoid emitting unnecessary change event.
+                if (this._preferences.get(key) === value) {
+                    return;
+                }
+                
                 var valueJSON = JSON.stringify(value),
                     qualifiedKey = _getQualifiedKey(key);
 

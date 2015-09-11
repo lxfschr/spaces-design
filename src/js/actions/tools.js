@@ -35,9 +35,11 @@ define(function (require, exports) {
         adapterPS = require("adapter/ps");
 
     var events = require("../events"),
+        guides = require("./guides"),
         locks = require("js/locks"),
         policy = require("./policy"),
         shortcuts = require("./shortcuts"),
+        system = require("js/util/system"),
         EventPolicy = require("js/models/eventpolicy"),
         PointerEventPolicy = EventPolicy.PointerEventPolicy;
 
@@ -108,17 +110,17 @@ define(function (require, exports) {
             uiStore = this.flux.store("ui"),
             currentDocument = appStore.getCurrentDocument(),
             currentPolicy = _currentTransformPolicyID,
-            currentTool = toolStore.getCurrentTool();
+            currentTool = toolStore.getCurrentTool(),
+            removePromise = currentPolicy ?
+                this.transfer(policy.removePointerPolicies, currentPolicy, true) : Promise.resolve(),
+            guidePromise; // We want to set these after border policies
 
         // Make sure to always remove the remaining policies
         if (!currentDocument || !currentTool || currentTool.id !== "newSelect") {
-            if (currentPolicy) {
-                _currentTransformPolicyID = null;
-                return this.transfer(policy.removePointerPolicies,
-                    currentPolicy, true);
-            } else {
-                return Promise.resolve();
-            }
+            _currentTransformPolicyID = null;
+            guidePromise = this.transfer(guides.resetGuidePolicies);
+
+            return Promise.join(removePromise, guidePromise);
         }
 
         var targetLayers = currentDocument.layers.selected,
@@ -129,13 +131,10 @@ define(function (require, exports) {
 
         // If selection is empty, remove existing policy
         if (!selection || selection.empty) {
-            if (currentPolicy) {
-                _currentTransformPolicyID = null;
-                return this.transfer(policy.removePointerPolicies,
-                    currentPolicy, true);
-            } else {
-                return Promise.resolve();
-            }
+            _currentTransformPolicyID = null;
+            guidePromise = this.transfer(guides.resetGuidePolicies);
+
+            return Promise.join(removePromise, guidePromise);
         }
 
         // Photoshop transform controls are either clickable on the corner squares for resizing
@@ -154,7 +153,8 @@ define(function (require, exports) {
             // The resize rectangles are roughly 8 points radius
             inset = 4,
             // In case of artboards, we have no rotate, so we can stay within the border
-            outset = artboards ? inset : 27;
+            outset = artboards ? inset : 27,
+            distortModifier = system.isMac ? { command: true } : { control: true };
 
         var insidePolicy = new PointerEventPolicy(adapterUI.policyAction.NEVER_PROPAGATE,
                 adapterOS.eventKind.LEFT_MOUSE_DOWN,
@@ -164,6 +164,27 @@ define(function (require, exports) {
                     y: psSelectionTL.y + inset,
                     width: Math.max(psSelectionWidth - inset * 2, 0),
                     height: Math.max(psSelectionHeight - inset * 2, 0)
+                }
+            ),
+            insideCommandPolicy = new PointerEventPolicy(adapterUI.policyAction.NEVER_PROPAGATE,
+                adapterOS.eventKind.LEFT_MOUSE_DOWN,
+                distortModifier,
+                {
+                    x: psSelectionTL.x + inset,
+                    y: psSelectionTL.y + inset,
+                    width: Math.max(psSelectionWidth - inset * 2, 0),
+                    height: Math.max(psSelectionHeight - inset * 2, 0)
+                }
+            ),
+            // Used for distort/skew transformations
+            noOutsetCommandPolicy = new PointerEventPolicy(adapterUI.policyAction.ALWAYS_PROPAGATE,
+                adapterOS.eventKind.LEFT_MOUSE_DOWN,
+                distortModifier,
+                {
+                    x: psSelectionTL.x - inset,
+                    y: psSelectionTL.y - inset,
+                    width: psSelectionWidth + inset * 2,
+                    height: psSelectionHeight + inset * 2
                 }
             ),
             outsidePolicy = new PointerEventPolicy(adapterUI.policyAction.ALWAYS_PROPAGATE,
@@ -176,7 +197,7 @@ define(function (require, exports) {
                     height: psSelectionHeight + outset * 2
                 }
             ),
-            outsideShiftPolicy = new PointerEventPolicy(adapterUI.policyAction.ALWAYS_PROPAGATE,
+            outsideShiftPolicy = new PointerEventPolicy(adapterUI.policyAction.NEVER_PROPAGATE,
                 adapterOS.eventKind.LEFT_MOUSE_DOWN,
                 {
                     shift: true
@@ -191,28 +212,31 @@ define(function (require, exports) {
 
         var pointerPolicyList = [
             insidePolicy,
+            insideCommandPolicy,
+            noOutsetCommandPolicy,
             outsidePolicy,
             outsideShiftPolicy
         ];
         
-        var removePromise;
-        if (currentPolicy) {
-            _currentTransformPolicyID = null;
-            removePromise = this.transfer(policy.removePointerPolicies,
-                currentPolicy, false);
-        } else {
-            removePromise = Promise.resolve();
-        }
-
-        return removePromise.bind(this).then(function () {
-            return this.transfer(policy.addPointerPolicies, pointerPolicyList);
-        }).then(function (policyID) {
-            _currentTransformPolicyID = policyID;
-        });
+        _currentTransformPolicyID = null;
+        
+        return removePromise
+            .bind(this)
+            .then(function () {
+                return this.transfer(policy.addPointerPolicies, pointerPolicyList);
+            }).then(function (policyID) {
+                _currentTransformPolicyID = policyID;
+            
+                return this.transfer(guides.resetGuidePolicies);
+            });
     };
     resetBorderPolicies.reads = [locks.JS_APP, locks.JS_DOC, locks.JS_TOOL, locks.JS_UI];
     resetBorderPolicies.writes = [];
-    resetBorderPolicies.transfers = [policy.removePointerPolicies, policy.addPointerPolicies];
+    resetBorderPolicies.transfers = [
+        policy.removePointerPolicies,
+        policy.addPointerPolicies,
+        guides.resetGuidePolicies
+    ];
 
     /**
      * Swaps the policies of the current tool with the next tool
@@ -495,7 +519,6 @@ define(function (require, exports) {
 
     exports.beforeStartup = beforeStartup;
     exports.onReset = onReset;
-
 
     // This module must have a higher priority than the document module to avoid
     // duplicate current-document updates on startup, but lower priority than the

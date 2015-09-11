@@ -21,7 +21,6 @@
  * 
  */
 
-
 define(function (require, exports, module) {
     "use strict";
 
@@ -29,12 +28,12 @@ define(function (require, exports, module) {
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React),
         StoreWatchMixin = Fluxxor.StoreWatchMixin,
-        classnames = require("classnames"),
-        Promise = require("bluebird");
+        classnames = require("classnames");
 
     var adapterOS = require("adapter/os");
 
     var PolicyOverlay = require("jsx!js/jsx/tools/PolicyOverlay"),
+        GuidesOverlay = require("jsx!js/jsx/tools/GuidesOverlay"),
         Droppable = require("jsx!js/jsx/shared/Droppable");
     
     var Scrim = React.createClass({
@@ -260,7 +259,11 @@ define(function (require, exports, module) {
             );
         },
         
-        // Stringifies CanvasToWindow transformation for all SVG coordinates
+        /** 
+         * Stringifies CanvasToWindow transformation for all SVG coordinates
+         * 
+         * @ignore
+         */
         _getTransformString: function (transformMatrix) {
             if (!transformMatrix) {
                 return "";
@@ -293,8 +296,9 @@ define(function (require, exports, module) {
                      onMouseLeave={!disabled && this.props.onMouseLeaveDroppable}>
                     <svg width="100%" height="100%">
                         <g id="overlay" width="100%" height="100%">
-                            {toolOverlay}
                             {policyOverlay}
+                            {toolOverlay}
+                            <GuidesOverlay />
                         </g>
                     </svg>
                 </div>
@@ -328,14 +332,7 @@ define(function (require, exports, module) {
             uiStore = flux.store("ui"),
             canvasLocation = uiStore.transformWindowToCanvas(dropPosition.x, dropPosition.y);
         
-        // Placing a new layer from the libraries will halt the JavaScript untile the new layer quit the transform mode.
-        // So we set a delay here to allow the draganddrop store to finish its job: reset the drag state and emmit 
-        // change events.
-        Promise.delay(50).then(function () {
-            flux.actions.libraries.createLayerFromElement(dropTarget, canvasLocation);
-        });
-        
-        return Promise.resolve();
+        return flux.actions.libraries.createLayerFromElement(dropTarget, canvasLocation);
     };
     
     /**

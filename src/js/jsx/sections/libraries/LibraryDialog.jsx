@@ -24,42 +24,41 @@
 define(function (require, exports, module) {
     "use strict";
 
-    var React = require("react"),
-        Fluxxor = require("fluxxor"),
-        FluxMixin = Fluxxor.FluxMixin(React);
-        
-    var strings = require("i18n!nls/strings");
-    
-    var SplitButton = require("jsx!js/jsx/shared/SplitButton"),
-        SplitButtonList = SplitButton.SplitButtonList,
-        SplitButtonItem = SplitButton.SplitButtonItem;
+    var React = require("react");
 
-    var AssetButtons = React.createClass({
-        mixins: [FluxMixin],
-        
+    var LibraryDialog = React.createClass({
         propTypes: {
-            element: React.PropTypes.object.isRequired
+            title: React.PropTypes.string,
+            body: React.PropTypes.string,
+            confirm: React.PropTypes.string,
+            cancel: React.PropTypes.string,
+            onCancel: React.PropTypes.func,
+            onConfirm: React.PropTypes.func
         },
 
         render: function () {
             return (
-                <SplitButtonList className="libraries__asset__buttons">
-                    <SplitButtonItem
-                        title={strings.TOOLTIPS.LIBRARY_DELETE}
-                        iconId="delete"
-                        disabled={true} />
-                    <SplitButtonItem
-                        title={strings.TOOLTIPS.LIBRARY_SEND_LINK}
-                        iconId="libraries-share"
-                        disabled={true} />
-                    <SplitButtonItem
-                        title={strings.TOOLTIPS.LIBRARY_VIEW_ON_WEBSITE}
-                        iconId="libraries-viewonsite"
-                        disabled={true} />
-                </SplitButtonList>
+                <div className="libraries__dialog">
+                    <div className="libraries__dialog-wrapper">
+                        <div className="libraries__dialog__title">
+                            {this.props.title}
+                        </div>
+                        <div className="libraries__dialog__body">
+                            {this.props.body}
+                        </div>
+                        <div className="libraries__dialog__btn-cancel"
+                             onClick={this.props.onCancel}>
+                            {this.props.cancel}
+                        </div>
+                        <div className="libraries__dialog__btn-confirm"
+                             onClick={this.props.onConfirm}>
+                            {this.props.confirm}
+                        </div>
+                    </div>
+                </div>
             );
         }
     });
 
-    module.exports = AssetButtons;
+    module.exports = LibraryDialog;
 });

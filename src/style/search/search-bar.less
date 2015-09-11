@@ -26,7 +26,7 @@
 @dialog-radius: .4rem;
 
 .search-bar__dialog {
-    background: url(../img/ico-layer-search.svg) no-repeat left @search-bg;
+    background: url(../img/ico-layer-search.svg) no-repeat left @bg-panel;
     background-size: 2rem;
     background-position: 1.7rem 1.5rem;
     top: 25%;
@@ -38,7 +38,7 @@
     max-height: 60rem; /*this is important for use with dialog.showModa()*/
     line-height: normal;
     box-shadow: none;
-    border-radius: @dialog-radius;    
+    border-radius: @dialog-radius;
     font-size: 1.6rem;
     overflow: visible;
 }
@@ -61,11 +61,11 @@
 
     border: none;
     width: @drop-down-width;
-    background: @search-bg;
+    background: @bg-panel;
 }
 
 .search-bar__dialog .drop-down:hover {
-    background: @search-bg;
+    background: @bg-panel;
 }
 
 .search-bar__dialog .drop-down input {
@@ -73,7 +73,7 @@
     font-size: 2rem;
     margin-left: 1.1rem;
     width: 42rem;
-    color: @search-bright-text;
+    color: @item-hover;
 }
 
 .search-bar__dialog .drop-down.hasIcon input {
@@ -81,13 +81,12 @@
 }
 
 .search-bar__dialog ::-webkit-input-placeholder {
-    font-style: italic;
-    color: @color-section-rule;
+    color: @item-disabled;
 }
 
 .search-bar__dialog .drop-down input:focus {
     background: rgba(0,0,0,0);
-    color: @search-bright-text;
+    color: @item-hover;
     border: none;
 }
 
@@ -117,18 +116,17 @@
 .search-bar__dialog svg {
     width: 2rem;
     height: 2rem;
-    fill: @search-text;
+    fill: @item-active;
     margin-right: 1rem;
 }
 
 .search-bar__dialog .select__option {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding: 0.5rem 0.8rem 0.7rem 1rem;
     display: flex;
     overflow: hidden;
     text-overflow:ellipsis;
 
-    span { 
+    span {
         flex-grow: 0;
         flex-shrink: 0;
         max-width: 42rem;
@@ -136,25 +134,27 @@
         text-overflow:ellipsis;
 
     }
-    svg { 
+    svg {
         flex-grow: 0;
         flex-shrink: 0;
     }
-    .select__option__info { 
-        flex-shrink: 1;  
-        text-overflow:ellipsis;   
+    .select__option__info {
+        flex-shrink: 1;
+        text-overflow: ellipsis;
     }
 }
 
-
 .search-bar__dialog .select__option__selected {
-    color: @search-highlight;
+    color: @text-highlight;
     padding-left: .7rem;
-    border-left: .3rem solid @search-highlight;
-    background-color: @search-dropdown-bg;
+    border-left: .3rem solid @focus-highlight;
+    background-color: @bg-app;
     
     svg {
-        fill: @search-highlight;
+        fill: @focus-highlight;
+    }
+    .select__option__info {
+        color: @item-hover;
     }
 }
 
@@ -165,42 +165,41 @@
 }
 
 @media (-webkit-min-device-pixel-ratio: 2) and (min-device-width: 801px) and (max-device-width: 1280px) {
-  .search-bar__dialog .select__option__selected { 
-      .option-padding(8px);
-  }
+    .search-bar__dialog .select__option__selected {
+        .option-padding(8px);
+    }
 }
 
 @media (-webkit-min-device-pixel-ratio: 2) and (min-device-width: 1281px) and (max-device-width: 1440px) {
-  .color-picker-slider .color-picker-slider__pointer { 
-      .option-padding(9px);
-  }
+    .search-bar__dialog .select__option__selected {
+        .option-padding(9px);
+    }
 }
 
 @media (-webkit-min-device-pixel-ratio: 2) and (min-device-width: 1441px) and (max-device-width: 1680px) {
-  .color-picker-slider .color-picker-slider__pointer { 
-      .option-padding(10px);          
-  }
+    .search-bar__dialog .select__option__selected {
+        .option-padding(10px);
+    }
 }
 
 @media (-webkit-min-device-pixel-ratio: 2) and (min-device-width: 1681px) and (max-device-width: 2560px) {
-  .color-picker-slider .color-picker-slider__pointer { 
-      .option-padding(11px);          
-  }
+    .search-bar__dialog .select__option__selected {
+        .option-padding(11px);
+    }
 }
 
 @media (-webkit-min-device-pixel-ratio: 2) and (min-device-width: 2561px) {
-  .color-picker-slider .color-picker-slider__pointer { 
-      .option-padding(12px);
-  }
+    .search-bar__dialog .select__option__selected {
+        .option-padding(12px);
+    }
 }
 
 .search-bar__dialog .select__header {
-    color: @search-border;
-    border-top: @hairline solid @search-border;
+    color: @underlines;
+    border-top: @hairline solid @underlines;
     margin-top: 1rem;
     margin-bottom: .25rem;
 }
-
 
 .search-bar__dialog .select__header:first-child {
     border: none;
@@ -208,7 +207,7 @@
 }
 
 .search-bar__dialog .select__option__info {
-    color: @search-border;
+    color: @item-disabled;
     line-height:2.1rem;
 }
 
@@ -224,7 +223,7 @@
 .search-bar__dialog .autocomplete {
     display: inline-block;
     position: absolute;
-    color: @color-section-rule;
+    color: @item-disabled;
     line-height: 2.8rem;
     white-space: pre;
     font-size: 2rem;
@@ -236,11 +235,11 @@
     position: absolute;
     top: 1.2rem;
     right: 1.4rem;
-    color: @search-text;
-    font-size:1.5rem;
+    color: @item-active;
+    font-size:1.6rem;
     font-weight: bold;
 
     &:hover {
-        color: @search-bright-text;
+        color: @item-hover;
     }
 }

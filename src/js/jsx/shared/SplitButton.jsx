@@ -51,7 +51,8 @@ define(function (require, exports, module) {
             
             var buttonIcon;
             if (this.props.iconId) {
-                buttonIcon = (<SVGIcon viewBox="0 0 24 24" CSSID={this.props.iconId} />);
+                buttonIcon = (<SVGIcon viewBox="0 0 16 16" CSSID={this.props.iconId}
+                    iconPath={this.props.iconPath}/>);
             } else {
                 buttonIcon = this.props.children;
             }
@@ -74,14 +75,19 @@ define(function (require, exports, module) {
         mixins: [React.addons.PureRenderMixin],
 
         render: function () {
-            var numberOfItems = React.Children.count(this.props.children);
+            var buttonWrapperClasses;
+            
+            if (!this.props.size) {
+                var numberOfItems = React.Children.count(this.props.children);
 
-            // TODO make this more readable and move complexity to LESS
-            var buttonWrapperClasses = classnames({
-                "column-12": numberOfItems < 4,
-                "column-14": numberOfItems >= 4,
-                "button-radio": true
-            }, this.props.className);
+                // TODO make this more readable and move complexity to LESS
+                buttonWrapperClasses = classnames({
+                    "column-12": numberOfItems < 4,
+                    "column-14": numberOfItems >= 4
+                }, "button-radio", this.props.className);
+            } else {
+                buttonWrapperClasses = classnames("button-radio", this.props.className, this.props.size);
+            }
 
             return (
                 <ul className={buttonWrapperClasses} >

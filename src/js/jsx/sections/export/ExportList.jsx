@@ -21,7 +21,6 @@
  * 
  */
 
-
 define(function (require, exports, module) {
     "use strict";
 
@@ -35,9 +34,11 @@ define(function (require, exports, module) {
         Button = require("jsx!js/jsx/shared/Button"),
         SVGIcon = require("jsx!js/jsx/shared/SVGIcon"),
         Datalist = require("jsx!js/jsx/shared/Datalist"),
-        TextInput = require("jsx!js/jsx/shared/TextInput");
+        TextInput = require("jsx!js/jsx/shared/TextInput"),
+        ExportAsset = require("js/models/exportasset");
 
     var mathUtil = require("js/util/math"),
+        collection = require("js/util/collection"),
         strings = require("i18n!nls/strings");
 
     /**
@@ -45,61 +46,41 @@ define(function (require, exports, module) {
      * @private
      * @type {Immutable.OrderedMap.<string, {id: string, title: string}>}
      */
-    var _scaleOptions = Immutable.OrderedMap({
-        "0.5": {
-            id: "0.5",
-            title: "0.5x"
-        },
-        "1": {
-            id: "1",
-            title: "1x"
-        },
-        "1.5": {
-            id: "1.5",
-            title: "1.5x"
-        },
-        "2": {
-            id: "2",
-            title: "2x"
-        }
-    });
+    var _scaleOptions = Immutable.OrderedMap(ExportAsset.SCALES
+        .map(function (scale) {
+            var obj = {
+                id: scale.toString(),
+                title: scale.toString()
+            };
+            return [scale.toString(), obj];
+        }));
 
     /**
      * The options for the format datalist
      * @private
      * @type {Immutable.OrderedMap.<string, {id: string, title: string}>}
      */
-    var _formatOptions = Immutable.OrderedMap({
-        "png": {
-            id: "png",
-            title: "PNG"
-        },
-        "jpg": {
-            id: "jpg",
-            title: "JPG"
-        },
-        "svg": {
-            id: "svg",
-            title: "SVG"
-        },
-        "pdf": {
-            id: "pdf",
-            title: "PDF"
-        }
-    });
+    var _formatOptions = Immutable.OrderedMap(ExportAsset.FORMATS
+        .map(function (format) {
+            var obj = {
+                id: format,
+                title: format.toUpperCase()
+            };
+            return [format, obj];
+        }));
 
     /**
      * Local React Component that displays a single Export Asset, including UI elements to update its properties
      */
-    var LayerExportAsset = React.createClass({
+    var ExportAssetFace = React.createClass({
 
         mixins: [FluxMixin],
 
         propTypes: {
             document: React.PropTypes.object.isRequired,
-            layer: React.PropTypes.object.isRequired,
+            layers: React.PropTypes.instanceOf(Immutable.Iterable), // undefined => doc-level export
             index: React.PropTypes.number.isRequired,
-            exportAsset: React.PropTypes.object.isRequired
+            exportAssets: React.PropTypes.instanceOf(Immutable.Iterable).isRequired
         },
 
         /**
@@ -109,10 +90,10 @@ define(function (require, exports, module) {
          */
         _handleDeleteClick: function () {
             var document = this.props.document,
-                layer = this.props.layer,
+                layers = this.props.layers,
                 index = this.props.index;
 
-            this.getFlux().actions.export.deleteLayerExportAsset(document, layer, index);
+            this.getFlux().actions.export.deleteExportAsset(document, layers, index);
         },
 
         /**
@@ -124,7 +105,7 @@ define(function (require, exports, module) {
             var scaleNum = mathUtil.parseNumber(scale);
 
             this.getFlux().actions.export.updateLayerAssetScale(
-                this.props.document, this.props.layer, this.props.index, scaleNum);
+                this.props.document, this.props.layers, this.props.index, scaleNum);
         },
 
         /**
@@ -134,7 +115,7 @@ define(function (require, exports, module) {
          */
         _handleUpdateSuffix: function (event, suffix) {
             this.getFlux().actions.export.updateLayerAssetSuffix(
-                this.props.document, this.props.layer, this.props.index, suffix);
+                this.props.document, this.props.layers, this.props.index, suffix);
         },
 
         /**
@@ -146,17 +127,24 @@ define(function (require, exports, module) {
             var formatLower = format && format.toLowerCase();
 
             this.getFlux().actions.export.updateLayerAssetFormat(
-                this.props.document, this.props.layer, this.props.index, formatLower);
+                this.props.document, this.props.layers, this.props.index, formatLower);
         },
 
         render: function () {
-            var layer = this.props.layer,
-                exportAsset = this.props.exportAsset,
-                scale = exportAsset.scale || 1,
+            var exportAssets = this.props.exportAssets,
+                exportAsset = collection.uniformValue(exportAssets, ExportAsset.similar);
+
+            if (!exportAsset) {
+                // We only display an asset if it is functionally uniform across all layers
+                return null;
+            }
+
+            var scale = exportAsset.scale,
                 scaleOption = _scaleOptions.has(scale.toString()) ?
                     _scaleOptions.get(scale.toString()) : _scaleOptions.get("1"),
-                scaleListID = "layerExportAsset-scale" + layer.id + "-" + this.props.index,
-                formatListID = "layerExportAsset-format-" + layer.id + "-" + this.props.index;
+                keySuffix = this.props.faceKey,
+                scaleListID = "exportAsset-scale-" + keySuffix,
+                formatListID = "exportAsset-format-" + keySuffix;
 
             return (
                 <div className="formline">
@@ -165,14 +153,16 @@ define(function (require, exports, module) {
                         className="dialog-export-scale"
                         options={_scaleOptions.toList()}
                         value={scaleOption.title}
+                        defaultSelected={scaleOption.id}
                         onChange={this._handleUpdateScale}
                         live={false}
-                        size="column-3" />
+                        size="column-4" />
                     <Gutter />
                     <TextInput
                         value={exportAsset.suffix}
                         singleClick={true}
                         editable={true}
+                        live={true}
                         onChange={this._handleUpdateSuffix}
                         size="column-6" />
                     <Gutter />
@@ -181,6 +171,7 @@ define(function (require, exports, module) {
                         className="dialog-export-format"
                         options={_formatOptions.toList()}
                         value={exportAsset.format.toUpperCase()}
+                        defaultSelected={exportAsset.format}
                         onChange={this._handleUpdateFormat}
                         live={false}
                         size="column-4" />
@@ -196,63 +187,71 @@ define(function (require, exports, module) {
         }
     });
 
-    var LayerExports = React.createClass({
+    var ExportList = React.createClass({
 
         propTypes: {
             document: React.PropTypes.object.isRequired,
             documentExports: React.PropTypes.object.isRequired,
-            layer: React.PropTypes.object.isRequired
+            layers: React.PropTypes.instanceOf(Immutable.Iterable) // undefined => doc-level export
         },
 
         render: function () {
             var document = this.props.document,
-                layer = this.props.layer,
+                layers = this.props.layers,
                 documentExports = this.props.documentExports,
-                layerExports = documentExports && documentExports.layerExportsMap.get(layer.id),
+                keyprefix = layers && collection.pluck(layers, "key").join("-") || document.id,
+                assetGroups,
                 exportComponents;
 
-            if (!layerExports || layerExports.size < 1) {
-                return null;
+            if (layers) {
+                assetGroups = documentExports.getAssetGroups(layers).toList();
             } else {
-                exportComponents = layerExports.map(function (i, k) {
-                    return (
-                        <LayerExportAsset
-                            document={document}
-                            layer={layer}
-                            index={k}
-                            key={k}
-                            exportAsset={i} />
-                    );
-                }, this).toArray();
-
-                return (
-                    <div className="layer-exports__header" >
-                        <div className="formline">
-                            <Label
-                                title={strings.EXPORT.TITLE_SCALE}
-                                size="column-3">
-                                {strings.EXPORT.TITLE_SCALE}
-                            </Label>
-                            <Gutter />
-                            <Label
-                                title={strings.EXPORT.TITLE_SUFFIX}
-                                size="column-6">
-                                {strings.EXPORT.TITLE_SUFFIX}
-                            </Label>
-                            <Gutter />
-                            <Label
-                                title={strings.EXPORT.TITLE_SETTINGS}
-                                size="column-4">
-                                {strings.EXPORT.TITLE_SETTINGS}
-                            </Label>
-                            <Gutter />
-                        </div>
-                        {exportComponents}
-                    </div>
-                );
+                assetGroups = collection.zip(Immutable.List.of(documentExports.rootExports)).toList();
             }
+
+            exportComponents = assetGroups.map(function (i, k) {
+                var key = keyprefix + "-" + k;
+                return (
+                    <ExportAssetFace
+                        document={document}
+                        layers={layers}
+                        index={k}
+                        key={key}
+                        faceKey={key}
+                        exportAssets={i} />
+                );
+            }, this);
+
+            return (
+                <div className="layer-exports__header" >
+                    <div className="formline">
+                        <Label
+                            title={strings.EXPORT.TITLE_SCALE}
+                            size="column-4"
+                            className="label__medium__left-aligned">
+                            {strings.EXPORT.TITLE_SCALE}
+                        </Label>
+                        <Gutter />
+                        <Label
+                            title={strings.EXPORT.TITLE_SUFFIX}
+                            size="column-6"
+                            className="label__medium__left-aligned">
+                            {strings.EXPORT.TITLE_SUFFIX}
+                        </Label>
+                        <Gutter />
+                        <Label
+                            title={strings.EXPORT.TITLE_SETTINGS}
+                            size="column-4"
+                            className="label__medium__left-aligned">
+                            {strings.EXPORT.TITLE_SETTINGS}
+                        </Label>
+                        <Gutter />
+                    </div>
+                    {exportComponents}
+                </div>
+            );
         }
     });
 
-    module.exports = LayerExports;
+    module.exports = ExportList;
 });

@@ -21,7 +21,6 @@
  *
  */
 
-
 define(function (require, exports, module) {
     "use strict";
 
@@ -48,7 +47,7 @@ define(function (require, exports, module) {
          * @private
          */
         addGraphic: function () {
-            this.getFlux().actions.libraries.createElementFromSelectedLayer();
+            this.getFlux().actions.libraries.createGraphicFromSelectedLayer();
         },
 
         /**
@@ -105,7 +104,7 @@ define(function (require, exports, module) {
                 <SplitButtonItem title={title} disabled={this.props.disabled}>
                     <div className="split-button__item__color-icon"
                          style={{ backgroundColor: color.toTinyColor().toRgbString() }}
-                         onClick={this.addColorAsset.bind(this, color)} />
+                         onClick={!this.props.disabled && this.addColorAsset.bind(this, color)}/>
                 </SplitButtonItem>
             );
         },
@@ -167,6 +166,13 @@ define(function (require, exports, module) {
                    this.props.document.layers.selected.size === 1 &&
                    this.props.document.layers.selected.first().hasLayerEffect();
         },
+        
+        /**
+         * Sync all libraries.
+         */
+        _handleSyncLibraries: function () {
+            this.getFlux().actions.libraries.syncLibraries();
+        },
 
         render: function () {
             var adobeStockURL = "https://stock.adobe.com";
@@ -216,11 +222,13 @@ define(function (require, exports, module) {
                         <SplitButtonItem
                             title={strings.TOOLTIPS.SEARCH_ADOBE_STOCK}
                             iconId="libraries-stock"
-                            onClick={ui.openURL.bind(null, adobeStockURL)} />
+                            onClick={ui.openURL.bind(null, adobeStockURL)}/>
                         <SplitButtonItem
                             title={strings.TOOLTIPS.SYNC_LIBRARIES}
-                            iconId="libraries-cc"
-                            disabled={true} />
+                            iconId={this.props.isSyncing ? "loader" : "libraries-cc"}
+                            iconPath={this.props.isSyncing ? "" : null}
+                            onClick={this._handleSyncLibraries}
+                            disabled={this.props.disabled}/>
                     </ul>
                 </div>
             );

@@ -90,19 +90,9 @@ button {
     justify-content: center;
 }
 
-.button-radio li {
-    margin: 0 auto;
-    // border-right: @hairline solid;
-    flex-grow: 1;
-}
-
-.button-radio li:last-child {
-    border: none;
-}
-
 .button-combo:focus {
     cursor: text;
-    .background-transparency(@warm-white, .3);
+    .background-transparency(@item-active, .3);
 }
 
 .button-radio {
@@ -114,9 +104,13 @@ button {
   height: 3rem;
 }
 
+.button-radio__fixed {
+    flex-grow: 0;
+}
+
 .button-combo {
     background: none;
-    color: @warm-white;
+    color: @item-active;
     opacity: .66;
     box-sizing: border-box!important;
     height: 3rem;
@@ -136,7 +130,7 @@ button {
 .button-settings {
     .medButton();
     font-size: 1.5rem;
-    color: @warm-white;
+    color: @item-active;
     font-weight: 300;
     opacity: .65;
 }
@@ -146,7 +140,7 @@ button {
     .medButton();
     font-size: 1.5rem;
     line-height: 2rem;
-    color: @warm-white;
+    color: @item-active;
     font-weight: 300;
     opacity: .55;
     
@@ -157,7 +151,7 @@ button {
     svg {
         width: 1.3rem;
         height: 1.3rem;
-        fill: @warm-white;
+        fill: @item-active;
     }
 }
 
@@ -198,4 +192,55 @@ button {
 
 .button-tool-options button:last-child {
     padding: 0 0 0 1.5rem;
+}
+
+.button-checkbox {
+    width: 1.5rem;
+    height: 1.5rem;
+    position: relative;
+    label {
+        width: 1.5rem;
+        height: 1.5rem;
+        cursor: pointer;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: @warm-gray;
+        border-radius: .2rem;
+        &:after {
+            content: '';
+            width: 0.7rem;
+            height: 0.4rem;
+            position: absolute;
+            top: 0.3rem;
+            left: 0.3rem;
+            border: 0.3rem solid @bg-alt;
+            border-top: none;
+            border-right: none;
+            background: transparent;
+            opacity: 0;
+            transform: rotate(-45deg);
+        }
+        &:hover::after {
+            opacity: 0.3;
+        }
+    }
+    input[type=checkbox] {
+        visibility: hidden;
+        &:checked + label:after {
+          opacity: 1;
+        } 
+    }
+}
+
+.button-checkbox__mixed {
+    label {
+        &:after {
+            top: 0.2rem;
+            left: 0.4rem;
+            border-left: none;
+            opacity: 1;
+            transform: rotate(0);
+        }
+    }
 }

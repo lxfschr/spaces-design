@@ -33,10 +33,12 @@ define(function (require, exports) {
         selectionLib = require("adapter/lib/selection"),
         PS = require("adapter/ps");
 
-    var historyActions = require("./history"),
+    var guideActions = require("./guides"),
+        historyActions = require("./history"),
         layerActions = require("./layers"),
         toolActions = require("./tools"),
         searchActions = require("./search/documents"),
+        libraryActions = require("./libraries"),
         application = require("./application"),
         preferencesActions = require("./preferences"),
         ui = require("./ui"),
@@ -44,7 +46,8 @@ define(function (require, exports) {
         locks = require("js/locks"),
         pathUtil = require("js/util/path"),
         log = require("js/util/log"),
-        headlights = require("js/util/headlights");
+        headlights = require("js/util/headlights"),
+        global = require("js/util/global");
 
     var templatesJSON = require("text!static/templates.json"),
         templates = JSON.parse(templatesJSON);
@@ -80,7 +83,8 @@ define(function (require, exports) {
         "targetLayers",
         "guidesVisibility",
         "smartGuidesVisibility",
-        "format"
+        "format",
+        "numberOfGuides"
     ];
 
     /**
@@ -124,9 +128,18 @@ define(function (require, exports) {
         var documentPropertiesPromise = descriptor.multiGetProperties(reference, properties),
             optionalPropertiesPromise = descriptor.multiGetOptionalProperties(reference, optionalProperties);
 
-        return Promise.join(documentPropertiesPromise, optionalPropertiesPromise,
-            function (properties, optionalProperties) {
-                return _.merge(properties, optionalProperties);
+        // fetch exports metadata via document extension data
+        var nameSpace = global.EXTENSION_DATA_NAMESPACE,
+            extensionPlayObject = documentLib.getExtensionData(reference, nameSpace),
+            extensionPromise = descriptor.playObject(extensionPlayObject)
+                .then(function (extensionData) {
+                    var extensionDataRoot = extensionData[nameSpace];
+                    return (extensionDataRoot && extensionDataRoot.exportsMetadata) || {};
+                });
+
+        return Promise.join(documentPropertiesPromise, optionalPropertiesPromise, extensionPromise,
+            function (properties, optionalProperties, extensionProperties) {
+                return _.merge(properties, optionalProperties, extensionProperties);
             });
     };
 
@@ -149,6 +162,24 @@ define(function (require, exports) {
                     layers: layers
                 };
             });
+    };
+
+    /**
+     * Get an array of guide descriptors for the given document descriptor.
+     *
+     * @private
+     * @param {object} doc Document descriptor
+     * @return {Promise.<Array.<object>>}
+     */
+    var _getGuidesForDocument = function (doc) {
+        var docRef = documentLib.referenceBy.id(doc.documentID),
+            numberOfGuides = doc.numberOfGuides;
+
+        if (numberOfGuides === 0) {
+            return Promise.resolve([]);
+        }
+
+        return guideActions._getGuidesForDocumentRef(docRef);
     };
 
     /**
@@ -266,14 +297,17 @@ define(function (require, exports) {
                         var currentDocLayersPromise = _getLayersForDocument(currentDoc),
                             historyPromise = this.transfer(historyActions.queryCurrentHistory,
                                 currentDoc.documentID, true),
+                            guidesPromise = _getGuidesForDocument(currentDoc),
                             deselectPromise = descriptor.playObject(selectionLib.deselectAll());
 
                         return Promise.join(currentDocLayersPromise,
                             historyPromise,
+                            guidesPromise,
                             deselectPromise,
-                            function (payload, historyPayload) {
+                            function (payload, historyPayload, guidesPayload) {
                                 payload.current = true;
                                 payload.history = historyPayload;
+                                payload.guides = guidesPayload;
                                 this.dispatch(events.document.DOCUMENT_UPDATED, payload);
                                 this.dispatch(events.application.INITIALIZED, { item: "activeDocument" });
                             }.bind(this))
@@ -316,19 +350,25 @@ define(function (require, exports) {
                 var layersPromise = _getLayersForDocument(doc),
                     historyPromise = current ?
                         this.transfer(historyActions.queryCurrentHistory, doc.documentID, true) :
-                        Promise.resolve(null);
+                        Promise.resolve(null),
+                    guidesPromise = _getGuidesForDocument(doc);
 
-                return Promise.join(layersPromise, historyPromise,
-                    function (payload, historyPayload) {
+                return Promise.join(layersPromise, historyPromise, guidesPromise,
+                    function (payload, historyPayload, guidesPayload) {
                         payload.current = current;
                         payload.history = historyPayload;
+                        payload.guides = guidesPayload;
                         return this.dispatchAsync(events.document.DOCUMENT_UPDATED, payload);
-                    }.bind(this));
+                    }.bind(this))
+                    .bind(this)
+                    .then(function () {
+                        this.transfer(toolActions.resetBorderPolicies);
+                    });
             });
     };
     updateDocument.reads = [locks.PS_DOC];
     updateDocument.writes = [locks.JS_DOC];
-    updateDocument.transfers = [historyActions.queryCurrentHistory];
+    updateDocument.transfers = [historyActions.queryCurrentHistory, toolActions.resetBorderPolicies];
     updateDocument.lockUI = true;
 
     /**
@@ -366,16 +406,19 @@ define(function (require, exports) {
                 var newDocument = this.flux.store("application").getCurrentDocument(),
                     resetLinkedPromise = this.transfer(layerActions.resetLinkedLayers, newDocument),
                     recentFilesPromise = this.transfer(application.updateRecentFiles),
-                    updateTransformPromise = this.transfer(ui.updateTransform);
+                    updateTransformPromise = this.transfer(ui.updateTransform),
+                    deleteTempFilesPromise = this.transfer(libraryActions.deleteGraphicTempFiles, documentID);
 
                 return Promise.join(resetLinkedPromise,
                         updateTransformPromise,
-                        recentFilesPromise);
+                        recentFilesPromise,
+                        deleteTempFilesPromise);
             });
     };
     disposeDocument.reads = [];
     disposeDocument.writes = [locks.JS_DOC, locks.JS_APP];
-    disposeDocument.transfers = [layerActions.resetLinkedLayers, application.updateRecentFiles, ui.updateTransform];
+    disposeDocument.transfers = ["layers.resetLinkedLayers", application.updateRecentFiles, ui.updateTransform,
+        "libraries.deleteGraphicTempFiles"];
     disposeDocument.lockUI = true;
 
     /**
@@ -461,16 +504,19 @@ define(function (require, exports) {
      * Opens the document in the given path
      *
      * @param {string} filePath
+     * @param {object=} settings - params accepted by the Adapter function documents#openDocument
      * @return {Promise}
      */
-    var open = function (filePath) {
+    var open = function (filePath, settings) {
+        settings = settings || {};
+        
         this.dispatch(events.ui.TOGGLE_OVERLAYS, { enabled: false });
 
         var documentRef = {
             _path: filePath
         };
 
-        return descriptor.playObject(documentLib.open(documentRef, {}))
+        return descriptor.playObject(documentLib.open(documentRef, settings))
             .bind(this)
             .then(function () {
                 var initPromise = this.transfer(initActiveDocument),
@@ -563,19 +609,21 @@ define(function (require, exports) {
             .then(function () {
                 var resetLinkedPromise = this.transfer(layerActions.resetLinkedLayers, document),
                     historyPromise = this.transfer(historyActions.queryCurrentHistory, document.id),
+                    guidesPromise = this.transfer(guideActions.queryCurrentGuides, document),
                     updateTransformPromise = this.transfer(ui.updateTransform),
                     deselectPromise = descriptor.playObject(selectionLib.deselectAll());
 
                 return Promise.join(resetLinkedPromise,
                     historyPromise,
+                    guidesPromise,
                     updateTransformPromise,
                     deselectPromise);
             });
     };
     selectDocument.reads = [locks.JS_TOOL];
     selectDocument.writes = [locks.JS_APP];
-    selectDocument.transfers = [layerActions.resetLinkedLayers, historyActions.queryCurrentHistory,
-        ui.updateTransform, toolActions.select, ui.cloak];
+    selectDocument.transfers = ["layers.resetLinkedLayers", historyActions.queryCurrentHistory,
+        ui.updateTransform, toolActions.select, ui.cloak, guideActions.queryCurrentGuides];
     selectDocument.lockUI = true;
     selectDocument.post = [_verifyActiveDocument];
 
@@ -591,8 +639,6 @@ define(function (require, exports) {
         if (!nextDocument) {
             return Promise.resolve();
         }
-
-        this.dispatch(events.ui.TOGGLE_OVERLAYS, { enabled: false });
 
         return this.transfer(selectDocument, nextDocument);
     };
@@ -613,8 +659,6 @@ define(function (require, exports) {
         if (!previousDocument) {
             return Promise.resolve();
         }
-
-        this.dispatch(events.ui.TOGGLE_OVERLAYS, { enabled: false });
 
         return this.transfer(selectDocument, previousDocument);
     };
@@ -640,7 +684,6 @@ define(function (require, exports) {
     packageDocument.reads = [];
     packageDocument.writes = [locks.PS_DOC];
 
-
     /**
      * Toggle the visibility of guides on the current document
      *
@@ -660,10 +703,15 @@ define(function (require, exports) {
         var playObject = documentLib.setGuidesVisibility(newVisibility),
             playPromise = descriptor.playObject(playObject);
 
-        return Promise.join(dispatchPromise, playPromise);
+        return Promise.join(dispatchPromise, playPromise)
+            .bind(this)
+            .then(function () {
+                return this.transfer(guideActions.resetGuidePolicies);
+            });
     };
     toggleGuidesVisibility.reads = [locks.JS_DOC, locks.JS_APP];
     toggleGuidesVisibility.writes = [locks.JS_DOC, locks.PS_DOC];
+    toggleGuidesVisibility.transfers = [guideActions.resetGuidePolicies];
 
     /**
      * Toggle the visibility of smart guides on the current document
@@ -690,24 +738,36 @@ define(function (require, exports) {
     toggleSmartGuidesVisibility.writes = [locks.JS_DOC, locks.PS_DOC];
 
     /**
-     * Sets artboard auto nesting for the given document ID
+     * Handler for the placeEvent notification. If the event contains
+     * the layer ID of a layer not in the model, calls addLayers on
+     * that layerID.
      *
-     * @param {number} documentID
-     * @param {boolean} enabled Whether layers should be automatically nested
+     * @param {{ID: number}} event
      * @return {Promise}
      */
-    var setAutoNesting = function (documentID, enabled) {
-        if (enabled) {
-            log.warn("In current version of Design Space, we shouldn't enable artboard auto-nesting!");
+    var handlePlaceEvent = function (event) {
+        var applicationStore = this.flux.store("application"),
+            document = applicationStore.getCurrentDocument();
+
+        if (!document) {
+            var error = new Error("Place event received without a current document");
+            return Promise.reject(error);
         }
 
-        var documentRef = documentLib.referenceBy.id(documentID),
-            nestingObj = documentLib.setArtboardAutoAttributes(documentRef, enabled);
+        var layerID = event.ID;
+        if (!layerID) {
+            return this.transfer(updateDocument);
+        }
 
-        return descriptor.playObject(nestingObj);
+        if (document.layers.byID(layerID)) {
+            return Promise.resolve();
+        }
+
+        return this.transfer(layerActions.addLayers, document, layerID);
     };
-    setAutoNesting.reads = [];
-    setAutoNesting.writes = [locks.PS_DOC];
+    handlePlaceEvent.reads = [locks.JS_APP];
+    handlePlaceEvent.writes = [];
+    handlePlaceEvent.transfers = [updateDocument, "layers.addLayers"];
 
     /**
      * Event handlers initialized in beforeStartup.
@@ -809,10 +869,13 @@ define(function (require, exports) {
             }
 
             this.flux.actions.application.updateRecentFilesThrottled();
+            this.flux.actions.libraries.updateGraphicContent(documentID);
 
             this.dispatch(events.document.SAVE_DOCUMENT, {
-                documentID: documentID
+                documentID: documentID,
+                path: event.in._path
             });
+            
 
             if (!saveAs) {
                 return;
@@ -845,15 +908,7 @@ define(function (require, exports) {
         // This event is triggered when a new smart object layer is placed,
         // e.g., by dragging an image into an open document.
         _placeEventHandler = function (event) {
-            var document = applicationStore.getCurrentDocument(),
-                layerID = event.ID;
-
-            if (document && layerID) {
-                this.flux.actions.layers.addLayers(document, layerID);
-            } else {
-                log.warn("Place event received without a current document", event);
-                this.flux.actions.documents.updateDocument();
-            }
+            this.flux.actions.documents.handlePlaceEvent(event);
         }.bind(this);
         descriptor.addListener("placeEvent", _placeEventHandler);
 
@@ -928,9 +983,9 @@ define(function (require, exports) {
     exports.initActiveDocument = initActiveDocument;
     exports.initInactiveDocuments = initInactiveDocuments;
     exports.packageDocument = packageDocument;
-    exports.setAutoNesting = setAutoNesting;
     exports.toggleGuidesVisibility = toggleGuidesVisibility;
     exports.toggleSmartGuidesVisibility = toggleSmartGuidesVisibility;
+    exports.handlePlaceEvent = handlePlaceEvent;
 
     exports.beforeStartup = beforeStartup;
     exports.afterStartup = afterStartup;

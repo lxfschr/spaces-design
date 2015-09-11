@@ -54,7 +54,7 @@ define(function (require, exports) {
             // discard the -1 values, those are related to selection actions
             if (destinationIndex >= 0) {
                 if (!layerActions.has(destinationIndex)) {
-                    throw new Error ("Could not find index " + destinationIndex + " in layerActions");
+                    throw new Error("Could not find index " + destinationIndex + " in layerActions");
                 }
                 var layerAction = layerActions.get(destinationIndex);
                 if (_.isArray(layerAction.playObject)) {
@@ -71,7 +71,6 @@ define(function (require, exports) {
 
         return newLayerActions;
     };
-
 
     /**
      * Play a set of layer-specific actions, but first including a 'select' action 
@@ -151,6 +150,16 @@ define(function (require, exports) {
      * @return {Promise} returns the photoshop response from the first played action(s)
      */
     var playSimpleLayerActions = function (document, layers, playObject, overrideLocks, options) {
+        // Skip the selection dance in case we want to play an action on the lone, selected layer.
+        var selected = document.layers.selected;
+        if (layers.size === 1 && selected.size === 1 && layers.first().equals(selected.first())) {
+            if (overrideLocks) {
+                return lockingUtil.playWithLockOverride(document, layers, playObject, options);
+            } else {
+                return descriptor.playObject(playObject, options);
+            }
+        }
+
         var layerActions = layers.map(function (layer) {
             return {
                 layer: layer,

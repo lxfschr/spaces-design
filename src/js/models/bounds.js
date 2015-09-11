@@ -146,7 +146,7 @@ define(function (require, exports, module) {
      * @param {object?} descriptor.pathBounds If available, will be parsed as shape layer
      * @param {object?} descriptor.boundsNoEffects Bounds object available for all layers
      *
-     * @return {{top: number, left: number, bottom: number, right: number}}
+     * @return {?{top: number, left: number, bottom: number, right: number}}
      */
     Bounds.parseLayerDescriptor = function (descriptor) {
         var boundsObject;
@@ -220,6 +220,33 @@ define(function (require, exports, module) {
             });
 
         return nextBounds;
+    };
+
+    /**
+     * Creates a new bounds object from the intersection of the given bounds objects.
+     * Returns null if they don't intersect 
+     *
+     * @param {Bounds} boundsOne
+     * @param {Bounds} boundsTwo
+     * @return {?Bounds} Intersection of boundsOne and boundsTwo
+     */
+    Bounds.intersection = function (boundsOne, boundsTwo) {
+        if (!boundsOne || !boundsTwo) {
+            return null;
+        }
+        
+        var model = {
+            top: boundsTwo.top < boundsOne.top ? boundsOne.top : boundsTwo.top,
+            left: boundsTwo.left < boundsOne.left ? boundsOne.left : boundsTwo.left,
+            bottom: boundsTwo.bottom < boundsOne.bottom ? boundsTwo.bottom : boundsOne.bottom,
+            right: boundsTwo.right < boundsOne.right ? boundsTwo.right : boundsOne.right
+        };
+
+        if (model.bottom < model.top || model.right < model.left) {
+            return null;
+        }
+
+        return new Bounds(model);
     };
 
     /**

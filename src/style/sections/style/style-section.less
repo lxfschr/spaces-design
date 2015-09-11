@@ -23,31 +23,20 @@
 
 @style-button-size: 1.6rem;
 
-.style {
+.effects,
+.appearance,
+.type, {
     min-height: 3rem;
-    flex-grow: 1;
     flex-shrink: 1;
+    
+    .section-container__collapsed {
+        display: none;
+    }    
 }
-
-.style .section-container {
-    // flex-basis: 41.5rem;
-}
-
-.style .section-container__collapsed {
-    display: none;
-}
-
-// .style.section.section__sibling-collapsed {
-//     flex-grow: 999999;
-// }
 
 .style-workflow-buttons {
     display: flex;
     flex-direction: row;
-}
-
-.style-button__disabled {
-    opacity: 0.20 !important;
 }
 
 .style-button {
@@ -59,14 +48,25 @@
     svg {
         width: @style-button-size;
         height: @style-button-size;
-        fill: @warm-white;
+        fill: @item-active;
         stroke: none;
+    }
+    &:hover {
+        svg {
+            fill: @item-hover;
+            stroke: none;
+        }
+    }
+    &__disabled, &__disabled:hover {
+        svg {
+            fill: @item-disabled;
+        }
     }
 }
 
 .fill-list__fill,
 .stroke-list__stroke,
-.shadow-list__shadow{
+.shadow-list__shadow {
 
     .button-toggle {
         height: 2.5rem;
@@ -82,4 +82,10 @@
     .button-toggle {
         height: 2rem; // prevent bleed over stroke alignment datalist
     }
+}
+
+.appearance,
+.type {
+    height: 22rem;
+    flex-grow: 0;
 }

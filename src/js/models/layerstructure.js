@@ -28,6 +28,7 @@ define(function (require, exports, module) {
 
     var Layer = require("./layer"),
         LayerNode = require("./layernode"),
+        Stroke = require("./stroke"),
         Bounds = require("./bounds"),
         Radii = require("./radii");
 
@@ -121,8 +122,10 @@ define(function (require, exports, module) {
 
         // Traverse up to root
         while (layerAncestor && !visitedParents.hasOwnProperty(layerAncestor.id)) {
-            // Remove the current parent because we're already below it
-            selectableLayers = pull(selectableLayers, layerAncestor);
+            if (!layerAncestor.isArtboard) {
+                // Remove the current parent because we're already below it
+                selectableLayers = pull(selectableLayers, layerAncestor);
+            }
 
             // So we don't process this parent again
             visitedParents[layerAncestor.id] = layerAncestor;
@@ -294,12 +297,48 @@ define(function (require, exports, module) {
         },
 
         /**
+         * Bounds of all the top layers
+         * @type {Immutable.List.<Bounds>}
+         */
+        "topBounds": function () {
+            return this.top
+                .toSeq()
+                .map(function (layer) {
+                    return this.childBounds(layer);
+                }, this)
+                .filter(function (bounds) {
+                    return bounds && bounds.area > 0;
+                })
+                .toList();
+        },
+
+        /**
+         * Overall bounds of all the layers in the structure
+         *
+         * @return {Bounds}
+         */
+        "overallBounds": function () {
+            return Bounds.union(this.topBounds);
+        },
+
+        /**
          * The set of artboards in the document
+         * @type {Immutable.List.<Layer>}
          */
         "artboards": function () {
             return this.top.filter(function (layer) {
                 return layer.isArtboard;
             });
+        },
+
+        /**
+         * The set of top level ancestors of all selected layers
+         * @type {Immutable.Set.<Layer>}
+         */
+        "selectedTopAncestors": function () {
+            return this.selected.map(function (layer) {
+                return this.topAncestor(layer);
+            }, this).toSet();
         },
 
         /**
@@ -332,7 +371,7 @@ define(function (require, exports, module) {
                         this.hasVisibleDescendant(layer) &&
                         !this.hasInvisibleAncestor(layer) &&
                         !this.hasLockedAncestor(layer) &&
-                        !visitedParents.hasOwnProperty(layer.id);
+                        (layer.isArtboard || !visitedParents.hasOwnProperty(layer.id));
                 }, this)
                 .toList();
         },
@@ -554,6 +593,22 @@ define(function (require, exports, module) {
     }));
 
     /**
+     * Find the top ancestor of the given layer.
+     *
+     * @param {Layer} layer
+     * @return {Layer}
+     */
+    Object.defineProperty(LayerStructure.prototype, "topAncestor", objUtil.cachedLookupSpec(function (layer) {
+        var ancestor = layer;
+
+        while (this.parent(ancestor)) {
+            ancestor = this.parent(ancestor);
+        }
+
+        return ancestor;
+    }));
+
+    /**
      * Find all ancestors of the given layer, excluding itself.
      *
      * @param {Layer} layer
@@ -756,6 +811,41 @@ define(function (require, exports, module) {
     }));
 
     /**
+     * Calculate the bounds of a layer visible within it's parent artboard,
+     * layer's own bounds if it's not in an artboard
+     *
+     * @param {Layer} layer
+     * @return {?Bounds}
+     */
+    Object.defineProperty(LayerStructure.prototype, "boundsWithinArtboard", objUtil.cachedLookupSpec(function (layer) {
+        var bounds = this.childBounds(layer),
+            topAncestor = this.topAncestor(layer);
+
+        if (topAncestor.isArtboard) {
+            bounds = Bounds.intersection(this.childBounds(topAncestor), bounds);
+        }
+
+        return bounds;
+    }));
+
+    /**
+     * Given a set of layers, return only those layers which will support being exported
+     * This excludes background layers and empty layers
+     *
+     * @param {Immutable.Iterable.<Layer>} layers
+     * @return {Immutable.Iterable.<Layer>}
+     */
+    Object.defineProperty(LayerStructure.prototype, "filterExportable", objUtil.cachedLookupSpec(function (layers) {
+        return layers.filterNot(function (layer) {
+            return !layer.bounds ||
+                this.childBounds(layer).empty ||
+                layer.isBackground ||
+                layer.kind === layer.layerKinds.ADJUSTMENT ||
+                this.isEmptyGroup(layer);
+        }, this);
+    }));
+
+    /**
      * Create a new non-group layer model from a Photoshop layer descriptor and
      * add it to the structure.
      *
@@ -777,10 +867,13 @@ define(function (require, exports, module) {
             if (Number.isInteger(replace)) {
                 // if explicitly replacing, then replace by current ID
                 replaceLayer = this.byID(replace);
-            } else {
-                // otherwise, replace the selected layer
-                var selectedLayers = document.layers.selected;
-                replaceLayer = selectedLayers && selectedLayers.size === 1 && selectedLayers.first();
+            } else if (this.selected && this.selected.size === 1) {
+                // otherwise, replace the selected layer if it has the same index with the new layer.
+                var selectedLayer = this.selected.first(),
+                    selectedLayerIndex = this.indexOf(selectedLayer),
+                    newLayerIndex = descriptors[0].itemIndex;
+                    
+                replaceLayer = selectedLayerIndex === newLayerIndex && selectedLayer;
             }
 
             // The selected layer should be empty and a non-background layer unless replace is explicitly provided true
@@ -809,7 +902,7 @@ define(function (require, exports, module) {
                 } else if (layerIndex < nextIndex.size) {
                     nextIndex = nextIndex.delete(replaceIndex).splice(layerIndex, 0, layerID);
                 } else {
-                    throw new Error ("Replacing a layer but the new layer's index seems out of bounds");
+                    throw new Error("Replacing a layer but the new layer's index seems out of bounds");
                 }
             } else {
                 nextIndex = nextIndex.splice(layerIndex, 0, layerID);
@@ -849,9 +942,7 @@ define(function (require, exports, module) {
             }, this);
         }.bind(this));
 
-        return this.mergeDeep({
-            layers: nextLayers
-        });
+        return this.set("layers", this.layers.merge(nextLayers));
     };
 
     /**
@@ -1020,7 +1111,6 @@ define(function (require, exports, module) {
         return this._updateBounds(allBounds);
     };
 
-
     /**
      * Repositions and resizes the given layers, setting both their positions and dimensions to be passed in values.
      *
@@ -1042,10 +1132,8 @@ define(function (require, exports, module) {
             return allBounds;
         }.bind(this), new Map()));
 
-
         return this._updateBounds(allBounds);
     };
-
 
     /**
      * Translate the given layers, updating their top and left by passed in values.
@@ -1155,33 +1243,48 @@ define(function (require, exports, module) {
      */
     LayerStructure.prototype.createGroup = function (documentID, groupID, groupEndID, groupName,
         isArtboard, boundsDescriptor) {
+        // Creates the group head and end, needed for any type of group 
         var groupHead = Layer.fromGroupDescriptor(documentID, groupID, groupName, false,
                 isArtboard, boundsDescriptor),
             groupEnd = Layer.fromGroupDescriptor(documentID, groupEndID, "", true),
-            layersToMove = this.selectedNormalized.flatMap(this.descendants, this).toOrderedSet(),
-            layersToMoveIndices = layersToMove.map(this.indexOf, this),
-            layersToMoveIDs = collection.pluck(layersToMove, "id"),
-            groupHeadIndex = this.layers.size - layersToMoveIndices.last(),
-            newGroupIDs = Immutable.Seq([groupEndID, layersToMoveIDs, groupID]).flatten().reverse(),
-            removedIDs = collection
-                .difference(this.index, layersToMoveIDs) // Remove layers being moved
-                .reverse(), // Reverse because we want to slice from the end
+            groupHeadIndex,
+            newIDs;
+        
+        if (isArtboard) {
+            groupHeadIndex = this.layers.size - 1;
+        } else {
+            var layersToMove = this.selectedNormalized.flatMap(this.descendants, this).toOrderedSet(),
+                layersToMoveIndices = layersToMove.map(this.indexOf, this),
+                layersToMoveIDs = collection.pluck(layersToMove, "id");
+            
+            groupHeadIndex = this.layers.size - layersToMoveIndices.last();
+            
+            var newGroupIDs = Immutable.Seq([groupEndID, layersToMoveIDs, groupID]).flatten().reverse(),
+                removedIDs = collection
+                    .difference(this.index, layersToMoveIDs) // Remove layers being moved
+                    .reverse(); // Reverse because we want to slice from the end
             newIDs = removedIDs
                 .slice(0, groupHeadIndex) // First chunk is all layers up to top most selected one
                 .concat(newGroupIDs) // Then our new group
-                .concat(removedIDs.slice(groupHeadIndex)), // Then the rest
-            updatedLayers = this.layers.withMutations(function (layers) {
+                 .concat(removedIDs.slice(groupHeadIndex)); // Then the rest
+        }
+
+        var updatedLayers = this.layers.withMutations(function (layers) {
                 layers.set(groupID, groupHead);
                 layers.set(groupEndID, groupEnd);
             }),
             newLayerStructure = this.merge({
                 layers: updatedLayers
             });
+            
+        newLayerStructure = newLayerStructure
+            .updateSelection(Immutable.Set.of(groupID));
 
-        // Add the new layers, and the new order
-        return newLayerStructure
-            .updateSelection(Immutable.Set.of(groupID))
-            .updateOrder(newIDs);
+        if (!isArtboard) {
+            newLayerStructure = newLayerStructure.updateOrder(newIDs);
+        }
+
+        return newLayerStructure;
     };
 
     /**
@@ -1226,6 +1329,37 @@ define(function (require, exports, module) {
             return map.set(layerID, nextLayer);
         }, new Map(), this));
 
+        return this.mergeDeep({
+            layers: nextLayers
+        });
+    };
+
+    /**
+     * Add a new stroke, described by a Photoshop descriptor, to the given layers.
+     * If strokeStyleDescriptor is a single object, it will be applied to all layers
+     * otherwise it should be a List of descriptors which corresponds by index to the provided layerIDs
+     *
+     * @param {Immutable.Iterable.<number>} layerIDs
+     * @param {object | Immutable.Iterable.<object>} strokeStyleDescriptor
+     * @return {LayerStructure}
+     */
+    LayerStructure.prototype.addStroke = function (layerIDs, strokeStyleDescriptor) {
+        var isList = Immutable.List.isList(strokeStyleDescriptor);
+       
+        var getStroke = function (index) {
+            return isList ?
+                Stroke.fromStrokeStyleDescriptor(strokeStyleDescriptor.get(index)) :
+                Stroke.fromStrokeStyleDescriptor(strokeStyleDescriptor);
+        };
+       
+        var nextLayers = Immutable.Map(layerIDs.reduce(function (map, layerID, index) {
+            var layer = this.byID(layerID),
+                nextStroke = getStroke(index),
+                nextLayer = layer.set("stroke", nextStroke);
+
+            return map.set(layerID, nextLayer);
+        }, new Map(), this));
+       
         return this.mergeDeep({
             layers: nextLayers
         });

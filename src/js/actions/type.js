@@ -24,7 +24,8 @@
 define(function (require, exports) {
     "use strict";
 
-    var Promise = require("bluebird");
+    var Promise = require("bluebird"),
+        _ = require("lodash");
 
     var textLayerLib = require("adapter/lib/textLayer"),
         descriptor = require("adapter/ps/descriptor"),
@@ -56,24 +57,31 @@ define(function (require, exports) {
      * @private
      * @param {number} documentID
      * @param {string} name localized name to put into the history state
+     * @param {boolean} modal is the app in a modal state
      * @param {boolean=} coalesce Whether to coalesce this operations history state
+     * @param {object=} options Inherited into the type options returned, if present
      * @return {object} options
      */
-    var _getTypeOptions = function (documentID, name, coalesce) {
-        return {
+    var _getTypeOptions = function (documentID, name, modal, coalesce, options) {
+        var typeOptions = {
             paintOptions: {
                 immediateUpdate: true,
                 quality: "draft"
             },
-            historyStateInfo: {
+            canExecuteWhileModal: true,
+            ignoreTargetWhenModal: true
+        };
+
+        if (!modal) {
+            typeOptions.historyStateInfo = {
                 name: name,
                 target: documentLib.referenceBy.id(documentID),
                 coalesce: !!coalesce,
                 suppressHistoryStateNotification: !!coalesce
-            },
-            canExecuteWhileModal: true,
-            ignoreTargetWhenModal: true
-        };
+            };
+        }
+
+        return _.merge({}, options, typeOptions);
     };
 
     /**
@@ -116,21 +124,19 @@ define(function (require, exports) {
      */
     var setPostScript = function (document, layers, postscript, family, style) {
         var layerIDs = collection.pluck(layers, "id"),
-            layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray();
+            layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray(),
+            modal = this.flux.store("tool").getModalToolState();
 
         var setFacePlayObject = textLayerLib.setPostScript(layerRefs, postscript),
-            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_FACE),
-            setFacePromise = this.dispatchAsync(events.ui.TOGGLE_OVERLAYS, { enabled: false })
-                .bind(this)
-                .then(function () {
-                    locking.playWithLockOverride(document, layers, setFacePlayObject, typeOptions);
-                }),
+            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_FACE, modal),
+            setFacePromise = locking.playWithLockOverride(document, layers, setFacePlayObject, typeOptions),
             updatePromise = this.transfer(updatePostScript, document, layers, postscript, family, style);
 
-        return Promise.join(updatePromise, setFacePromise,
-                function () {
-                    return this.transfer(layerActions.resetBounds, document, layers);
-                }.bind(this));
+        return Promise.join(updatePromise, setFacePromise).bind(this).then(function () {
+            if (!modal) {
+                return this.transfer(layerActions.resetBounds, document, layers);
+            }
+        });
     };
     setPostScript.reads = [locks.JS_DOC];
     setPostScript.writes = [locks.PS_DOC, locks.JS_UI];
@@ -174,21 +180,19 @@ define(function (require, exports) {
      */
     var setFace = function (document, layers, family, style) {
         var layerIDs = collection.pluck(layers, "id"),
-            layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray();
+            layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray(),
+            modal = this.flux.store("tool").getModalToolState();
 
         var setFacePlayObject = textLayerLib.setFace(layerRefs, family, style),
-            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_FACE),
-            setFacePromise = this.dispatchAsync(events.ui.TOGGLE_OVERLAYS, { enabled: false })
-                .bind(this)
-                .then(function () {
-                    locking.playWithLockOverride(document, layers, setFacePlayObject, typeOptions);
-                }),
+            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_FACE, modal),
+            setFacePromise = locking.playWithLockOverride(document, layers, setFacePlayObject, typeOptions),
             updatePromise = this.transfer(updateFace, document, layers, family, style);
 
-        return Promise.join(updatePromise, setFacePromise,
-                function () {
-                    return this.transfer(layerActions.resetBounds, document, layers);
-                }.bind(this));
+        return Promise.join(updatePromise, setFacePromise).bind(this).then(function () {
+            if (!modal) {
+                return this.transfer(layerActions.resetBounds, document, layers);
+            }
+        });
     };
     setFace.reads = [locks.JS_DOC];
     setFace.writes = [locks.JS_UI, locks.PS_DOC];
@@ -202,11 +206,13 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.Iterable.<Layers>} layers
      * @param {Color} color
-     * @param {boolean=} coalesce Whether to coalesce this operation's history state
-     * @param {boolean=} optimisticHistory Whether this event will be included in our history model
+     * @param {boolean} modal is the app in a modal state, which effects history
+     * @param {object} options
+     * @param {boolean=} options.coalesce Whether to coalesce this operation's history state
+     * @param {boolean=} options.ignoreAlpha
      * @return {Promise}
      */
-    var updateColor = function (document, layers, color, coalesce, optimisticHistory) {
+    var updateColor = function (document, layers, color, modal, options) {
         var layerIDs = collection.pluck(layers, "id"),
             normalizedColor = null;
 
@@ -215,16 +221,17 @@ define(function (require, exports) {
         }
 
         var payload = {
-                documentID: document.id,
-                layerIDs: layerIDs,
-                color: normalizedColor,
-                calesce: coalesce
-            };
+            documentID: document.id,
+            layerIDs: layerIDs,
+            color: normalizedColor,
+            coalesce: options.coalesce,
+            ignoreAlpha: options.ignoreAlpha
+        };
 
-        if (optimisticHistory) {
+        if (!modal) {
             return this.dispatchAsync(events.document.history.optimistic.TYPE_COLOR_CHANGED, payload);
         } else {
-            return this.dispatchAsync(events.document.history.amendment.TYPE_COLOR_CHANGED, payload);
+            return this.dispatchAsync(events.document.TYPE_COLOR_CHANGED, payload);
         }
     };
     updateColor.reads = [];
@@ -238,20 +245,23 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.Iterable.<Layers>} layers
      * @param {Color} color
-     * @param {boolean=} coalesce Whether to coalesce this operation's history state
-     * @param {boolean=} ignoreAlpha Whether to ignore the alpha value of the
+     * @param {object} options
+     * @param {boolean=} options.coalesce Whether to coalesce this operation's history state
+     * @param {boolean=} options.ignoreAlpha Whether to ignore the alpha value of the
      *  given color and only update the opaque color value.
      * @return {Promise}
      */
-    var setColor = function (document, layers, color, coalesce, ignoreAlpha) {
+    var setColor = function (document, layers, color, options) {
         var layerIDs = collection.pluck(layers, "id"),
             layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray(),
             normalizedColor = color.normalizeAlpha(),
             opaqueColor = normalizedColor.opaque(),
             playObject = textLayerLib.setColor(layerRefs, opaqueColor),
-            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_COLOR, coalesce);
+            modal = this.flux.store("tool").getModalToolState(),
+            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_COLOR,
+                modal, options.coalesce, options);
 
-        if (!ignoreAlpha) {
+        if (!options.ignoreAlpha) {
             var opacity = Math.round(normalizedColor.opacity),
                 setOpacityPlayObjects = layers.map(function (layer) {
                     var layerRef = [
@@ -264,7 +274,8 @@ define(function (require, exports) {
 
             playObject = [playObject].concat(setOpacityPlayObjects);
         }
-        var updatePromise = this.transfer(updateColor, document, layers, color, coalesce, true),
+        
+        var updatePromise = this.transfer(updateColor, document, layers, color, modal, options),
             setColorPromise = layerActionsUtil.playSimpleLayerActions(document, layers, playObject, true, typeOptions);
 
         return Promise.join(updatePromise, setColorPromise);
@@ -307,24 +318,22 @@ define(function (require, exports) {
      */
     var setSize = function (document, layers, size) {
         var layerIDs = collection.pluck(layers, "id"),
-            layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray();
+            layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray(),
+            modal = this.flux.store("tool").getModalToolState();
 
         // Ensure that size does not exceed PS font size bounds
         size = math.clamp(size, PS_MIN_FONT_SIZE, PS_MAX_FONT_SIZE);
 
         var setSizePlayObject = textLayerLib.setSize(layerRefs, size, "px"),
-            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_SIZE),
-            setSizePromise = this.dispatchAsync(events.ui.TOGGLE_OVERLAYS, { enabled: false })
-                .bind(this)
-                .then(function () {
-                    locking.playWithLockOverride(document, layers, setSizePlayObject, typeOptions);
-                }),
+            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_SIZE, modal),
+            setSizePromise = locking.playWithLockOverride(document, layers, setSizePlayObject, typeOptions),
             updatePromise = this.transfer(updateSize, document, layers, size);
 
-        return Promise.join(updatePromise, setSizePromise,
-            function () {
+        return Promise.join(updatePromise, setSizePromise).bind(this).then(function () {
+            if (!modal) {
                 return this.transfer(layerActions.resetBounds, document, layers);
-            }.bind(this));
+            }
+        });
     };
     setSize.reads = [locks.JS_DOC];
     setSize.writes = [locks.JS_UI, locks.PS_DOC];
@@ -365,21 +374,19 @@ define(function (require, exports) {
     var setTracking = function (document, layers, tracking) {
         var layerIDs = collection.pluck(layers, "id"),
             layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray(),
+            modal = this.flux.store("tool").getModalToolState(),
             psTracking = tracking / 1000; // PS expects tracking values that are 1/1000 what is shown in the UI
 
         var setTrackingPlayObject = textLayerLib.setTracking(layerRefs, psTracking),
-            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_TRACKING),
-            setTrackingPromise = this.dispatchAsync(events.ui.TOGGLE_OVERLAYS, { enabled: false })
-                .bind(this)
-                .then(function () {
-                    locking.playWithLockOverride(document, layers, setTrackingPlayObject, typeOptions);
-                }),
+            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_TRACKING, modal),
+            setTrackingPromise = locking.playWithLockOverride(document, layers, setTrackingPlayObject, typeOptions),
             updatePromise = this.transfer(updateTracking, document, layers, tracking);
 
-        return Promise.join(updatePromise, setTrackingPromise,
-                function () {
-                    return this.transfer(layerActions.resetBounds, document, layers);
-                }.bind(this));
+        return Promise.join(updatePromise, setTrackingPromise).bind(this).then(function () {
+            if (!modal) {
+                return this.transfer(layerActions.resetBounds, document, layers);
+            }
+        });
     };
     setTracking.reads = [locks.JS_DOC];
     setTracking.writes = [locks.PS_DOC, locks.JS_UI];
@@ -420,6 +427,7 @@ define(function (require, exports) {
     var setLeading = function (document, layers, leading) {
         var layerIDs = collection.pluck(layers, "id"),
             layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray(),
+            modal = this.flux.store("tool").getModalToolState(),
             autoLeading = leading === -1;
 
         if (!autoLeading && leading < 0.1) {
@@ -427,18 +435,15 @@ define(function (require, exports) {
         }
 
         var setLeadingPlayObject = textLayerLib.setLeading(layerRefs, autoLeading, leading, "px"),
-            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_LEADING),
-            setLeadingPromise = this.dispatchAsync(events.ui.TOGGLE_OVERLAYS, { enabled: false })
-                .bind(this)
-                .then(function () {
-                    locking.playWithLockOverride(document, layers, setLeadingPlayObject, typeOptions);
-                }),
+            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_LEADING, modal),
+            setLeadingPromise = locking.playWithLockOverride(document, layers, setLeadingPlayObject, typeOptions),
             updatePromise = this.transfer(updateLeading, document, layers, leading);
 
-        return Promise.join(updatePromise, setLeadingPromise,
-                function () {
-                    return this.transfer(layerActions.resetBounds, document, layers);
-                }.bind(this));
+        return Promise.join(updatePromise, setLeadingPromise).bind(this).then(function () {
+            if (!modal) {
+                return this.transfer(layerActions.resetBounds, document, layers);
+            }
+        });
     };
     setLeading.reads = [locks.JS_DOC];
     setLeading.writes = [locks.PS_DOC, locks.JS_UI];
@@ -474,25 +479,25 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.Iterable.<Layers>} layers
      * @param {string} alignment The alignment kind
+     * @param {object} options Batch play options
      * @return {Promise}
      */
-    var setAlignment = function (document, layers, alignment) {
+    var setAlignment = function (document, layers, alignment, options) {
         var layerIDs = collection.pluck(layers, "id"),
-            layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray();
+            layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray(),
+            modal = this.flux.store("tool").getModalToolState();
 
         var setAlignmentPlayObject = textLayerLib.setAlignment(layerRefs, alignment),
-            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_ALIGNMENT),
-            setAlignmentPromise = this.dispatchAsync(events.ui.TOGGLE_OVERLAYS, { enabled: false })
-                .bind(this)
-                .then(function () {
-                    locking.playWithLockOverride(document, layers, setAlignmentPlayObject, typeOptions);
-                }),
+            typeOptions = _getTypeOptions(document.id, strings.ACTIONS.SET_TYPE_ALIGNMENT,
+                modal, false, options),
+            setAlignmentPromise = locking.playWithLockOverride(document, layers, setAlignmentPlayObject, typeOptions),
             transferPromise = this.transfer(updateAlignment, document, layers, alignment);
 
-        return Promise.join(transferPromise, setAlignmentPromise,
-                function () {
-                    return this.transfer(layerActions.resetBounds, document, layers);
-                }.bind(this));
+        return Promise.join(transferPromise, setAlignmentPromise).bind(this).then(function () {
+            if (!modal) {
+                return this.transfer(layerActions.resetBounds, document, layers);
+            }
+        });
     };
     setAlignment.reads = [locks.JS_DOC];
     setAlignment.writes = [locks.PS_DOC, locks.JS_UI];
@@ -502,6 +507,7 @@ define(function (require, exports) {
     /**
      * Update the given layer models with all the provided text properties.
      * TODO: Ideally, this would subsume all the other type update actions.
+     * Note: this is action does NOT update history
      *
      * @param {Document} document
      * @param {Immutable.Iterable.<Layer>} layers
@@ -551,16 +557,21 @@ define(function (require, exports) {
      * Applies the given text style to target layers
      *
      * @param {Document} document
-     * @param {Immutable.Iterable.<Layer>} targetLayers
+     * @param {?Immutable.Iterable.<Layer>} targetLayers Default is selected layers
      * @param {object} style Style object
+     * @param {object} options Batch play options
      * @return {Promise}
      */
-    var applyTextStyle = function (document, targetLayers, style) {
+    var applyTextStyle = function (document, targetLayers, style, options) {
+        targetLayers = targetLayers || document.layers.selected;
+
         var layerIDs = collection.pluck(targetLayers, "id"),
             layerRefs = layerIDs.map(textLayerLib.referenceBy.id).toArray(),
             applyObj = textLayerLib.applyTextStyle(layerRefs, style);
 
-        return descriptor.playObject(applyObj)
+        this.dispatchAsync(events.style.HIDE_HUD);
+        
+        return layerActionsUtil.playSimpleLayerActions(document, targetLayers, applyObj, true, options)
             .bind(this)
             .then(function () {
                 return this.transfer(layerActions.resetLayers, document, targetLayers);

@@ -36,13 +36,14 @@ define(function (require, exports) {
         system = require("js/util/system"),
         locks = require("js/locks"),
         events = require("js/events"),
+        Bounds = require("js/models/bounds"),
         documentActions = require("./documents"),
         layerActions = require("./layers"),
         toolActions = require("./tools"),
+        libraryActions = require("./libraries"),
         collection = require("js/util/collection"),
         uiUtil = require("js/util/ui"),
         headlights = require("js/util/headlights");
-
 
     /**
      * Wrapper for headlights logging superselect interactions
@@ -157,7 +158,16 @@ define(function (require, exports) {
                 var scale = this.flux.store("ui").zoomCanvasToWindow(1) * window.devicePixelRatio;
                 bounds = uiUtil.getNameBadgeBounds(layer.bounds, scale);
             } else {
-                bounds = layerTree.childBounds(layer);
+                var layerBounds = layerTree.childBounds(layer),
+                    topAncestor = layerTree.topAncestor(layer);
+
+                if (topAncestor.isArtboard) {
+                    var artboardBounds = layerTree.childBounds(topAncestor);
+
+                    bounds = Bounds.intersection(artboardBounds, layerBounds);
+                } else {
+                    bounds = layerBounds;
+                }
             }
 
             if (bounds && bounds.contains(x, y)) {
@@ -182,15 +192,15 @@ define(function (require, exports) {
     };
 
     /**
-     * Removes all artboards from the given ids
-     * We use this to prevent artboards from being cmd+clickable
-     *
+     * Gets all artboards from the given ids
+     * We use this to re-add name badges back into the clickable areas
+     * 
      * @param {LayerStructure} layerTree
      * @param {Immutable.List.<number>} ids
      * @return {Immutable.Iterable.<Layer>}
      */
-    var _removeArtboardIDs = function (layerTree, ids) {
-        return ids.filterNot(function (id) {
+    var _getArtboardIDs = function (layerTree, ids) {
+        return ids.filter(function (id) {
             var layer = layerTree.layers.get(id);
             
             return layer ? layer.isArtboard : true;
@@ -300,23 +310,33 @@ define(function (require, exports) {
                 });
             break;
         case kinds.SMARTOBJECT:
-            // For linked smart objects, this option shows the fix broken link dialog if the link is broken
-            var editOptions = {
-                interactionMode: descriptor.interactionMode.DISPLAY
-            };
+            if (layer.isCloudLinkedSmartObject()) {
+                _logSuperselect("edit_cloud_object");
+                
+                var elementReference = layer.getLibraryElementReference(),
+                    element = this.flux.stores.library.getElementByReference(elementReference);
+                    
+                resultPromise = this.transfer(libraryActions.openGraphicForEdit, element);
+            } else {
+                // For linked smart objects, this option shows the fix broken link dialog if the link is broken
+                
+                var editOptions = {
+                    interactionMode: descriptor.interactionMode.DISPLAY
+                };
 
-            _logSuperselect("edit_smart_object");
-            resultPromise = descriptor.play("placedLayerEditContents", {}, editOptions)
-                .bind(this)
-                .then(function () {
-                    // This updates the newly opened smart object document, although we should figure out a way
-                    // to check to see if it's being opened in Photoshop
-                    // Even if it's being opened in another app, the update call will not be visible to the user
-                    return this.transfer(documentActions.updateDocument);
-                }, function () {
-                    // We have an empty catch here, because PS throws cancel if user cancels on
-                    // Resolve Missing File dialog.
-                });
+                _logSuperselect("edit_smart_object");
+                resultPromise = descriptor.play("placedLayerEditContents", {}, editOptions)
+                    .bind(this)
+                    .then(function () {
+                        // This updates the newly opened smart object document, although we should figure out a way
+                        // to check to see if it's being opened in Photoshop
+                        // Even if it's being opened in another app, the update call will not be visible to the user
+                        return this.transfer(documentActions.updateDocument);
+                    }, function () {
+                        // We have an empty catch here, because PS throws cancel if user cancels on
+                        // Resolve Missing File dialog.
+                    });
+            }
             break;
         default:
             resultPromise = Promise.resolve();
@@ -326,7 +346,7 @@ define(function (require, exports) {
     };
     editLayer.reads = [locks.JS_UI, locks.JS_TOOL, locks.JS_DOC];
     editLayer.writes = [locks.PS_DOC];
-    editLayer.transfers = [toolActions.select, documentActions.updateDocument];
+    editLayer.transfers = [toolActions.select, documentActions.updateDocument, libraryActions.openGraphicForEdit];
     
     /**
      * Process a single click from the SuperSelect tool. First determines a set of
@@ -351,8 +371,10 @@ define(function (require, exports) {
             .then(function (hitLayerIDs) {
                 var clickedSelectableLayerIDs,
                     coveredLayers = _getContainingLayerBounds.call(this, layerTree, coords.x, coords.y),
-                    hitLayerIDsSansArtboards = _removeArtboardIDs(layerTree, Immutable.List(hitLayerIDs)),
-                    coveredLayerIDs = collection.pluck(coveredLayers, "id").concat(hitLayerIDsSansArtboards);
+                    coveredLayerIDs = collection.pluck(coveredLayers, "id"),
+                    hitArtboardIDs = _getArtboardIDs(layerTree, coveredLayerIDs);
+
+                coveredLayerIDs = collection.intersection(coveredLayerIDs, hitLayerIDs).concat(hitArtboardIDs);
 
                 coveredLayerIDs = coveredLayerIDs.sortBy(function (id) {
                     return hitLayerIDs.indexOf(id);
@@ -605,8 +627,6 @@ define(function (require, exports) {
             copyDrag = modifiers.option;
 
         if (panning) {
-            this.dispatch(events.ui.TOGGLE_OVERLAYS, { enabled: false });
-                        
             var dragEvent = {
                 eventKind: eventKind,
                 location: coordinates,
@@ -661,8 +681,6 @@ define(function (require, exports) {
                                 descriptor.addListener("moveToArtboard", _moveToArtboardListener);
                             }
 
-                            this.dispatch(events.ui.TOGGLE_OVERLAYS, { enabled: false });
-                            
                             var dragEvent = {
                                 eventKind: eventKind,
                                 location: coordinates,
@@ -686,12 +704,17 @@ define(function (require, exports) {
      * Otherwise will add/transfer selection to layers
      *
      * @param {Document} doc Owner document
-     * @param {Array.<number>} ids Layer IDs
+     * @param {boolean} runMarquee Will run marquee select only if true
+     * @param {?Array.<number>} ids Layer IDs
      * @param {boolean} add Flag to add to or replace selection
      * @return {Promise}
      */
-    var marqueeSelect = function (doc, ids, add) {
+    var marqueeSelect = function (doc, runMarquee, ids, add) {
         this.dispatch(events.ui.SUPERSELECT_MARQUEE, { enabled: false });
+
+        if (!runMarquee || !ids) {
+            return Promise.resolve();
+        }
         
         var layers = Immutable.List(ids.map(doc.layers.byID.bind(doc.layers))),
             modifier = add ? "add" : "select";

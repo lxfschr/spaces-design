@@ -21,19 +21,18 @@
  * 
  */
 
-
 define(function (require, exports, module) {
     "use strict";
 
     var React = require("react"),
+        Fluxxor = require("fluxxor"),
+        FluxMixin = Fluxxor.FluxMixin(React),
         Immutable = require("immutable"),
         mathjs = require("mathjs"),
         classnames = require("classnames"),
         _ = require("lodash");
 
     var Focusable = require("../mixin/Focusable"),
-        Fluxxor = require("fluxxor"),
-        FluxMixin = Fluxxor.FluxMixin(React),
         math = require("js/util/math"),
         collection = require("js/util/collection"),
         strings = require("i18n!nls/strings"),
@@ -127,7 +126,7 @@ define(function (require, exports, module) {
          * Parses the input string to a valid number
          *
          * @param {string} rawValue value of the input field
-         * @return {number} Value of the input field as a number or null if invalid
+         * @return {?number} Value of the input field as a number or null if invalid
          */
         _extractValue: function (rawValue) {
             if (this.props.special && rawValue === this.props.special) {
@@ -153,7 +152,7 @@ define(function (require, exports, module) {
             }
         },
         
-        /*
+        /**
          * Formats the number value into a string
          *
          * @param {?number|Immutable.Iterable.<number>} value Value of the input
@@ -398,17 +397,19 @@ define(function (require, exports, module) {
         },
 
         render: function () {
-            var size = this.props.size || "column-4";
-            var className = classnames({
+            var size = this.props.size || "column-4",
+                className = classnames({
+                    "number-input": true,
                     "number-input__dirty": this.state.dirty,
                     "number-input__clean": !this.state.dirty
-                });
-            className += " " + size + " number-input";
+                }, size);
+
             return (
                 <input
                     {...this.props}
                     type="text"
                     ref="input"
+                    spellCheck="false"
                     className={className}
                     disabled={this.props.disabled}
                     value={this.state.rawValue}
