@@ -81,6 +81,8 @@ define(function (require, exports) {
             iconID += "camera";
         } else if (element.kind === element.elementKinds.MATERIAL) {
             iconID += "material";
+        } else if (element.kind === element.elementKinds.MAP) {
+            iconID += "map";
         } else {
             iconID += element.kind;
         }
