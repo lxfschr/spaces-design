@@ -169,6 +169,7 @@
         "SET_RADIUS": "Set Border Radius",
         "SET_RADIUS_SLIDER": "Adjust Slider to Set Radius ",
         "SET_SHINE": "Set Material Map Shininess",
+        "SET_DIFFUSE": "Set Diffuse Opacity",
         "SET_SHINE_SLIDER": "Adjust Slider to Set Material Map Shininess",
         "SET_OPACITY": "Set Opacity",
         "VECTOR_SETTINGS": "Show Vector Settings",

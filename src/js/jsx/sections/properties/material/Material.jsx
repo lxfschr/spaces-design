@@ -36,6 +36,7 @@ define(function (require, exports, module) {
 
     var strings = require("i18n!nls/strings"),
         ColorProperty = require("jsx!./ColorProperty"),
+        Fill = require("jsx!js/jsx/sections/style/Fill"),
         Slider = require("jsx!./Slider"),
         collection = require("js/util/collection");
     var log = require("js/util/log");
