@@ -245,19 +245,19 @@ define(function (require, exports, module) {
             var doc = this.props.document,
                 layer = this.props.layer,
                 element = this.props.element,
-                elementStructure = this.props.layer.sceneTree,
-                elementIndex = elementStructure.indexOf(element),
+                sceneTree = this.props.layer.sceneTree,
+                elementIndex = sceneTree.indexOf(element),
                 nameEditable = !layer.isBackground,
                 isSelected = element.selected,
                 isChildOfSelected = !element.selected &&
-                    elementStructure.parent(element) &&
-                    elementStructure.parent(element).selected,
-                isStrictDescendantOfSelected = !isChildOfSelected && elementStructure.hasStrictSelectedAncestor(element),
+                    sceneTree.parent(element) &&
+                    sceneTree.parent(element).selected,
+                isStrictDescendantOfSelected = !isChildOfSelected && sceneTree.hasStrictSelectedAncestor(element),
                 isDragging = this.props.isDragging,
                 isDropTarget = this.props.isDropTarget,
                 dropPosition = this.props.dropPosition,
                 isGroupStart = element.kind === element.elementKinds.GROUP || element.isParent;
-            var depth = elementStructure.depth(element),
+            var depth = sceneTree.depth(element),
                 endOfGroupStructure = false,
                 isLastInGroup = false,
                 dragStyle;
@@ -267,11 +267,11 @@ define(function (require, exports, module) {
                 // We can skip some rendering calculations if dragging
                 isLastInGroup = elementIndex > 0 &&
                     isChildOfSelected &&
-                    elementStructure.byIndex(elementIndex - 1).kind === element.elementKinds.GROUPEND;
+                    sceneTree.byIndex(elementIndex - 1).kind === element.elementKinds.GROUPEND;
                 
                 // Check to see if this layer is the last in a bunch of nested groups
                 if (isStrictDescendantOfSelected &&
-                    elementStructure.byIndex(elementIndex - 1).kind === element.elementKinds.GROUPEND) {
+                    sceneTree.byIndex(elementIndex - 1).kind === element.elementKinds.GROUPEND) {
                     endOfGroupStructure = true;
                 }
 

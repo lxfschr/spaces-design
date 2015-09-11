@@ -41,7 +41,7 @@ define(function (require, exports, module) {
      *
      * @constructor
      */
-    var ElementStructure = Immutable.Record({
+    var SceneTree = Immutable.Record({
         /**
          * All Element objects indexed by element id.
          *
@@ -248,12 +248,12 @@ define(function (require, exports, module) {
     };
 
     /**
-     * Construct a ElementStructure model from Photoshop document and layer descriptor.
+     * Construct a SceneTree model from Photoshop document and layer descriptor.
      *
      * @param {object} layerDescriptor
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.fromLayerDescriptor = function (layerDescriptor) {
+    SceneTree.fromLayerDescriptor = function (layerDescriptor) {
         var layer3D = layerDescriptor.layer3D;
         var sceneNodes = new Map();
         var index = new Immutable.List();
@@ -279,7 +279,7 @@ define(function (require, exports, module) {
             sceneNodes = Immutable.Map(sceneNodes);
             index = Immutable.List(indexes.reverse());
         }
-        return new ElementStructure({
+        return new SceneTree({
             elements: sceneNodes,
             index: index,
             materials: materials,
@@ -297,7 +297,7 @@ define(function (require, exports, module) {
      * @param {Object.<{number: Element}>} visitedParents Already processed parents
      * @return {Immutable.Iterable.<Element>} Siblings of this element
      */
-    ElementStructure.prototype._replaceAncestorWithSiblingsOf = function (element, selectableElements, visitedParents) {
+    SceneTree.prototype._replaceAncestorWithSiblingsOf = function (element, selectableElements, visitedParents) {
         var elementAncestor = this.parent(element);
 
         // If we were already at root, we don't need to do anything for this layer
@@ -328,7 +328,7 @@ define(function (require, exports, module) {
         return selectableElements;
     };
 
-    Object.defineProperties(ElementStructure.prototype, objUtil.cachedGetSpecs({
+    Object.defineProperties(SceneTree.prototype, objUtil.cachedGetSpecs({
         /**
          * @private
          * @type {{nodes: Immutable.Map.<number, SceneTreeNode>, roots: Immutable.List.<SceneTreeNode>}}
@@ -624,7 +624,7 @@ define(function (require, exports, module) {
      * @param {number} id
      * @return {?Layer}
      */
-    ElementStructure.prototype.byID = function (id) {
+    SceneTree.prototype.byID = function (id) {
         return this.elements.get(id, null);
     };
 
@@ -634,7 +634,7 @@ define(function (require, exports, module) {
      * @param {number} index
      * @return {?Layer}
      */
-    ElementStructure.prototype.byIndex = function (index) {
+    SceneTree.prototype.byIndex = function (index) {
         var layerID = this.index.get(index - 1, null);
         if (layerID === null) {
             return null;
@@ -649,7 +649,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {?number}
      */
-    ElementStructure.prototype.indexOf = function (layer) {
+    SceneTree.prototype.indexOf = function (layer) {
         return layer.index;
     };
 
@@ -659,7 +659,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {?Layer}
      */
-    ElementStructure.prototype.parent = function (layer) {
+    SceneTree.prototype.parent = function (layer) {
         var node = this.nodes.get(layer.index, null);
 
         if (!node || node.parent === null) {
@@ -675,7 +675,7 @@ define(function (require, exports, module) {
      * @param {Layer} sceneNode
      * @return {?number}
      */
-    ElementStructure.prototype.depth = function (sceneNode) {
+    SceneTree.prototype.depth = function (sceneNode) {
         var node = this.nodes.get(sceneNode.index, null);
         if (!node) {
             return null;
@@ -690,7 +690,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {number}
      */
-    Object.defineProperty(ElementStructure.prototype, "maxDescendantDepth", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "maxDescendantDepth", objUtil.cachedLookupSpec(function (layer) {
         return this.descendants(layer).map(this.depth, this).max();
     }));
 
@@ -700,7 +700,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {?Immutable.List.<Layer>}
      */
-    Object.defineProperty(ElementStructure.prototype, "children", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "children", objUtil.cachedLookupSpec(function (layer) {
         var node = this.nodes.get(layer.index, null);
 
         if (node && node.children) {
@@ -718,7 +718,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {Immutable.List.<Layer>}
      */
-    Object.defineProperty(ElementStructure.prototype, "siblings", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "siblings", objUtil.cachedLookupSpec(function (layer) {
         var parent = this.parent(layer);
 
         if (parent) {
@@ -734,7 +734,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {?Immutable.List.<Layer>}
      */
-    Object.defineProperty(ElementStructure.prototype, "ancestors", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "ancestors", objUtil.cachedLookupSpec(function (layer) {
         return this.strictAncestors(layer)
             .push(layer);
     }));
@@ -746,7 +746,7 @@ define(function (require, exports, module) {
      *
      * @return {?Immutable.List.<Layer>}
      */
-    Object.defineProperty(ElementStructure.prototype, "strictAncestors", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "strictAncestors", objUtil.cachedLookupSpec(function (layer) {
         var parent = this.parent(layer);
 
         if (parent) {
@@ -762,7 +762,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {Immutable.List.<Layer>}
      */
-    Object.defineProperty(ElementStructure.prototype, "lockedAncestors", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "lockedAncestors", objUtil.cachedLookupSpec(function (layer) {
         return this.ancestors(layer).filter(function (layer) {
             return layer.locked;
         });
@@ -775,7 +775,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {boolean}
      */
-    Object.defineProperty(ElementStructure.prototype, "hasCollapsedAncestor", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "hasCollapsedAncestor", objUtil.cachedLookupSpec(function (layer) {
         return this.strictAncestors(layer).some(function (layer) {
             return !layer.expanded;
         });
@@ -787,7 +787,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {Immutable.List.<Layer>}
      */
-    Object.defineProperty(ElementStructure.prototype, "descendants", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "descendants", objUtil.cachedLookupSpec(function (layer) {
         return this.strictDescendants(layer)
             .push(layer);
     }));
@@ -798,7 +798,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {Immutable.List.<Layer>}
      */
-    Object.defineProperty(ElementStructure.prototype, "strictDescendants", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "strictDescendants", objUtil.cachedLookupSpec(function (layer) {
         return this.children(layer)
             .toSeq()
             .reverse()
@@ -812,7 +812,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {Immutable.List.<Layer>}
      */
-    Object.defineProperty(ElementStructure.prototype, "lockedDescendants", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "lockedDescendants", objUtil.cachedLookupSpec(function (layer) {
         return this.descendants(layer).filter(function (layer) {
             return layer.locked;
         });
@@ -824,7 +824,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {boolean}
      */
-    Object.defineProperty(ElementStructure.prototype, "hasLockedAncestor", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "hasLockedAncestor", objUtil.cachedLookupSpec(function (layer) {
         return this.ancestors(layer).some(function (layer) {
             return layer.locked;
         });
@@ -836,7 +836,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {boolean}
      */
-    Object.defineProperty(ElementStructure.prototype, "hasLockedDescendant", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "hasLockedDescendant", objUtil.cachedLookupSpec(function (layer) {
         return this.descendants(layer).some(function (descendant) {
             return descendant.locked;
         }, this);
@@ -848,7 +848,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {boolean}
      */
-    Object.defineProperty(ElementStructure.prototype,
+    Object.defineProperty(SceneTree.prototype,
         "hasStrictSelectedAncestor", objUtil.cachedLookupSpec(function (layer) {
         var parent = this.parent(layer);
 
@@ -865,7 +865,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {boolean}
      */
-    Object.defineProperty(ElementStructure.prototype, "hasSelectedAncestor", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "hasSelectedAncestor", objUtil.cachedLookupSpec(function (layer) {
         return layer.selected || this.hasStrictSelectedAncestor(layer);
     }));
 
@@ -875,7 +875,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {boolean}
      */
-    Object.defineProperty(ElementStructure.prototype, "hasInvisibleAncestor", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "hasInvisibleAncestor", objUtil.cachedLookupSpec(function (layer) {
         return this.ancestors(layer).some(function (layer) {
             return !layer.visible;
         });
@@ -887,7 +887,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {boolean}
      */
-    Object.defineProperty(ElementStructure.prototype, "hasVisibleDescendant", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "hasVisibleDescendant", objUtil.cachedLookupSpec(function (layer) {
         return this.descendants(layer)
             .filterNot(function (layer) {
                 return layer.kind === layer.elementKinds.GROUP || layer.kind === layer.elementKinds.GROUPEND;
@@ -903,7 +903,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {boolean}
      */
-    Object.defineProperty(ElementStructure.prototype, "isEmptyGroup", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "isEmptyGroup", objUtil.cachedLookupSpec(function (layer) {
         return layer.kind === layer.elementKinds.GROUP &&
             this.children(layer)
             .filterNot(function (layer) {
@@ -919,7 +919,7 @@ define(function (require, exports, module) {
      * @param {Layer} layer
      * @return {?Bounds}
      */
-    Object.defineProperty(ElementStructure.prototype, "childBounds", objUtil.cachedLookupSpec(function (layer) {
+    Object.defineProperty(SceneTree.prototype, "childBounds", objUtil.cachedLookupSpec(function (layer) {
         switch (layer.kind) {
             case layer.elementKinds.GROUP:
                 if (layer.isArtboard) {
@@ -950,9 +950,9 @@ define(function (require, exports, module) {
      *  so, the existing selection is cleared.
      * @param {boolean= | number=} replace can be explicitly false, undefined, or a layer ID
      * @param {Document} document
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.addLayers = function (layerIDs, descriptors, selected, replace, document) {
+    SceneTree.prototype.addLayers = function (layerIDs, descriptors, selected, replace, document) {
         var nextStructure = selected ? this.updateSelection(Immutable.Set()) : this,
             replaceLayer;
 
@@ -1020,9 +1020,9 @@ define(function (require, exports, module) {
      *
      * @param {Immutable.Iterable.<{layerID: number, descriptor: object}>} layerObjs
      * @param {Document} previousDocument
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.resetLayers = function (layerObjs, previousDocument) {
+    SceneTree.prototype.resetLayers = function (layerObjs, previousDocument) {
         var nextLayers = this.layers.withMutations(function (layers) {
             layerObjs.forEach(function (layerObj) {
                 var layerID = layerObj.layerID,
@@ -1045,9 +1045,9 @@ define(function (require, exports, module) {
      *
      * @param {Document} document
      * @param {Array.<ActionDescriptor>} descriptors Array of layer descriptors
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.replaceLayersByIndex = function (document, descriptors) {
+    SceneTree.prototype.replaceLayersByIndex = function (document, descriptors) {
         var nextIndex = this.index;
 
         var nextLayers = this.layers.withMutations(function (layers) {
@@ -1075,9 +1075,9 @@ define(function (require, exports, module) {
      * Reset the given layer bounds from Photoshop bounds descriptors.
      *
      * @param {Immutable.Iterable.<{layerID: number, descriptor: object}>} boundsObj
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.resetBounds = function (boundsObj) {
+    SceneTree.prototype.resetBounds = function (boundsObj) {
         var nextLayers = this.layers.withMutations(function (layers) {
             boundsObj.forEach(function (boundObj) {
                 var layerID = boundObj.layerID,
@@ -1113,9 +1113,9 @@ define(function (require, exports, module) {
      *
      * @param {Immutable.Iterable.<number>} sceneNodeIDs
      * @param {object} properties
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.setProperties = function (sceneNodeIDs, properties) {
+    SceneTree.prototype.setProperties = function (sceneNodeIDs, properties) {
         var nextProperties = Immutable.Map(properties),
             updatedSceneNodes = Immutable.Map(sceneNodeIDs.reduce(function (sceneNodes, sceneNodeID) {
                 sceneNodes.set(sceneNodeID, nextProperties);
@@ -1132,9 +1132,9 @@ define(function (require, exports, module) {
      *
      * @param {Immutable.Iteralble.<number>} materialNames
      * @param {Radii} value
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.setMaterialProperty = function (materialNames, property, value) {
+    SceneTree.prototype.setMaterialProperty = function (materialNames, property, value) {
         var nextMaterials = Immutable.Map(materialNames.reduce(function (map, materialName) {
             return map.set(materialName, Immutable.Map({
                 shine: value
@@ -1151,9 +1151,9 @@ define(function (require, exports, module) {
      *
      * @param {Immutable.Iterable.<number>} sceneNodeIDs
      * @param {object} properties
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.setMaterialProperties = function (materialNames, properties) {
+    SceneTree.prototype.setMaterialProperties = function (materialNames, properties) {
         var nextProperties = properties,
             updatedMaterials = Immutable.Map(materialNames.reduce(function (materials, materialName) {
                 materials.set(materialName, nextProperties.get(materialName));
@@ -1169,9 +1169,9 @@ define(function (require, exports, module) {
      *
      * @private
      * @param {Immutable.Map.<number, Bounds>} allBounds The keys of the Map are layer IDs.
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype._updateBounds = function (allBounds) {
+    SceneTree.prototype._updateBounds = function (allBounds) {
         var nextBounds = allBounds.map(function (bounds) {
             return Immutable.Map({
                 bounds: bounds
@@ -1187,9 +1187,9 @@ define(function (require, exports, module) {
      * Resizes the given layers, setting their width and height to be passed in values.
      *
      * @param {Array.<{layer: Layer, w: number, h: number, x: number, y: number}>} layerSizes
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.resizeLayers = function (layerSizes) {
+    SceneTree.prototype.resizeLayers = function (layerSizes) {
         var allBounds = Immutable.Map(layerSizes.reduce(function (allBounds, layerData) {
             var layer = this.byID(layerData.layer.index);
             if (layer.bounds) {
@@ -1209,9 +1209,9 @@ define(function (require, exports, module) {
      *
      * @param {Immutable.Iterable.<number>} layerIDs
      * @param {boolean} proportional
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.setLayersProportional = function (layerIDs, proportional) {
+    SceneTree.prototype.setLayersProportional = function (layerIDs, proportional) {
         var nextLayers = Immutable.Map(layerIDs.reduce(function (map, layerID) {
                 return map.set(layerID, Immutable.Map({
                     proportionalScaling: proportional
@@ -1227,9 +1227,9 @@ define(function (require, exports, module) {
      * Repositions the given layers, setting their top and left to be passed in values.
      *
      * @param {Array.<{layer: Layer, x: number, y: number}>} layerPositions
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.repositionLayers = function (layerPositions) {
+    SceneTree.prototype.repositionLayers = function (layerPositions) {
         var allBounds = Immutable.Map(layerPositions.reduce(function (allBounds, layerData) {
             var layer = this.byID(layerData.layer.index);
             if (layer.bounds) {
@@ -1251,9 +1251,9 @@ define(function (require, exports, module) {
      * @param {number=} left
      * @param {number=} width
      * @param {number=} height
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.updateBounds = function (layerIDs, top, left, width, height) {
+    SceneTree.prototype.updateBounds = function (layerIDs, top, left, width, height) {
         var allBounds = Immutable.Map(layerIDs.reduce(function (allBounds, layerID) {
             var layer = this.byID(layerID);
 
@@ -1275,9 +1275,9 @@ define(function (require, exports, module) {
      * @param {Immutable.Iterable.<number>} layerIDs
      * @param {number=} x
      * @param {number=} y
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.translateLayers = function (layerIDs, x, y) {
+    SceneTree.prototype.translateLayers = function (layerIDs, x, y) {
         var allBounds = Immutable.Map(layerIDs.reduce(function (allBounds, layerID) {
             var layer = this.byID(layerID);
             if (layer.bounds) {
@@ -1297,9 +1297,9 @@ define(function (require, exports, module) {
      * in the given set.
      *
      * @param {Immutable.Set.<string>} selectedIndicies
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.updateSelection = function (selectedIndicies) {
+    SceneTree.prototype.updateSelection = function (selectedIndicies) {
         var updatedSceneNodes = this.elements.map(function (element) {
             var selected = selectedIndicies.has(element.index);
             return element.set("selected", selected);
@@ -1311,9 +1311,9 @@ define(function (require, exports, module) {
      * Reorder the layers in the given order.
      *
      * @param {Immutable.Iterable.<number>} layerIDs
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.updateOrder = function (layerIDs) {
+    SceneTree.prototype.updateOrder = function (layerIDs) {
         var updatedIndex = Immutable.List(layerIDs).reverse();
         if (updatedIndex.size > this.layers.size) {
             throw new Error("Too many layers in layer index");
@@ -1341,19 +1341,19 @@ define(function (require, exports, module) {
      * Delete the given layer IDs (and reorder the rest)
      *
      * @param {Immutable.Iterable.<number>} layerIDs
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.deleteLayers = function (layerIDs) {
+    SceneTree.prototype.deleteLayers = function (layerIDs) {
         var remainingLayerIDs = collection.difference(this.index, layerIDs).reverse(),
-            remainingElementStructure = this.updateOrder(remainingLayerIDs);
+            remainingSceneTree = this.updateOrder(remainingLayerIDs);
 
-        var updatedLayers = remainingElementStructure.layers.withMutations(function (layers) {
+        var updatedLayers = remainingSceneTree.layers.withMutations(function (layers) {
             layerIDs.forEach(function (layerID) {
                 layers.delete(layerID);
             });
         });
 
-        return remainingElementStructure.merge({
+        return remainingSceneTree.merge({
             layers: updatedLayers
         });
     };
@@ -1368,9 +1368,9 @@ define(function (require, exports, module) {
      * @param {number} groupEndID ID of group end layer
      * @param {string} groupName Name of the group, assigned by Photoshop
      *
-     * @return {ElementStructure} Updated layer tree with group added
+     * @return {SceneTree} Updated layer tree with group added
      */
-    ElementStructure.prototype.createGroup = function (documentID, groupID, groupEndID, groupName) {
+    SceneTree.prototype.createGroup = function (documentID, groupID, groupEndID, groupName) {
         var groupHead = Element.fromGroupDescriptor(documentID, groupID, groupName, false),
             groupEnd = Element.fromGroupDescriptor(documentID, groupEndID, "", true),
             layersToMove = this.selectedNormalized.flatMap(this.descendants, this).toOrderedSet(),
@@ -1389,16 +1389,16 @@ define(function (require, exports, module) {
                 layers.set(groupID, groupHead);
                 layers.set(groupEndID, groupEnd);
             }),
-            newElementStructure = this.merge({
+            newSceneTree = this.merge({
                 layers: updatedLayers
             });
 
         // Add the new layers, and the new order
-        newElementStructure = newElementStructure
+        newSceneTree = newSceneTree
             .updateSelection(Immutable.Set.of(groupID))
             .updateOrder(newIDs);
 
-        return newElementStructure;
+        return newSceneTree;
     };
 
     /**
@@ -1407,9 +1407,9 @@ define(function (require, exports, module) {
      * @param {Immutable.Iterable.<number>} layerIDs
      * @param {number} fillIndex
      * @param {object} fillProperties
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.setFillProperties = function (layerIDs, fillIndex, fillProperties) {
+    SceneTree.prototype.setFillProperties = function (layerIDs, fillIndex, fillProperties) {
         var nextLayers = Immutable.Map(layerIDs.reduce(function (map, layerID) {
             var layer = this.byID(layerID),
                 fill = layer.fills.get(fillIndex);
@@ -1434,9 +1434,9 @@ define(function (require, exports, module) {
      *
      * @param {Immutable.Iterable.<number>} layerIDs
      * @param {object} setDescriptor
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.addFill = function (layerIDs, setDescriptor) {
+    SceneTree.prototype.addFill = function (layerIDs, setDescriptor) {
         var nextFill = Fill.fromSetDescriptor(setDescriptor),
             nextLayers = Immutable.Map(layerIDs.reduce(function (map, layerID) {
                 // FIXME: If we add a fill to a layer that already has one,
@@ -1462,9 +1462,9 @@ define(function (require, exports, module) {
      * @param {Immutable.Iterable.<number>} layerIDs
      * @param {number} strokeIndex
      * @param {object} strokeProperties
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.setStrokeProperties = function (layerIDs, strokeIndex, strokeProperties) {
+    SceneTree.prototype.setStrokeProperties = function (layerIDs, strokeIndex, strokeProperties) {
         var nextLayers = Immutable.Map(layerIDs.reduce(function (map, layerID) {
             var layer = this.byID(layerID),
                 stroke = layer.strokes.get(strokeIndex);
@@ -1492,9 +1492,9 @@ define(function (require, exports, module) {
      * @param {Immutable.Iterable.<number>} layerIDs
      * @param {number} strokeIndex
      * @param {object | Immutable.Iterable.<object>} strokeStyleDescriptor
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.addStroke = function (layerIDs, strokeIndex, strokeStyleDescriptor) {
+    SceneTree.prototype.addStroke = function (layerIDs, strokeIndex, strokeStyleDescriptor) {
         var isList = Immutable.List.isList(strokeStyleDescriptor);
 
         var getStroke = function (index) {
@@ -1527,9 +1527,9 @@ define(function (require, exports, module) {
      * @param {number | Immutable.List.<number>} layerEffectIndex index of effect, or per-layer List thereof
      * @param {string} layerEffectType type of layer effect
      * @param {object | Immutable.List.<object>} layerEffectProperties properties to merge, or per-layer List thereof
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.setLayerEffectProperties = function (layerIDs,
+    SceneTree.prototype.setLayerEffectProperties = function (layerIDs,
         layerEffectIndex, layerEffectType, layerEffectProperties) {
         // validate layerEffectType
         if (!Element.layerEffectTypes.has(layerEffectType)) {
@@ -1570,9 +1570,9 @@ define(function (require, exports, module) {
      * @param {Immutable.Iterable.<number>} layerIDs
      * @param {number} deletedIndex index of effect
      * @param {string} layerEffectType type of layer effect
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.deleteLayerEffectProperties = function (layerIDs, deletedIndex, layerEffectType) {
+    SceneTree.prototype.deleteLayerEffectProperties = function (layerIDs, deletedIndex, layerEffectType) {
         if (!Element.layerEffectTypes.has(layerEffectType)) {
             throw new Error("Invalid layerEffectType supplied");
         }
@@ -1599,9 +1599,9 @@ define(function (require, exports, module) {
      *
      * @param {Immutable.Iterable.<number>} layerIDs
      * @param {string} layerEffectType
-     * @return {ElementStructure} [description]
+     * @return {SceneTree} [description]
      */
-    ElementStructure.prototype.deleteAllLayerEffects = function (layerIDs, layerEffectType) {
+    SceneTree.prototype.deleteAllLayerEffects = function (layerIDs, layerEffectType) {
         if (!Element.layerEffectTypes.has(layerEffectType)) {
             throw new Error("Invalid layerEffectType supplied");
         }
@@ -1628,9 +1628,9 @@ define(function (require, exports, module) {
      * @param {string} styleProperty Either "characterStyle" or "paragraphStyle"
      * @param {Immutable.Iterable.<number>} layerIDs
      * @param {object} properties
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype._setTextStyleProperties = function (styleProperty, layerIDs, properties) {
+    SceneTree.prototype._setTextStyleProperties = function (styleProperty, layerIDs, properties) {
         var nextLayers = Immutable.Map(layerIDs.reduce(function (map, layerID) {
             var layer = this.byID(layerID),
                 style = layer.text[styleProperty],
@@ -1651,9 +1651,9 @@ define(function (require, exports, module) {
      *
      * @param {Immutable.Iterable.<number>} layerIDs
      * @param {object} properties
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.setCharacterStyleProperties = function (layerIDs, properties) {
+    SceneTree.prototype.setCharacterStyleProperties = function (layerIDs, properties) {
         return this._setTextStyleProperties("characterStyle", layerIDs, properties);
     };
 
@@ -1662,11 +1662,11 @@ define(function (require, exports, module) {
      *
      * @param {Immutable.Iterable.<number>} layerIDs
      * @param {object} properties
-     * @return {ElementStructure}
+     * @return {SceneTree}
      */
-    ElementStructure.prototype.setParagraphStyleProperties = function (layerIDs, properties) {
+    SceneTree.prototype.setParagraphStyleProperties = function (layerIDs, properties) {
         return this._setTextStyleProperties("paragraphStyle", layerIDs, properties);
     };
 
-    module.exports = ElementStructure;
+    module.exports = SceneTree;
 });

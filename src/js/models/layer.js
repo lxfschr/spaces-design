@@ -33,7 +33,7 @@ define(function (require, exports, module) {
         Radii = require("./radii"),
         Stroke = require("./stroke"),
         Fill = require("./fill"),
-        ElementStructure = require("./elementstructure"),
+        SceneTree = require("./scenetree"),
         Shadow = require("./shadow"),
         Text = require("./text");
 
@@ -482,7 +482,7 @@ define(function (require, exports, module) {
             innerShadows: Shadow.fromLayerDescriptor(layerDescriptor, "innerShadow"),
             text: Text.fromLayerDescriptor(resolution, layerDescriptor),
             proportionalScaling: layerDescriptor.proportionalScaling,
-            sceneTree: ElementStructure.fromLayerDescriptor(layerDescriptor),
+            sceneTree: SceneTree.fromLayerDescriptor(layerDescriptor),
             isArtboard: layerDescriptor.artboardEnabled,
             vectorMaskEnabled: layerDescriptor.vectorMaskEnabled,
             exportEnabled: layerDescriptor.exportEnabled,
@@ -521,7 +521,7 @@ define(function (require, exports, module) {
                 innerShadows: Shadow.fromLayerDescriptor(layerDescriptor, "innerShadow"),
                 text: Text.fromLayerDescriptor(resolution, layerDescriptor),
                 proportionalScaling: layerDescriptor.proportionalScaling,
-                sceneTree: ElementStructure.fromLayerDescriptor(layerDescriptor),
+                sceneTree: SceneTree.fromLayerDescriptor(layerDescriptor),
                 isArtboard: layerDescriptor.artboardEnabled,
                 vectorMaskEnabled: layerDescriptor.vectorMaskEnabled,
                 exportEnabled: layerDescriptor.exportEnabled,
