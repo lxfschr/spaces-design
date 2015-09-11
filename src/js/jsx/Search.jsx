@@ -35,7 +35,8 @@ define(function (require, exports, module) {
     /**
      * Unique identifier for the Search Dialog
      *
-     * @const {string}
+     * @const
+     * @type {string}
      */
     var SEARCH_BAR_DIALOG_ID = "search-bar-dialog";
 
@@ -69,7 +70,6 @@ define(function (require, exports, module) {
         _handleOption: function (itemID) {
             this._closeSearchBar()
                 .bind(this)
-                .delay(100) // HACK: See #2177
                 .then(function () {
                     var searchStore = this.getFlux().store("search");
                     searchStore.handleExecute(itemID);

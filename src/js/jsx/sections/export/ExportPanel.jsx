@@ -24,24 +24,23 @@
 define(function (require, exports, module) {
     "use strict";
 
-    var Immutable = require("immutable"),
-        React = require("react"),
+    var React = require("react"),
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React),
         StoreWatchMixin = Fluxxor.StoreWatchMixin,
-        classnames = require("classnames"),
-        _ = require("lodash");
+        Immutable = require("immutable"),
+        classnames = require("classnames");
 
     var os = require("adapter/os");
 
-    var TitleHeader = require("jsx!js/jsx/shared/TitleHeader"),
-        LayerExports = require("jsx!js/jsx/sections/export/LayerExports"),
+    var ExportList = require("jsx!js/jsx/sections/export/ExportList"),
+        TitleHeader = require("jsx!js/jsx/shared/TitleHeader"),
         Button = require("jsx!js/jsx/shared/Button"),
+        Gutter = require("jsx!js/jsx/shared/Gutter"),
         SVGIcon = require("jsx!js/jsx/shared/SVGIcon"),
         strings = require("i18n!nls/strings"),
         ExportAsset = require("js/models/exportasset"),
-        synchronization = require("js/util/synchronization"),
-        collection = require("js/util/collection");
+        synchronization = require("js/util/synchronization");
 
     var ExportPanel = React.createClass({
 
@@ -57,10 +56,12 @@ define(function (require, exports, module) {
         getStateFromFlux: function () {
             var flux = this.getFlux(),
                 documentID = this.props.document.id,
-                documentExports = flux.store("export").getDocumentExports(documentID);
+                exportStore = flux.store("export"),
+                documentExports = exportStore.getDocumentExports(documentID);
 
             return {
-                documentExports: documentExports
+                documentExports: documentExports,
+                exportState: exportStore.getState()
             };
         },
 
@@ -73,7 +74,10 @@ define(function (require, exports, module) {
                 return true;
             }
 
-            if (!nextProps.visible && !this.props.visible) {
+            // If the panel is remaining invisible and the selection state hasn't changed, no need to re-render.
+            // A new layer selection could change the enabled state of the title header buttons
+            if (!nextProps.visible && !this.props.visible &&
+                Immutable.is(this.props.document.layers.selected, nextProps.document.layers.selected)) {
                 return false;
             }
 
@@ -104,59 +108,106 @@ define(function (require, exports, module) {
         },
 
         /**
+         * If currently invisible, force to visible by calling the parent's onVisibilityToggle
+         */
+        _forceVisible: function () {
+            if (!this.props.visible && this.props.onVisibilityToggle) {
+                this.props.onVisibilityToggle();
+            }
+        },
+
+        /**
          * Add a new Asset to this list
          *
          * @private
          */
-        _addAssetClickHandler: function (layer) {
+        _addAssetClickHandler: function (preset) {
             var document = this.props.document,
+                selectedLayers = document && document.layers.selected,
                 documentExports = this.state.documentExports,
-                layerExports = documentExports && documentExports.layerExportsMap.get(layer.id),
-                existingScales = (layerExports && collection.pluck(layerExports, "scale")) || Immutable.List(),
-                remainingScales = collection.difference(ExportAsset.SCALES, existingScales),
-                nextScale = remainingScales.size > 0 ? remainingScales.first() : null,
-                nextAssetIndex = (layerExports && layerExports.size) || 0;
+                props = preset ? ExportAsset.PRESET_ASSETS[preset] : null;
 
-            this.getFlux().actions.export.addLayerAsset(document, layer, nextAssetIndex, nextScale);
+            this._forceVisible();
+            this.getFlux().actions.export.addAsset(document, documentExports, selectedLayers, props);
         },
 
         /**
-         * Stop event propagation to prevent double-clicks from collapsing the panel.
+         * Export all the assets associated with this panel
          *
          * @private
-         * @param {SyntheticEvent} event
          */
-        _addAssetDoubleClickHandler: function (event) {
+        _exportAssetsClickHandler: function () {
+            var document = this.props.document,
+                selectedLayers = document.layers.selected;
+
+            this._forceVisible();
+
+            if (selectedLayers.size > 0) {
+                this.getFlux().actions.export.exportLayerAssetsDebounced(document, selectedLayers);
+            } else {
+                this.getFlux().actions.export.exportDocumentAssetsDebounced(document);
+            }
+        },
+
+        /**
+         * Handler which stops propagation of the given event
+         *
+         * @private
+         * @param {Event} event
+         */
+        _blockInput: function (event) {
             event.stopPropagation();
         },
 
         render: function () {
             var document = this.props.document,
+                documentExports = this.state.documentExports,
+                exportState = this.state.exportState,
                 disabled = this.props.disabled,
-                containerContents,
-                addAssetClickHandler;
+                exportDisabled = exportState.serviceBusy || !exportState.serviceAvailable,
+                selectedLayers,
+                supportedLayers,
+                containerContents;
 
-            if (!document || !this.props.visible || disabled) {
+            if (!documentExports || disabled) {
                 containerContents = null;
-            } else if (document.layers.selected.size !== 1) {
-                containerContents = (<div>{strings.EXPORT.SELECT_SINGLE_LAYER}</div>);
             } else {
-                var selectedLayer = this.props.document.layers.selected.first();
-
-                if (selectedLayer.isBackground) {
-                    containerContents = null;
-                    disabled = true;
+                selectedLayers = this.props.document.layers.selected;
+                supportedLayers = document.layers.filterExportable(selectedLayers);
+                
+                if (!selectedLayers.isEmpty()) {
+                    if (supportedLayers.isEmpty()) {
+                        // Special case: there are selected layers, but none is supported
+                        disabled = true;
+                        containerContents = (
+                            <div className="libraries__content panel__info">
+                                <div className="panel__info__body">
+                                    {strings.EXPORT.ONLY_UNSUPPORTED_LAYERS_SELECTED}
+                                </div>
+                            </div>
+                        );
+                    } else if (documentExports.getUniformAssetsOnly(supportedLayers).isEmpty()) {
+                        // Special case: there are selected layers, but no common assets (or none at all)
+                        containerContents = (
+                            <div className="libraries__content panel__info">
+                                <div className="panel__info__body">
+                                    {strings.EXPORT.NO_ASSETS}
+                                </div>
+                            </div>
+                        );
+                    }
                 } else {
-                    addAssetClickHandler = this._addAssetClickHandler.bind(this, selectedLayer);
-                    containerContents = (
-                        <div>
-                            <LayerExports {...this.props}
-                                documentExports={this.state.documentExports}
-                                layer={selectedLayer}
-                                onFocus={this._handleFocus}/>
-                        </div>
-                    );
+                    supportedLayers = undefined;
                 }
+
+                containerContents = containerContents || this.props.visible && (
+                    <div>
+                        <ExportList {...this.props}
+                            documentExports={this.state.documentExports}
+                            layers={supportedLayers}
+                            onFocus={this._handleFocus}/>
+                    </div>
+                );
             }
 
             var containerClasses = classnames({
@@ -165,7 +216,7 @@ define(function (require, exports, module) {
             });
 
             var sectionClasses = classnames({
-                "style": true,
+                "export": true,
                 "section": true,
                 "section__collapsed": !this.props.visible
             });
@@ -177,17 +228,50 @@ define(function (require, exports, module) {
                     <TitleHeader
                         title={strings.TITLE_EXPORT}
                         visible={this.props.visible}
-                        disabled={disabled}
+                        disabled={false}
                         onDoubleClick={this.props.onVisibilityToggle}>
                         <div className="layer-exports__workflow-buttons">
                             <Button
                                 className="button-plus"
-                                title={strings.TOOLTIPS.EXPORT_ADD_ASSET}
-                                onClick={addAssetClickHandler || _.noop}
-                                onDoubleClick={this._addAssetDoubleClickHandler}>
+                                disabled={exportDisabled || disabled}
+                                title={strings.TOOLTIPS.EXPORT_EXPORT_ASSETS}
+                                onClick={this._exportAssetsClickHandler}
+                                onDoubleClick={this._blockInput}>
                                 <SVGIcon
-                                    viewbox="0 0 12 12"
-                                    CSSID="plus" />
+                                    CSSID={exportState.serviceBusy ? "loader" : "export"} />
+                            </Button>
+                            <Gutter />
+                            <Button
+                                className="button-plus"
+                                disabled={disabled}
+                                title={strings.TOOLTIPS.EXPORT_ADD_ASSET}
+                                onClick={this._addAssetClickHandler}
+                                onDoubleClick={this._blockInput}>
+                                <SVGIcon
+                                    viewbox="0 0 16 16"
+                                    CSSID="add-new" />
+                            </Button>
+                            <Gutter />
+                            <Button
+                                className="button-iOS"
+                                disabled={disabled}
+                                title={strings.TOOLTIPS.EXPORT_IOS_PRESETS}
+                                onClick={this._addAssetClickHandler.bind(this, "IOS")}
+                                onDoubleClick={this._blockInput}>
+                                <SVGIcon
+                                    viewbox="0 0 24 16"
+                                    CSSID="iOS" />
+                            </Button>
+                            <Gutter />
+                            <Button
+                                className="button-xdpi"
+                                disabled={disabled}
+                                title={strings.TOOLTIPS.EXPORT_HDPI_PRESETS}
+                                onClick={this._addAssetClickHandler.bind(this, "HDPI")}
+                                onDoubleClick={this._blockInput}>
+                                <SVGIcon
+                                    viewbox="0 0 24 16"
+                                    CSSID="hdpi" />
                             </Button>
                         </div>
                     </TitleHeader>

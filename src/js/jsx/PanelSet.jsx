@@ -29,7 +29,8 @@ define(function (require, exports, module) {
         FluxMixin = Fluxxor.FluxMixin(React),
         StoreWatchMixin = Fluxxor.StoreWatchMixin,
         Immutable = require("immutable"),
-        classnames = require("classnames");
+        classnames = require("classnames"),
+        _ = require("lodash");
 
     var Button = require("jsx!js/jsx/shared/Button"),
         SVGIcon = require("jsx!js/jsx/shared/SVGIcon"),
@@ -37,8 +38,9 @@ define(function (require, exports, module) {
         ArtboardPresets = require("jsx!./sections/nodoc/ArtboardPresets"),
         PanelColumn = require("jsx!./PanelColumn"),
         TransformPanel = require("jsx!./sections/transform/TransformPanel"),
-        StylePanel = require("jsx!./sections/style/StylePanel"),
         PropertiesPanel = require("jsx!./sections/properties/PropertiesPanel"),
+        EffectsPanel = require("jsx!./sections/style/EffectsPanel"),
+        AppearancePanel = require("jsx!./sections/style/AppearancePanel"),
         ExportPanel = require("jsx!./sections/export/ExportPanel"),
         LayersPanel = require("jsx!./sections/layers/LayersPanel"),
         Panel3d = require("jsx!./sections/3d/Panel3d"),
@@ -54,6 +56,8 @@ define(function (require, exports, module) {
         TRANSFORM_PANEL: "transformVisible",
         STYLES_PANEL: "stylesVisible",
         PROPERTIES_PANEL: "propertiesPanelVisible",
+        APPEARANCE_PANEL: "appearanceVisible",
+        EFFECTS_PANEL: "effectsVisible",
         EXPORT_PANEL: "exportVisible",
         LAYERS_PANEL: "layersVisible",
         PANEL_3D: "panel3dVisible",
@@ -93,22 +97,20 @@ define(function (require, exports, module) {
              
             var preferencesStore = flux.store("preferences"),
                 preferences = preferencesStore.getState();
-
-            fluxState[UI.PROPERTIES_COL] = preferences.get(UI.PROPERTIES_COL, true);
-            fluxState[UI.LAYERS_LIBRARY_COL] = preferences.get(UI.LAYERS_LIBRARY_COL, true);
-            fluxState[UI.STYLES_PANEL] = preferences.get(UI.STYLES_PANEL, true);
-            fluxState[UI.EXPORT_PANEL] = preferences.get(UI.EXPORT_PANEL, true);
-            fluxState[UI.LAYERS_PANEL] = preferences.get(UI.LAYERS_PANEL, true);
-            fluxState[UI.PANEL_3D] = preferences.get(UI.PANEL_3D, true);
-            fluxState[UI.PROPERTIES_PANEL] = preferences.get(UI.PROPERTIES_PANEL, true);
-            fluxState[UI.LIBRARIES_PANEL] = preferences.get(UI.LIBRARIES_PANEL, true);
+                
+            // Grab preferences for each UI panel
+            _.forOwn(UI, function (uiComponent) {
+                fluxState[uiComponent] = preferences.get(uiComponent, true);
+            });
       
             return fluxState;
         },
 
         componentDidUpdate: function (prevProps, prevState) {
             // NOTE: Special case of going from No Doc state requires update to panel sizes
-            if (!prevState.activeDocument && this.state.activeDocument) {
+            if ((!prevState.activeDocument && this.state.activeDocument) ||
+                prevState[UI.PROPERTIES_COL] !== this.state[UI.PROPERTIES_COL] ||
+                prevState[UI.LAYERS_LIBRARY_COL] !== this.state[UI.LAYERS_LIBRARY_COL]) {
                 var payload = {
                     panelWidth: React.findDOMNode(this.refs.panelSet).clientWidth
                 };
@@ -131,20 +133,21 @@ define(function (require, exports, module) {
                 (!this.state.activeDocument && !nextState.recentFilesInitialized)) {
                 return false;
             }
-            return this.state[UI.PROPERTIES_COL] !== nextState[UI.PROPERTIES_COL] ||
-                this.state[UI.LAYERS_LIBRARY_COL] !== nextState[UI.LAYERS_LIBRARY_COL] ||
-                this.state[UI.STYLES_PANEL] !== nextState[UI.STYLES_PANEL] ||
-                this.state[UI.EXPORT_PANEL] !== nextState[UI.EXPORT_PANEL] ||
-                this.state[UI.LAYERS_PANEL] !== nextState[UI.LAYERS_PANEL] ||
-                this.state[UI.PANEL_3D] !== nextState[UI.PANEL_3D] ||
-                this.state[UI.PROPERTIES_PANEL] !== nextState[UI.PROPERTIES_PANEL] ||
-                this.state[UI.LIBRARIES_PANEL] !== nextState[UI.LIBRARIES_PANEL] ||
+
+            var uiVisibilityChanged = _.some(UI, function (uiComponent) {
+                if (this.state[uiComponent] !== nextState[uiComponent]) {
+                    return true;
+                }
+            }, this);
+
+            return uiVisibilityChanged ||
                 this.state.activeDocumentInitialized !== nextState.activeDocumentInitialized ||
                 this.state.recentFilesInitialized !== nextState.recentFilesInitialized ||
                 (nextState.documentIDs.size === 0 && !Immutable.is(this.state.recentFiles, nextState.recentFiles)) ||
                 !Immutable.is(this.state.activeDocument, nextState.activeDocument);
         },
 
+        /** @ignore */
         _handleColumnVisibilityToggle: function (columnName) {
             var nextState = {};
             nextState[columnName] = !this.state[columnName];
@@ -152,25 +155,19 @@ define(function (require, exports, module) {
             this.getFlux().actions.preferences.setPreferences(nextState);
             this.setState(nextState);
         },
-        
+
+        /** @ignore */
         _handlePanelVisibilityToggle: function (panelName) {
             // NOTE: We may want remove this if we come up with a better unsupported state for panels
             if (this.state.document && this.state.document.unsupported) {
                 return;
             }
             
-            // Open any closed element but only close if there is more than 1 open panel
-            var panelElement = React.findDOMNode(this.refs[panelName]),
-                panelSelector = ".section-container:not(.section-container__collapsed)",
-                nonCollapsedSiblings = panelElement.parentElement.querySelectorAll(panelSelector);
-            
-            if (!this.state[panelName] || (this.state[panelName] && nonCollapsedSiblings.length > 1)) {
-                var nextState = {};
-                nextState[panelName] = !this.state[panelName];
+            var nextState = {};
+            nextState[panelName] = !this.state[panelName];
 
-                this.getFlux().actions.preferences.setPreferences(nextState);
-                this.setState(nextState);
-            }
+            this.getFlux().actions.preferences.setPreferences(nextState);
+            this.setState(nextState);
         },
 
         render: function () {
@@ -215,13 +212,21 @@ define(function (require, exports, module) {
                                     <TransformPanel
                                         disabled={disabled}
                                         document={document} />
-                                    <StylePanel
-                                        ref={UI.STYLES_PANEL}
+                                    <AppearancePanel
+                                        ref={UI.APPEARANCE_PANEL}
                                         disabled={disabled}
-                                        visible={!disabled && this.state[UI.STYLES_PANEL]}
+                                        visible={!disabled && this.state[UI.APPEARANCE_PANEL]}
                                         document={document}
                                         onVisibilityToggle=
-                                            {this._handlePanelVisibilityToggle.bind(this, UI.STYLES_PANEL)} />
+                                            {this._handlePanelVisibilityToggle
+                                                .bind(this, UI.APPEARANCE_PANEL)} />
+                                    <EffectsPanel
+                                        ref={UI.EFFECTS_PANEL}
+                                        disabled={disabled}
+                                        visible={!disabled && this.state[UI.EFFECTS_PANEL]}
+                                        document={document}
+                                        onVisibilityToggle=
+                                        {this._handlePanelVisibilityToggle.bind(this, UI.EFFECTS_PANEL)} />
                                     <PropertiesPanel
                                         ref={UI.PROPERTIES_PANEL}
                                         visible={this.state[UI.PROPERTIES_PANEL]}
@@ -270,7 +275,6 @@ define(function (require, exports, module) {
                                             viewbox="0 0 18 16"
                                             CSSID="workspace" />
                                     </Button>
-                                            
                                     <Button className={propertiesButtonClassNames}
                                         title={propertiesColumnTitle}
                                         disabled={false}

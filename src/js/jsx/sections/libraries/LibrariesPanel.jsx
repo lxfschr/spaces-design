@@ -50,6 +50,7 @@ define(function (require, exports, module) {
 
             return {
                 libraries: libraries,
+                isSyncing: libraryStore.isSyncing(),
                 isDropTarget: isDropTarget,
                 isValidDropTarget: dndState.hasValidDropTarget,
                 selectedLibrary: libraryStore.getCurrentLibrary()
@@ -79,19 +80,17 @@ define(function (require, exports, module) {
             return true;
         },
 
-        _handleRefresh: function () {
-            this.getFlux().actions.libraries.beforeStartup();
-            this.getFlux().actions.libraries.afterStartup();
-        },
-
+        /** @ignore */
         _handleLibraryChange: function (libraryID) {
             this.getFlux().actions.libraries.selectLibrary(libraryID);
         },
 
+        /** @ignore */
         _handleLibraryAdd: function () {
             this.getFlux().actions.libraries.createLibrary("New Library");
         },
 
+        /** @ignore */
         _handleLibraryRemove: function () {
             this.getFlux().actions.libraries.removeCurrentLibrary();
         },
@@ -121,8 +120,8 @@ define(function (require, exports, module) {
                 );
             } else {
                 containerContents = (
-                    <div className="libraries__content libraries__info">
-                        <div className="libraries__info__body">
+                    <div className="libraries__content panel__info">
+                        <div className="panel__info__body">
                             {strings.LIBRARIES.NO_CONNECTION}
                         </div>
                     </div>
@@ -147,7 +146,8 @@ define(function (require, exports, module) {
                     <LibraryBar
                         className="libraries__bar__bottom"
                         document={this.props.document}
-                        disabled={!currentLibrary}/>
+                        disabled={!currentLibrary}
+                        isSyncing={this.state.isSyncing}/>
                 </div>
             );
         },
@@ -221,7 +221,7 @@ define(function (require, exports, module) {
         }
 
         return promise.then(function () {
-            flux.actions.libraries.createElementFromSelectedLayer();
+            flux.actions.libraries.createGraphicFromSelectedLayer();
         });
     };
 

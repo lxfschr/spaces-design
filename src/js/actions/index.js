@@ -51,6 +51,7 @@ define(function (require, exports, module) {
         tools: require("./tools"),
         transform: require("./transform"),
         type: require("./type"),
+        typetool: require("./typetool"),
         ui: require("./ui")
     };
 });

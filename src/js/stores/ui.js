@@ -134,7 +134,6 @@ define(function (require, exports, module) {
                 events.RESET, this._handleReset,
                 events.ui.TRANSFORM_UPDATED, this._transformUpdated,
                 events.ui.PANELS_RESIZED, this._handlePanelResize,
-                events.ui.TOOLBAR_PINNED, this._handleToolbarPin,
                 events.ui.SUPERSELECT_MARQUEE, this._handleMarqueeStart,
                 events.ui.TOGGLE_OVERLAYS, this._handleOverlayToggle,
                 events.document.DOCUMENT_UPDATED, this._handleLayersUpdated,
@@ -168,7 +167,8 @@ define(function (require, exports, module) {
             this._headerHeight = 0;
             this._toolbarWidth = 0;
         },
-
+        
+        /** @ignore */
         getState: function () {
             return {
                 transformMatrix: this._transformMatrix,
@@ -180,11 +180,13 @@ define(function (require, exports, module) {
                 marqueeStart: this._marqueeStart
             };
         },
-
+        
+        /** @ignore */
         zoomWindowToCanvas: function (x) {
             return x * this._zoom;
         },
 
+        /** @ignore */
         zoomCanvasToWindow: function (x) {
             return x / this._zoom;
         },
@@ -259,7 +261,7 @@ define(function (require, exports, module) {
          * Get the current cloaking rectangle, which omits the static UI.
          *
          * @private
-         * @return {{top: number, right: number, left: number, bottom: number}}
+         * @return {?{top: number, right: number, left: number, bottom: number}}
          */
         getCloakRect: function () {
             var centerOffsets = this._centerOffsets,
@@ -413,16 +415,24 @@ define(function (require, exports, module) {
          * Updates the center offsets when they change.
          *
          * @private
-         * @param {{panelWidth: number, headerHeight: number}} payload
+         * @param {{panelWidth: number=, headerHeight: number=, toolbarWidth: number=}} payload
          */
         _handlePanelResize: function (payload) {
-            this._panelWidth = payload.panelWidth;
+            if (payload.hasOwnProperty("panelWidth")) {
+                this._panelWidth = payload.panelWidth;
+            }
+
             if (payload.hasOwnProperty("headerHeight")) {
                 this._headerHeight = payload.headerHeight;
             }
-            
+
+            if (payload.hasOwnProperty("toolbarWidth")) {
+                this._toolbarWidth = payload.toolbarWidth;
+            }
+
             if (this._recalculateCenterOffset()) {
                 this._centerCurrentDocumentOnce();
+                this.emit("change");
             }
         },
         
@@ -460,18 +470,6 @@ define(function (require, exports, module) {
                 this._centeredDocumentIDs.add(currentDocId);
                 this.flux.actions.ui.centerOn({ on: "document", zoomInto: true, preserveFocus: true });
             }
-        },
-
-        /**
-         * Updates the left center offset when toolbar is pinned
-         *
-         * @private
-         * @param {{toolbarWidth: number}} payload
-         */
-        _handleToolbarPin: function (payload) {
-            this._toolbarWidth = payload.toolbarWidth;
-
-            this._recalculateCenterOffset();
         },
 
         /**

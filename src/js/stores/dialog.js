@@ -107,7 +107,7 @@ define(function (require, exports, module) {
          * consistent type.
          *
          * @private
-         * @return {string}
+         * @return {?string}
          */
         _getCurrentSelectionType: function () {
             var applicationStore = this.flux.store("application"),

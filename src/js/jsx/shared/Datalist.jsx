@@ -26,17 +26,14 @@ define(function (require, exports, module) {
 
     var React = require("react"),
         Immutable = require("immutable"),
-        _ = require("lodash"),
-        collection = require("js/util/collection");
-
-    var os = require("adapter/os"),
-        classnames = require("classnames");
+        classnames = require("classnames"),
+        _ = require("lodash");
 
     var TextInput = require("jsx!js/jsx/shared/TextInput"),
         Select = require("jsx!js/jsx/shared/Select"),
         Dialog = require("jsx!js/jsx/shared/Dialog"),
         SVGIcon = require("jsx!js/jsx/shared/SVGIcon"),
-        log = require("js/util/log");
+        collection = require("js/util/collection");
 
     /**
      * Approximates an HTML <datalist> element. (CEF does not support datalist
@@ -45,6 +42,10 @@ define(function (require, exports, module) {
     var Datalist = React.createClass({
         propTypes: {
             options: React.PropTypes.instanceOf(Immutable.List),
+            // ID of the item that should initially be selected
+            defaultSelected: React.PropTypes.string,
+            // Initial text value to display.  TODO: explain how this behaves differently based on other options
+            value: React.PropTypes.string,
             // Callback to handle change of selection. Return false will cancel the selection.
             onChange: React.PropTypes.func,
             // If true, mouse over selection will fire invoke the onChange callback.
@@ -207,20 +208,6 @@ define(function (require, exports, module) {
         },
 
         /**
-         * Blur the input and release focus to Photoshop.
-         *
-         * @private
-         */
-        _releaseFocus: function () {
-            os.releaseKeyboardFocus()
-                .catch(function (err) {
-                    var message = err instanceof Error ? (err.stack || err.message) : err;
-
-                    log.error("Failed to release keyboard focus on reset:", message);
-                });
-        },
-
-        /**
          * Enables keyboard navigation of the open select menu.
          *
          * @private
@@ -315,7 +302,7 @@ define(function (require, exports, module) {
         _handleSelectChange: function (id, force) {
             var confirmSelection = true;
 
-            if (this.props.live || force) {
+            if ((this.props.live || force) && (!this.props.defaultSelected || this.props.defaultSelected !== id)) {
                 confirmSelection = (this.props.onChange(id) !== false);
             }
 
@@ -358,6 +345,7 @@ define(function (require, exports, module) {
             }
         },
 
+        /** @ignore */
         _handleSelectClose: function (event, action) {
             if (this.props.autoSelect) {
                 this._handleSelectClick(event, action);
@@ -374,7 +362,6 @@ define(function (require, exports, module) {
             this.setState({
                 active: false
             });
-            this._releaseFocus();
         },
 
         /**

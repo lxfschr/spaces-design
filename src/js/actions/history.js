@@ -28,6 +28,7 @@ define(function (require, exports) {
         _ = require("lodash");
 
     var descriptor = require("adapter/ps/descriptor"),
+        ps = require("adapter/ps"),
         documentLib = require("adapter/lib/document"),
         historyLib = require("adapter/lib/history"),
         layerActions = require("./layers"),
@@ -37,6 +38,13 @@ define(function (require, exports) {
     var events = require("js/events"),
         locks = require("js/locks"),
         log = require("js/util/log");
+
+    /**
+     * Photoshop command ID for "undo"
+     * @type {number}
+     * @const 
+     */
+    var UNDO_NATIVE_MENU_COMMMAND_ID = 101;
 
     /**
      * Query the current history state for the current document
@@ -184,7 +192,15 @@ define(function (require, exports) {
      * @return {Promise}
      */
     var incrementHistory = function (document) {
-        return _navigateHistory.call(this, document, 1);
+        var modal = this.flux.store("tool").getModalToolState();
+
+        if (modal) {
+            // For now, don't support "redo" in modal text state
+            // Currently we are not disabling this menu action correctly, so this is for safety
+            return Promise.resolve();
+        } else {
+            return _navigateHistory.call(this, document, 1);
+        }
     };
     incrementHistory.reads = [locks.JS_DOC, locks.JS_APP];
     incrementHistory.writes = [locks.JS_HISTORY, locks.JS_DOC, locks.PS_DOC];
@@ -193,12 +209,24 @@ define(function (require, exports) {
 
     /**
      * Navigate to the previous history state
+     * If we're in a modal text edit state, play the native UNDO command.
+     * Otherwise use the history store
      *
      * @param {Document} document
      * @return {Promise}
      */
     var decrementHistory = function (document) {
-        return _navigateHistory.call(this, document, -1);
+        var modal = this.flux.store("tool").getModalToolState();
+
+        if (modal) {
+            var payload = {
+                commandId: UNDO_NATIVE_MENU_COMMMAND_ID,
+                waitForCompletion: true
+            };
+            return ps.performMenuCommand(payload);
+        } else {
+            return _navigateHistory.call(this, document, -1);
+        }
     };
     decrementHistory.reads = [locks.JS_DOC, locks.JS_APP];
     decrementHistory.writes = [locks.JS_HISTORY, locks.JS_DOC, locks.PS_DOC];
@@ -278,7 +306,8 @@ define(function (require, exports) {
     };
     beforeStartup.reads = [];
     beforeStartup.writes = [];
-
+    
+    /** @ignore */
     var onReset = function () {
         descriptor.removeListener("historyState", _historyStateHandler);
 

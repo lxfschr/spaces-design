@@ -204,6 +204,13 @@ define(function (require, exports, module) {
                 !document.unsupported &&
                 (document.layers !== null) &&
                 !document.layers.backgroundSelected,
+            "no-artboards":
+                (document !== null) &&
+                !document.unsupported &&
+                (document.layers !== null) &&
+                !document.layers.selected.some(function (layer) {
+                    return layer.isArtboard;
+                }),
             "no-nesting":
                 (document !== null) &&
                 !document.unsupported &&
@@ -274,7 +281,7 @@ define(function (require, exports, module) {
     /**
      * Incorporates artboard templates into the menu and menu actions
      * 
-     * @privates
+     * @private
      * @param {object} menus
      * @param {object} actions
      * @param {Array.<object>} templates

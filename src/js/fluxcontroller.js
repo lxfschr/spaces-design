@@ -73,7 +73,7 @@ define(function (require, exports, module) {
      * @private
      * @param {string} moduleName1
      * @param {string} moduleName2
-     * @return number
+     * @return {number}
      */
     var _actionModuleComparator = function (moduleName1, moduleName2) {
         var module1 = actionIndex[moduleName1],
@@ -308,8 +308,13 @@ define(function (require, exports, module) {
                     return actionName[0] !== "_";
                 })
                 .forEach(function (actionName) {
-                    var action = actionModule[actionName],
-                        name = actionModuleName + "." + actionName,
+                    var action = actionModule[actionName];
+                    
+                    if (typeof action !== "function") {
+                        return;
+                    }
+                    
+                    var name = actionModuleName + "." + actionName,
                         receiver = this._makeActionReceiver(dispatchBinder, action, name);
 
                     actionReceivers.set(action, receiver);
@@ -523,7 +528,7 @@ define(function (require, exports, module) {
                     modalPromise;
 
                 if (toolStore.getModalToolState() && !modal) {
-                    log.debug("Killing modal state for action %s", actionName);
+                    log.warn("Killing modal state for action %s", actionName);
                     modalPromise = ps.endModalToolState(true);
                 } else {
                     modalPromise = Promise.resolve();

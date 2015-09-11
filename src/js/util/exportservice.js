@@ -49,7 +49,7 @@ define(function (require, exports, module) {
      * @const
      * @type {number}
      */
-    var CONNECTION_TIMEOUT_MS = 9000;
+    var CONNECTION_TIMEOUT_MS = 20000;
 
     /**
      * Maximum number of retry attempts
@@ -117,24 +117,24 @@ define(function (require, exports, module) {
     /**
      * Export a layer asset
      *
-     * @param {Layer} layer
+     * @param {Document} document
+     * @param {Layer=} layer
      * @param {ExportAsset} asset
-     *
+     * @param {string} fileName
+     * @param {string=} baseDir optional directory path in to which assets should be exported
      * @return {Promise.<string>} Promise of a File Path of the exported asset
      */
-    ExportService.prototype.exportLayerAsset = function (layer, asset) {
+    ExportService.prototype.exportAsset = function (document, layer, asset, fileName, baseDir) {
         var payload = {
-            layer: layer,
+            documentID: document.id,
+            layerID: layer && layer.id,
             scale: asset.scale,
-            suffix: asset.suffix,
-            format: asset.format
+            format: asset.format,
+            fileName: fileName,
+            baseDir: baseDir
         };
 
-        if (!this._spacesDomain) {
-            throw new Error ("Can not exportLayerAsset prior to ExportService.init()");
-        }
-
-        return this._spacesDomain.exec("exportLayer", payload)
+        return this._spacesDomain.exec("export", payload)
             .timeout(CONNECTION_TIMEOUT_MS)
             .then(function (exportResponse) {
                 if (Array.isArray(exportResponse) && exportResponse.length > 0) {
@@ -145,8 +145,47 @@ define(function (require, exports, module) {
                 }
             })
             .catch(Promise.TimeoutError, function () {
-                return Promise.reject("Generator call exportLayer has timed out");
+                throw new Error("Generator call exportLayer has timed out");
             });
+    };
+
+    /**
+     * Pop the folder chooser
+     * Rejects with ExportService.CancelPromptError if the user cancels the dialog
+     *
+     * @return {Promise.<?string>} Promise of a File Path of the chosen folder, 
+     */
+    ExportService.prototype.promptForFolder = function (folderPath) {
+        return this._spacesDomain.exec("promptForFolder", { folderPath: folderPath })
+            .catch(function (err) {
+                // promptForFolder rejected, probably just user-canceled
+                if (err.message && err.message.startsWith("cancelError: cancel")) {
+                    log.warn("Prompt for folder failed, and it wasn't a simple 'cancel'");
+                    throw new Error("Failed to open an OS folder chooser dialog: " + err.message);
+                }
+                throw new ExportService.CancelPromptError();
+            });
+    };
+    
+    /**
+     * Copy file from one location to another.
+     *
+     * @param {string} sourcePath
+     * @param {string} targetPath
+     * @return {Promise} 
+     */
+    ExportService.prototype.copyFile = function (sourcePath, targetPath) {
+        return this._spacesDomain.exec("copyFile", { source: sourcePath, target: targetPath });
+    };
+    
+    /**
+     * Delete files at specific locations.
+     *
+     * @param {Array.<string>} filePaths
+     * @return {Promise}
+     */
+    ExportService.prototype.deleteFiles = function (filePaths) {
+        return this._spacesDomain.exec("deleteFiles", { filePaths: filePaths });
     };
 
     /**
@@ -154,6 +193,12 @@ define(function (require, exports, module) {
      * @type {string}
      */
     ExportService.domainPrefKey = GeneratorConnection.domainPrefKey(GENERATOR_DOMAIN_NAME);
+
+    /**
+     * A custom error that occurs when the user cancels the OS dialog prompt
+     */
+    ExportService.CancelPromptError = function MyCustomError () {};
+    ExportService.CancelPromptError.prototype = Object.create(Error.prototype);
 
     module.exports = ExportService;
 });

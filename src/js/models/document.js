@@ -173,5 +173,30 @@ define(function (require, exports, module) {
         return this.set("bounds", this.bounds.updateSize(x, y, proportional));
     };
 
+    Object.defineProperties(Document.prototype, object.cachedGetSpecs({
+        /**
+         * If document has any artboards, it's the union of all top layers bounds
+         * otherwise it's document bounds
+         * 
+         * @type {Bounds}
+         */
+        "visibleBounds": function () {
+            if (this.layers.hasArtboard) {
+                return this.layers.overallBounds;
+            } else {
+                return this.bounds;
+            }
+        },
+
+        /**
+         * Strip the file extension from the document name
+         *
+         * @return {string}
+         */
+        "nameWithoutExtension": function () {
+            return this.name.replace(/\.psd$/i, "");
+        }
+    }));
+
     module.exports = Document;
 });

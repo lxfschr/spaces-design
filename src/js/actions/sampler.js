@@ -42,6 +42,7 @@ define(function (require, exports) {
         layerActions = require("./layers"),
         typeActions = require("./type"),
         shapeActions = require("./shapes"),
+        toolActions = require("./tools"),
         layerActionsUtil = require("js/util/layeractions"),
         strings = require("i18n!nls/strings");
 
@@ -129,11 +130,7 @@ define(function (require, exports) {
                 if (source.isTextLayer() && allTextLayers) {
                     var fontStore = this.flux.store("font");
 
-                    try {
-                        typeStyle = fontStore.getTypeObjectFromLayer(source);
-                    } catch (err) {
-                        // For mixed type styles, this function throws, so we ignore!
-                    }
+                    typeStyle = fontStore.getTypeObjectFromLayer(source);
                 }
 
                 result.push({
@@ -453,13 +450,13 @@ define(function (require, exports) {
         }
 
         var fillColor = null,
-            strokeColor = null,
+            stroke = null,
             typeStyle = null;
 
         switch (source.kind) {
         case source.layerKinds.VECTOR:
             fillColor = source.fill && source.fill.color;
-            strokeColor = source.stroke && source.stroke.color;
+            stroke = source.stroke;
 
             break;
         case source.layerKinds.TEXT:
@@ -479,7 +476,7 @@ define(function (require, exports) {
                     dropShadows: source.dropShadows
                 },
                 fillColor: fillColor,
-                strokeColor: strokeColor,
+                stroke: stroke,
                 typeStyle: typeStyle
             }
         };
@@ -554,15 +551,23 @@ define(function (require, exports) {
                 textAlignmentPromise,
                 textStylePromise,
                 effectsPromise)
+            .bind(this)
             .then(function () {
                 return descriptor.endTransaction(transaction);
+            })
+            .then(function () {
+                return this.transfer(layerActions.resetLayers, document, targetLayers);
+            })
+            .then(function () {
+                return this.transfer(toolActions.resetBorderPolicies);
             });
     };
     pasteLayerStyle.reads = [locks.JS_DOC, locks.JS_STYLE, locks.JS_APP];
     pasteLayerStyle.writes = [];
     pasteLayerStyle.transfers = [shapeActions.setFillColor, shapeActions.setStroke,
         typeActions.setColor, typeActions.applyTextStyle, typeActions.setAlignment,
-        layerFXActions.duplicateLayerEffects];
+        layerFXActions.duplicateLayerEffects, toolActions.resetBorderPolicies,
+        layerActions.resetLayers];
 
     /**
      * Builds the layerActions object for sampling:

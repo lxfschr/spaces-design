@@ -21,9 +21,9 @@
  *
  */
 
-@graphic-drag-preview-size: 6.4rem;
+@graphic-drag-preview-size: 3.6rem;
 @libraries-button-size: 1.6rem;
-@libraries-preview-height: 3.6rem;
+@libraries-preview-height: 3.8rem;
 @libraries-preview-width: 5.4rem;
 
 .libraries {
@@ -88,35 +88,46 @@
             justify-content: space-between;
             flex: none;
             height: 4rem;
-            margin: 0 2rem;
+            margin: 0 0rem;
             align-items: center;
-            border-top: @hairline solid @layer-divider;
-            border-bottom: @hairline solid @layer-divider;
         }
 
         &__content-input {
             border-bottom: @hairline solid @focus-highlight;
         }
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        flex: none;
+        height: 5rem;
+        margin: 0 2rem;
+        align-items: center;
+        
         .drop-down {
             flex-grow: 1;
             border: 0;
-
+            width: 18.4rem;
+            border-bottom: @hairline solid @underlines;
+            
             input {
                 width: 100%;
                 font-size: 1.3rem;
+                user-select: none;
             }
         }
 
         .libraries__split-button-list {
             flex: none;
-            width: 9rem;
             flex-shrink: 0;
             flex-grow: 0;
+            width: auto;
             justify-content: space-between;
 
             .split-button__item {
                 justify-content: flex-end;
                 margin: 0;
+                margin-left: 1.5rem;
+                flex-grow: 0;
             }
 
             .libraries__split-button-collaborate {
@@ -151,7 +162,6 @@
         flex: none;
         height: 3rem;
         margin: 0 2rem;
-        border-top: @hairline solid @layer-divider;
 
         .libraries-bar__section__left {
             flex: none;
@@ -163,12 +173,12 @@
 
         .libraries-bar__section__right {
             flex: none;
-            width: 6rem;
             justify-content: space-between;
 
             .split-button__item {
                 justify-content: flex-end;
                 margin: 0;
+                margin-left: 1.5rem;
             }
         }
     }
@@ -178,28 +188,9 @@
         flex-grow: 1;
         overflow-y: auto;
         overflow-x: hidden;
-    }
-
-    &__info {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        padding: 0 1rem;
-        text-align: center;
-        line-height: 1.8rem;
-        margin: 0 2rem;
-
-        div {
-            margin-bottom: 1rem;
-        }
-
-        &__body {
-            color: @warm-gray;
-        }
-
-        &__link a {
-            color: @item-active;
-
+        
+        &-drag {
+            overflow-y: hidden;
         }
     }
 
@@ -234,6 +225,8 @@
         flex-direction: row;
         align-items: center;
         padding: .3rem 2rem;
+        -webkit-user-select: none;
+        cursor: pointer;
         
         &:hover {
             background-color: @list-hover-color;
@@ -265,13 +258,18 @@
 
                 input {
                     font-size: 1.2rem;
-                    align-self: flex-start;
+                    -webkit-user-select: none;
+                    
 
                     &:focus {
                         align-self: stretch;
                         background-color:@item-active;
                         color: @bg-alt;
-                        -webkit-user-select: text;
+                        user-select: none;
+                    }
+                    
+                    &[disabled] {
+                        cursor: inherit;
                     }
                 }
             }
@@ -288,9 +286,39 @@
             display: flex;
             justify-content: center;
             align-items: center;
-
+        }
+        
+        &__preview-image {
+            width: @libraries-preview-height;
+            height: @libraries-preview-height;
+            background-size: 3.6rem;
+            background-repeat: no-repeat;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            
             img {
-                max-height: @libraries-preview-height - .4rem;
+                max-width: 3.6rem;
+                max-height: 3.6rem;
+            }
+            
+            &-loading {
+                width: 1.6rem;
+                height: 1.6rem;
+                
+                svg {
+                    width: 1.6rem;
+                    height: 1.6rem;
+                }
+            }
+            
+            &-blank {
+                width: 100%;
+                height: 100%;
+                background-color: @item;
+                background-image: url(../img/ico-libraries-cc.svg);
+                background-size: 2rem 2rem;
             }
         }
 
@@ -308,7 +336,7 @@
         }
 
         &__preview-layer-style {
-            background-color: @item-active;
+            background-color: @layer-style-background;
         }
 
         &__preview-graphic {
@@ -418,4 +446,9 @@
         max-height: @graphic-drag-preview-size;
         vertical-align: middle;
     }
+}
+
+.split-button__item__syncing {
+    width: 1.6rem;
+    height: 1.6rem;
 }

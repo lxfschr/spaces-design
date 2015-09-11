@@ -25,17 +25,22 @@ define(function (require, exports, module) {
     "use strict";
 
     var React = require("react"),
+        Immutable = require("immutable"),
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React);
 
-    var NumberInput = require("jsx!js/jsx/shared/NumberInput");
+    var collection = require("js/util/collection");
+
+    var NumberInput = require("jsx!js/jsx/shared/NumberInput"),
+        Label = require("jsx!js/jsx/shared/Label"),
+        SVGIcon = require("jsx!js/jsx/shared/SVGIcon"),
+        strings = require("i18n!nls/strings");
 
     var Rotate = React.createClass({
         mixins: [FluxMixin],
         
         propTypes: {
-            document: React.PropTypes.object,
-            layers: React.PropTypes.arrayOf(React.PropTypes.object)
+            document: React.PropTypes.object
         },
 
         /**
@@ -45,11 +50,21 @@ define(function (require, exports, module) {
          */
         _lastAngle: null,
 
+        shouldComponentUpdate: function (nextProps) {
+            var curDocument = this.props.document,
+                nextDocument = nextProps.document,
+                curLayerIDs = collection.pluck(this.props.document.layers.selected, "id"),
+                nextLayerIDs = collection.pluck(nextProps.document.layers.selected, "id");
+
+            return curDocument.id !== nextDocument.id ||
+                !Immutable.is(curLayerIDs, nextLayerIDs);
+        },
+
         componentWillUpdate: function () {
             this._lastAngle = 0;
         },
 
-        /*
+        /**
          * Force a re-render on undo/redo.
          *
          * @private
@@ -131,15 +146,22 @@ define(function (require, exports, module) {
                 disabled = this._disabled(document, layers);
 
             return (
-                <NumberInput
-                    disabled={disabled}
-                    // HACK: This lets 0 as a value work and not be considered the starting value
-                    value={disabled ? "" : "0"}
-                    onChange={this._rotateLayer}
-                    step={1}
-                    bigstep={15}
-                    ref="rotate"
-                    size="column-3" />
+                <div className="control-group">
+                    <Label
+                        size="column-3"
+                        title={strings.TOOLTIPS.SET_ROTATION}>
+                        <SVGIcon CSSID="rotation" />
+                    </Label>
+                    <NumberInput
+                        disabled={disabled}
+                        // HACK: This lets 0 as a value work and not be considered the starting value
+                        value={disabled ? "" : "0"}
+                        onChange={this._rotateLayer}
+                        step={1}
+                        bigstep={15}
+                        ref="rotate"
+                        size="column-3" />
+                </div>
             );
         }
     });

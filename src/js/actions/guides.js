@@ -51,6 +51,15 @@ define(function (require, exports) {
         "orientation",
         "position",
         "itemIndex",
+        "kind"
+    ];
+    
+    /** 
+     * Properties that are not in all guides
+     *
+     * @type {Array.<string>}
+     */
+    var _optionalGuideProperties = [
         "layerID"
     ];
 
@@ -66,13 +75,19 @@ define(function (require, exports) {
                 range: "guide",
                 index: 1,
                 count: -1
-            },
-            getOpts = {
-                failOnMissingProperty: true
             };
 
-        // FIXME: Should we reverse these?
-        return descriptor.getPropertiesRange(docRef, rangeOpts, _guideProperties, getOpts);
+        var requiredPromise = descriptor.getPropertiesRange(docRef, rangeOpts,
+                _guideProperties, { failOnMissingProperty: true }),
+            optionalPromise = descriptor.getPropertiesRange(docRef, rangeOpts,
+                _optionalGuideProperties, { failOnMissingProperty: false });
+
+        return Promise.join(requiredPromise, optionalPromise,
+            function (required, optional) {
+                return _.chain(required)
+                    .zipWith(optional, _.merge)
+                    .value();
+            });
     };
 
     /**
@@ -114,7 +129,7 @@ define(function (require, exports) {
             topAncestors = currentDocument.layers.selectedTopAncestors,
             topAncestorIDs = collection.pluck(topAncestors, "id"),
             visibleGuides = guides.filter(function (guide) {
-                return guide && (guide.layerID === 0 || topAncestorIDs.has(guide.layerID));
+                return guide && (guide.isDocumentGuide || topAncestorIDs.has(guide.layerID));
             });
 
         if (!canvasBounds) {
@@ -135,15 +150,15 @@ define(function (require, exports) {
             if (horizontal) {
                 guideArea = {
                     x: canvasBounds.left,
-                    y: guideTL.y - policyThickness - 1,
+                    y: Math.floor(guideTL.y - policyThickness - 1),
                     width: canvasBounds.right - canvasBounds.left,
-                    height: policyThickness * 2 + 1
+                    height: Math.ceil(policyThickness * 2 + 1)
                 };
             } else {
                 guideArea = {
-                    x: guideTL.x - policyThickness,
+                    x: Math.floor(guideTL.x - policyThickness - 1),
                     y: canvasBounds.top,
-                    width: policyThickness * 2 + 1,
+                    width: Math.ceil(policyThickness * 2 + 1),
                     height: canvasBounds.bottom - canvasBounds.top
                 };
             }
@@ -232,6 +247,7 @@ define(function (require, exports) {
      *
      * @param {{id: number}} document Document model or object containing document ID
      * @param {number} index Index of the guide to be deleted
+     * @param {object} options
      * @param {boolean=} options.sendChanges If true, will call the action descriptor to delete the guide from PS
      *
      * @return {Promise}
@@ -297,12 +313,48 @@ define(function (require, exports) {
     setGuide.transfers = [resetGuidePolicies, deleteGuide];
 
     /**
+     * Clears all the guides in the given document
+     *
+     * @param {Document=} document Document model
+     * @return {Promise}
+     */
+    var clearGuides = function (document) {
+        if (document === undefined) {
+            var appStore = this.flux.store("application");
+
+            document = appStore.getCurrentDocument();
+        }
+
+        var payload = {
+                documentID: document.id
+            },
+            clearObj = documentLib.clearGuides(documentLib.referenceBy.id(document.id)),
+            dispatchPromise = this.dispatchAsync(events.document.history.nonOptimistic.GUIDES_CLEARED, payload),
+            clearPromise = descriptor.playObject(clearObj);
+
+        return Promise.join(dispatchPromise, clearPromise)
+            .bind(this)
+            .then(function () {
+                return this.transfer(resetGuidePolicies);
+            });
+    };
+    clearGuides.reads = [];
+    clearGuides.writes = [locks.JS_DOC, locks.PS_DOC];
+    clearGuides.transfers = [resetGuidePolicies];
+
+    /**
      * Re-gets the guides of the given document and rebuilds the models
      *
-     * @param {Document} document
+     * @param {Document=} document Default is active document
      * @return {Promise}
      */
     var queryCurrentGuides = function (document) {
+        var appStore = this.flux.store("application");
+
+        if (document === undefined) {
+            document = appStore.getCurrentDocument();
+        }
+        
         var docRef = documentLib.referenceBy.id(document.id);
 
         return _getGuidesForDocumentRef(docRef)
@@ -340,7 +392,8 @@ define(function (require, exports) {
                     mockGuide = {
                         layerID: event.layerID,
                         orientation: event.orientation._value,
-                        position: event.position._value
+                        position: event.position._value,
+                        isDocumentGuide: event.kind._value === "document"
                     },
                     index = target[1]._index - 1; // PS indices guides starting at 1
                 
@@ -393,6 +446,7 @@ define(function (require, exports) {
     exports.deleteGuide = deleteGuide;
     exports.resetGuidePolicies = resetGuidePolicies;
     exports.queryCurrentGuides = queryCurrentGuides;
+    exports.clearGuides = clearGuides;
 
     exports.beforeStartup = beforeStartup;
     exports.onReset = onReset;

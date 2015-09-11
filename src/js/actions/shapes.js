@@ -48,11 +48,11 @@ define(function (require, exports) {
      *
      * @private
      * @param {object} options
-     * @param {object} documentRef  a reference to the document 
+     * @param {Document} document Owner document
      * @param {string} name localized name to put into the history state
      * @return {object} options
      */
-    var _mergeOptions = function (options, documentRef, name) {
+    var _mergeOptions = function (options, document, name) {
         options = options || {
             coalesce: false
         };
@@ -64,7 +64,7 @@ define(function (require, exports) {
             },
             historyStateInfo: {
                 name: name,
-                target: documentRef,
+                target: documentLib.referenceBy.id(document.id),
                 coalesce: !!options.coalesce,
                 suppressHistoryStateNotification: !!options.coalesce
             }
@@ -80,7 +80,7 @@ define(function (require, exports) {
      * @param {object} strokeProperties a pseudo stroke object containing only new props
      * @param {string} eventName name of the event to emit afterwards
      * @param {boolean=} coalesce optionally include this in the payload to drive history coalescing
-     * @return Promise
+     * @return {Promise}
      */
     var _strokeChangeDispatch = function (document, layers, strokeProperties, eventName, coalesce) {
         var payload = {
@@ -102,7 +102,7 @@ define(function (require, exports) {
      * @param {object} fillProperties a pseudo fill object containing only new props
      * @param {string} eventName name of the event to emit afterwards
      * @param {boolean=} coalesce optionally include this in the payload to drive history coalescing
-     * @return Promise
+     * @return {Promise}
      */
     var _fillChangeDispatch = function (document, layers, fillProperties, eventName, coalesce) {
         // TODO layers param needs to be made fa real
@@ -165,6 +165,7 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {Stroke} stroke Stroke properties to apply
+     * @param {object} options
      * @param {boolean=} options.enabled Default true
      * @return {Promise}
      */
@@ -182,10 +183,9 @@ define(function (require, exports) {
 
         var layerRef = contentLayerLib.referenceBy.current,
             strokeObj = contentLayerLib.setStroke(layerRef, stroke),
-            strokeJSObj = stroke.toJS(),
-            documentRef = documentLib.referenceBy.id(document.id);
+            strokeJSObj = stroke.toJS();
 
-        options = _mergeOptions(options, documentRef, strings.ACTIONS.SET_STROKE);
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_STROKE);
 
         if (_allStrokesExist(layers)) {
             // toJS gets rid of color so we re-insert it here
@@ -226,6 +226,7 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {Color} color color of the strokes, since photoshop does not provide a way to simply enable a stroke
+     * @param {object} options
      * @param {boolean=} options.enabled
      * @return {Promise}
      */
@@ -247,7 +248,8 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {Color} color
-     * @param {boolean=} option.enabled optional enabled flag, default=true.
+     * @param {object} options
+     * @param {boolean=} options.enabled optional enabled flag, default=true.
      *                                  If supplied, causes a resetBounds afterwards
      * @param {boolean=} options.coalesce Whether to coalesce this operation's history state
      * @param {boolean=} options.ignoreAlpha Whether to ignore the alpha value of the
@@ -277,10 +279,9 @@ define(function (require, exports) {
         }
 
         var layerRef = contentLayerLib.referenceBy.current,
-            strokeObj = contentLayerLib.setStrokeFillTypeSolidColor(layerRef, options.enabled ? psColor : null),
-            documentRef = documentLib.referenceBy.id(document.id);
+            strokeObj = contentLayerLib.setStrokeFillTypeSolidColor(layerRef, options.enabled ? psColor : null);
 
-        options = _mergeOptions(options, documentRef, strings.ACTIONS.SET_STROKE_COLOR);
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_STROKE_COLOR);
 
         if (_allStrokesExist(layers)) {
             // optimistically dispatch the change event    
@@ -324,10 +325,9 @@ define(function (require, exports) {
      */
     var setStrokeAlignment = function (document, layers, alignmentType, options) {
         var layerRef = contentLayerLib.referenceBy.current,
-            strokeObj = contentLayerLib.setStrokeAlignment(layerRef, alignmentType),
-            documentRef = documentLib.referenceBy.id(document.id);
+            strokeObj = contentLayerLib.setStrokeAlignment(layerRef, alignmentType);
 
-        options = _mergeOptions(options, documentRef, strings.ACTIONS.SET_STROKE_ALIGNMENT);
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_STROKE_ALIGNMENT);
 
         if (_allStrokesExist(layers)) {
             // optimistically dispatch the change event    
@@ -362,15 +362,15 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {number} opacity opacity as a percentage [0,100]
+     * @param {object} options
      * @param {boolean=} options.coalesce Whether to coalesce this operation's history state
      * @return {Promise}
      */
     var setStrokeOpacity = function (document, layers, opacity, options) {
         var layerRef = contentLayerLib.referenceBy.current,
-            strokeObj = contentLayerLib.setStrokeOpacity(layerRef, opacity),
-            documentRef = documentLib.referenceBy.id(document.id);
+            strokeObj = contentLayerLib.setStrokeOpacity(layerRef, opacity);
 
-        options = _mergeOptions(options, documentRef, strings.ACTIONS.SET_STROKE_OPACITY);
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_STROKE_OPACITY);
 
         if (_allStrokesExist(layers)) {
             // optimistically dispatch the change event    
@@ -409,10 +409,9 @@ define(function (require, exports) {
      */
     var setStrokeWidth = function (document, layers, width, options) {
         var layerRef = contentLayerLib.referenceBy.current,
-            strokeObj = contentLayerLib.setShapeStrokeWidth(layerRef, width),
-            documentRef = documentLib.referenceBy.id(document.id);
+            strokeObj = contentLayerLib.setShapeStrokeWidth(layerRef, width);
 
-        options = _mergeOptions(options, documentRef, strings.ACTIONS.SET_STROKE_WIDTH);
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_STROKE_WIDTH);
 
         if (_allStrokesExist(layers)) {
             // dispatch the change event    
@@ -448,6 +447,7 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {Color} color
+     * @param {object} options
      * @param {boolean=} options.enabled
      * @return {Promise}
      */
@@ -468,6 +468,7 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers list of layers being updating
      * @param {Color} color
+     * @param {object} options
      * @param {boolean=} options.coalesce Whether to coalesce this operation's history state
      * @param {boolean=} options.enabled optional enabled flag, default=true
      * @param {boolean=} options.ignoreAlpha Whether to ignore the alpha value of the
@@ -491,10 +492,9 @@ define(function (require, exports) {
         // build the playObject
         var contentLayerRef = contentLayerLib.referenceBy.current,
             layerRef = layerLib.referenceBy.current,
-            fillColorObj = contentLayerLib.setShapeFillTypeSolidColor(contentLayerRef, options.enabled ? color : null),
-            documentRef = documentLib.referenceBy.id(document.id);
+            fillColorObj = contentLayerLib.setShapeFillTypeSolidColor(contentLayerRef, options.enabled ? color : null);
             
-        options = _mergeOptions(options, documentRef, strings.ACTIONS.SET_FILL_COLOR);
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_FILL_COLOR);
 
         // submit to Ps
         var colorPromise;
@@ -518,16 +518,13 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {Immutable.List.<Layer>} layers
      * @param {number} opacity Opacity percentage [0,100]
+     * @param {object} options
      * @param {boolean=} options.coalesce Whether to coalesce this operation's history state
      * @return {Promise}
      */
     var setFillOpacity = function (document, layers, opacity, options) {
-        // dispatch the change event
-        var documentRef = documentLib.referenceBy.id(document.id);
-        
-        options = _mergeOptions(options, documentRef, strings.ACTIONS.SET_FILL_OPACITY);
+        options = _mergeOptions(options, document, strings.ACTIONS.SET_FILL_OPACITY);
             
-        // build the playObject
         var dispatchPromise = _fillChangeDispatch.call(this,
                 document,
                 layers,

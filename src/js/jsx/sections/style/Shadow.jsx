@@ -243,6 +243,7 @@ define(function (require, exports) {
             };
         },
 
+        /** @ignore */
         _stringHelper: function (dropString, innerString) {
             if (this.props.type === "dropShadow") {
                 return dropString;
@@ -254,12 +255,11 @@ define(function (require, exports) {
         },
 
         render: function () {
-            var downsample = this._downsampleShadows(this.props.shadows);
-
-            var shadowClasses = classnames({
-                "shadow-list__shadow": true,
-                "shadow-list__shadow__disabled": this.props.readOnly
-            });
+            var downsample = this._downsampleShadows(this.props.shadows),
+                shadowClasses = classnames({
+                    "shadow-list__shadow": true,
+                    "shadow-list__shadow__disabled": this.props.readOnly
+                });
 
             var shadowXPositionTooltip = this._stringHelper(strings.TOOLTIPS.SET_DROP_SHADOW_X_POSITION,
                      strings.TOOLTIPS.SET_DROP_SHADOW_X_POSITION),
@@ -327,66 +327,65 @@ define(function (require, exports) {
                             onColorChange={this._opaqueColorChanged}
                             onAlphaChange={this._alphaChanged}
                             swatchOverlay={shadowOverlay}>
-
-                            <div className="compact-stats__body">
-                                <div className="compact-stats__body__column">
-                                    <Label
-                                        title={shadowXPositionTooltip}
-                                        size="column-1">
-                                        {shadowXPosition}
-                                    </Label>
-                                    <NumberInput
-                                        value={downsample.xPositions}
-                                        onChange={this._xChanged}
-                                        onFocus={this.props.onFocus}
-                                        disabled={this.props.readOnly}
-                                        size="column-3" />
-                                </div>
-                                <div className="compact-stats__body__column">
-                                    <Label
-                                        title={shadowYPositionTooltip}
-                                        size="column-1">
-                                        {shadowYPosition}
-                                    </Label>
-                                    <NumberInput
-                                        value={downsample.yPositions}
-                                        onChange={this._yChanged}
-                                        onFocus={this.props.onFocus}
-                                        disabled={this.props.readOnly}
-                                        size="column-3" />
-                                </div>
-                                <div className="compact-stats__body__column">
-                                    <Label
-                                        title={shadowBlurTooltip}
-                                        size="column-2">
-                                        {shadowBlur}
-                                    </Label>
-                                    <NumberInput
-                                        value={downsample.blurs}
-                                        onChange={this._blurChanged}
-                                        onFocus={this.props.onFocus}
-                                        disabled={this.props.readOnly}
-                                        min={MIN_BLUR}
-                                        max={MAX_BLUR}
-                                        size="column-3" />
-                                </div>
-                                <div className="compact-stats__body__column">
-                                    <Label
-                                        title={shadowSpreadTooltip}
-                                        size="column-4">
-                                        {shadowSpread}
-                                    </Label>
-                                    <NumberInput
-                                        value={downsample.spreads}
-                                        onChange={this._spreadChanged}
-                                        onFocus={this.props.onFocus}
-                                        disabled={this.props.readOnly}
-                                        min={MIN_SPREAD}
-                                        max={MAX_SPREAD}
-                                        size="column-3" />
-                                </div>
-                            </div>
                         </ColorInput>
+                        <div className="compact-stats__body">
+                            <div className="compact-stats__body__column">
+                                <Label
+                                    title={shadowXPositionTooltip}
+                                    size="column-1">
+                                    {shadowXPosition}
+                                </Label>
+                                <NumberInput
+                                    value={downsample.xPositions}
+                                    onChange={this._xChanged}
+                                    onFocus={this.props.onFocus}
+                                    disabled={this.props.readOnly}
+                                    size="column-3" />
+                            </div>
+                            <div className="compact-stats__body__column">
+                                <Label
+                                    title={shadowYPositionTooltip}
+                                    size="column-1">
+                                    {shadowYPosition}
+                                </Label>
+                                <NumberInput
+                                    value={downsample.yPositions}
+                                    onChange={this._yChanged}
+                                    onFocus={this.props.onFocus}
+                                    disabled={this.props.readOnly}
+                                    size="column-3" />
+                            </div>
+                            <div className="compact-stats__body__column">
+                                <Label
+                                    title={shadowBlurTooltip}
+                                    size="column-2">
+                                    {shadowBlur}
+                                </Label>
+                                <NumberInput
+                                    value={downsample.blurs}
+                                    onChange={this._blurChanged}
+                                    onFocus={this.props.onFocus}
+                                    disabled={this.props.readOnly}
+                                    min={MIN_BLUR}
+                                    max={MAX_BLUR}
+                                    size="column-3" />
+                            </div>
+                            <div className="compact-stats__body__column">
+                                <Label
+                                    title={shadowSpreadTooltip}
+                                    size="column-4">
+                                    {shadowSpread}
+                                </Label>
+                                <NumberInput
+                                    value={downsample.spreads}
+                                    onChange={this._spreadChanged}
+                                    onFocus={this.props.onFocus}
+                                    disabled={this.props.readOnly}
+                                    min={MIN_SPREAD}
+                                    max={MAX_SPREAD}
+                                    size="column-3" />
+                            </div>
+                        </div>
                         <Gutter />
 
                         <div className="clear">
@@ -496,7 +495,7 @@ define(function (require, exports) {
                             onClick={this._addDropShadow.bind(this, layers)}>
                             <SVGIcon
                                 viewbox="0 0 12 12"
-                                CSSID="plus" />
+                                CSSID="add-new" />
                         </Button>
                     </header>
                     <div className="shadow-list__list-container">
@@ -544,7 +543,9 @@ define(function (require, exports) {
                 
             if (!shadowCountsUnmatch) {
                 // Group into arrays of innerShadows, by position in each layer
-                var shadowGroups = collection.zip(collection.pluck(layers, "innerShadows"));
+
+                var temp = collection.pluck(layers, "innerShadows");
+                var shadowGroups = collection.zip(temp);
                 
                 reachMaximumShadows = shadowGroups.size >= this.props.max;
                 
@@ -584,7 +585,7 @@ define(function (require, exports) {
                             onClick={this._addInnerShadow.bind(this, layers)}>
                             <SVGIcon
                                 viewbox="0 0 12 12"
-                                CSSID="plus" />
+                                CSSID="add-new" />
                         </Button>
                     </header>
                     <div className="shadow-list__list-container">

@@ -2,6 +2,7 @@
     "ACTIONS": {
         "ADD_STROKE": "Add Stroke",
         "ADD_FILL": "Add Fill",
+        "APPLY_LIBRARY_COLOR": "Apply Library Color",
         "SET_STROKE_COLOR": "Set Stroke Color",
         "SET_STROKE": "Set Stroke",
         "SET_STROKE_OPACITY": "Set Stroke Opacity",
@@ -36,7 +37,8 @@
         "SET_TYPE_LEADING": "Set Type Leading",
         "SET_TYPE_TRACKING": "Set Type Tracking",
         "SET_TYPE_ALIGNMENT": "Set Type Alignment",
-        "UNGROUP_LAYERS": "Ungroup layers"
+        "UNGROUP_LAYERS": "Ungroup layers",
+        "MODIFY_EXPORT_ASSETS": "Updated Export Asset Configurations"
     },
     "APP_NAME": "Photoshop",
     "FIRST_LAUNCH": {
@@ -126,6 +128,8 @@
     "TITLE_3D": "3D",
     "TITLE_PROPERTIES": "Properties",
     "TITLE_STYLE": "Style",
+    "TITLE_EFFECTS": "Effects",
+    "TITLE_APPEARANCE": "Appearance",        
     "TITLE_EXPORT": "Export",
     "TITLE_LIBRARIES": "Libraries",
     "NO_DOC": {
@@ -239,8 +243,11 @@
         "LIBRARY_VIEW_ON_WEBSITE": "View on Website",
         "LIBRARY_CLICK_TO_APPLY": "Click to apply",
         "LIBRARY_DELETE": "Delete",
+        "EXPORT_EXPORT_ASSETS": "Export these assets",
         "EXPORT_ADD_ASSET": "Add export asset",
-        "EXPORT_REMOVE_ASSET": "Remove asset configuration"
+        "EXPORT_REMOVE_ASSET": "Remove asset configuration",
+        "EXPORT_IOS_PRESETS": "Add 3 iOS assets + SVG",
+        "EXPORT_HDPI_PRESETS": "Add 6 HDPI assets + SVG"
     },
     "LAYER_KIND": {
         "0": "Any Layer",
@@ -392,10 +399,12 @@
         "EXPORT_LIST_ALL_ASSETS": "All Assets",
         "BUTTON_EXPORT": "Export",
         "BUTTON_CANCEL": "Cancel",
-        "SELECT_SINGLE_LAYER": "Please select a single layer",
         "TITLE_SCALE": "Scale",
         "TITLE_SUFFIX": "Suffix",
-        "TITLE_SETTINGS": "Settings"
+        "TITLE_SETTINGS": "Settings",
+        "EXPORT_DOCUMENT_FILENAME": "document",
+        "ONLY_UNSUPPORTED_LAYERS_SELECTED": "No supported layers selected",
+        "NO_ASSETS": "No exports configured"
     },
     "TEMPLATES": {
         "IPHONE_6_PLUS": "iPhone 6+",

@@ -24,7 +24,8 @@
 define(function (require, exports, module) {
     "use strict";
 
-    var React = require("react"),
+    var Immutable = require("immutable"),
+        React = require("react"),
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React),
         StoreWatchMixin = Fluxxor.StoreWatchMixin,
@@ -60,19 +61,30 @@ define(function (require, exports, module) {
             var flux = this.getFlux(),
                 applicationStore = flux.store("application"),
                 toolStore = flux.store("tool"),
+                uiStore = flux.store("ui"),
                 modalState = toolStore.getModalToolState(),
+                uiState = uiStore.getState(),
                 currentTool = toolStore.getCurrentTool(),
                 currentDocument = applicationStore.getCurrentDocument();
 
             return {
                 document: currentDocument,
                 tool: currentTool,
-                modalState: modalState
+                modalState: modalState,
+                uiState: uiState
             };
+        },
+
+        shouldComponentUpdate: function (nextProps, nextState) {
+            return !Immutable.is(this.state.uiState, nextState.uiState) ||
+                !Immutable.is(this.state.document, nextState.document) ||
+                this.state.tool !== nextState.tool ||
+                this.state.modalState !== nextState.modalState;
         },
 
         componentWillUnmount: function () {
             OS.removeListener("externalMouseMove", this.mouseMoveHandler);
+            window.removeEventListener("mousemove", this.windowMouseMoveHandler);
         },
 
         componentDidMount: function () {
@@ -83,6 +95,7 @@ define(function (require, exports, module) {
             
             // Marquee mouse handlers
             OS.addListener("externalMouseMove", this.mouseMoveHandler);
+            window.addEventListener("mousemove", this.windowMouseMoveHandler);
         },
 
         componentDidUpdate: function () {
@@ -109,6 +122,23 @@ define(function (require, exports, module) {
         },
 
         /**
+         * Attaches to mouse move events coming from the HTML world
+         * so we can set highlights manually. This one is used because if the mouse
+         * moves fast enough, D3 on("mouseout") does not get called
+         *
+         * @private
+         * @param {MouseEvent} event
+         */
+        windowMouseMoveHandler: function (event) {
+            if (this.isMounted()) {
+                this._currentMouseX = event.x;
+                this._currentMouseY = event.y;
+
+                this.updateMouseOverHighlights();
+            }
+        },
+
+        /**
          * Calls all helper functions to draw sampler overlay
          * Cleans it first
          * @private
@@ -125,6 +155,7 @@ define(function (require, exports, module) {
             svg.selectAll(".guide-edges-group").remove();
 
             if (!currentDocument || this.state.modalState ||
+                !this.state.uiState.overlaysEnabled ||
                 !currentDocument.guidesVisible ||
                 !currentTool || currentTool.id !== "newSelect") {
                 return null;
@@ -136,17 +167,20 @@ define(function (require, exports, module) {
             this.drawGuideEdges();
         },
 
-        // Draws the guide edge areas
+        /**
+         * Draws the guide edge areas
+         */
         drawGuideEdges: function () {
             var uiStore = this.getFlux().store("ui"),
-                canvasBounds = uiStore.getCloakRect(),
-                edgeThickness = 20, // How wide/tall the guide creation edges are
-                canvasWidth = canvasBounds.right - canvasBounds.left,
-                canvasHeight = canvasBounds.bottom - canvasBounds.top;
-
+                canvasBounds = uiStore.getCloakRect();
+                
             if (!canvasBounds) {
                 return;
             }
+
+            var canvasWidth = canvasBounds.right - canvasBounds.left,
+                canvasHeight = canvasBounds.bottom - canvasBounds.top,
+                edgeThickness = 20; // How wide/tall the guide creation edges are
 
             // Top edge
             this._scrimGroup

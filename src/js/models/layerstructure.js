@@ -28,6 +28,7 @@ define(function (require, exports, module) {
 
     var Layer = require("./layer"),
         LayerNode = require("./layernode"),
+        Stroke = require("./stroke"),
         Bounds = require("./bounds"),
         Radii = require("./radii");
 
@@ -120,8 +121,10 @@ define(function (require, exports, module) {
 
         // Traverse up to root
         while (layerAncestor && !visitedParents.hasOwnProperty(layerAncestor.id)) {
-            // Remove the current parent because we're already below it
-            selectableLayers = pull(selectableLayers, layerAncestor);
+            if (!layerAncestor.isArtboard) {
+                // Remove the current parent because we're already below it
+                selectableLayers = pull(selectableLayers, layerAncestor);
+            }
 
             // So we don't process this parent again
             visitedParents[layerAncestor.id] = layerAncestor;
@@ -303,6 +306,31 @@ define(function (require, exports, module) {
         },
 
         /**
+         * Bounds of all the top layers
+         * @type {Immutable.List.<Bounds>}
+         */
+        "topBounds": function () {
+            return this.top
+                .toSeq()
+                .map(function (layer) {
+                    return this.childBounds(layer);
+                }, this)
+                .filter(function (bounds) {
+                    return bounds && bounds.area > 0;
+                })
+                .toList();
+        },
+
+        /**
+         * Overall bounds of all the layers in the structure
+         *
+         * @return {Bounds}
+         */
+        "overallBounds": function () {
+            return Bounds.union(this.topBounds);
+        },
+
+        /**
          * The set of artboards in the document
          * @type {Immutable.List.<Layer>}
          */
@@ -352,7 +380,7 @@ define(function (require, exports, module) {
                         this.hasVisibleDescendant(layer) &&
                         !this.hasInvisibleAncestor(layer) &&
                         !this.hasLockedAncestor(layer) &&
-                        !visitedParents.hasOwnProperty(layer.id);
+                        (layer.isArtboard || !visitedParents.hasOwnProperty(layer.id));
                 }, this)
                 .toList();
         },
@@ -810,6 +838,23 @@ define(function (require, exports, module) {
     }));
 
     /**
+     * Given a set of layers, return only those layers which will support being exported
+     * This excludes background layers and empty layers
+     *
+     * @param {Immutable.Iterable.<Layer>} layers
+     * @return {Immutable.Iterable.<Layer>}
+     */
+    Object.defineProperty(LayerStructure.prototype, "filterExportable", objUtil.cachedLookupSpec(function (layers) {
+        return layers.filterNot(function (layer) {
+            return !layer.bounds ||
+                this.childBounds(layer).empty ||
+                layer.isBackground ||
+                layer.kind === layer.layerKinds.ADJUSTMENT ||
+                this.isEmptyGroup(layer);
+        }, this);
+    }));
+
+    /**
      * Create a new non-group layer model from a Photoshop layer descriptor and
      * add it to the structure.
      *
@@ -831,10 +876,13 @@ define(function (require, exports, module) {
             if (Number.isInteger(replace)) {
                 // if explicitly replacing, then replace by current ID
                 replaceLayer = this.byID(replace);
-            } else {
-                // otherwise, replace the selected layer
-                var selectedLayers = document.layers.selected;
-                replaceLayer = selectedLayers && selectedLayers.size === 1 && selectedLayers.first();
+            } else if (this.selected && this.selected.size === 1) {
+                // otherwise, replace the selected layer if it has the same index with the new layer.
+                var selectedLayer = this.selected.first(),
+                    selectedLayerIndex = this.indexOf(selectedLayer),
+                    newLayerIndex = descriptors[0].itemIndex;
+                    
+                replaceLayer = selectedLayerIndex === newLayerIndex && selectedLayer;
             }
 
             // The selected layer should be empty and a non-background layer unless replace is explicitly provided true
@@ -863,7 +911,7 @@ define(function (require, exports, module) {
                 } else if (layerIndex < nextIndex.size) {
                     nextIndex = nextIndex.delete(replaceIndex).splice(layerIndex, 0, layerID);
                 } else {
-                    throw new Error ("Replacing a layer but the new layer's index seems out of bounds");
+                    throw new Error("Replacing a layer but the new layer's index seems out of bounds");
                 }
             } else {
                 nextIndex = nextIndex.splice(layerIndex, 0, layerID);
@@ -903,9 +951,7 @@ define(function (require, exports, module) {
             }, this);
         }.bind(this));
 
-        return this.mergeDeep({
-            layers: nextLayers
-        });
+        return this.set("layers", this.layers.merge(nextLayers));
     };
 
     /**
@@ -1292,6 +1338,37 @@ define(function (require, exports, module) {
             return map.set(layerID, nextLayer);
         }, new Map(), this));
 
+        return this.mergeDeep({
+            layers: nextLayers
+        });
+    };
+
+    /**
+     * Add a new stroke, described by a Photoshop descriptor, to the given layers.
+     * If strokeStyleDescriptor is a single object, it will be applied to all layers
+     * otherwise it should be a List of descriptors which corresponds by index to the provided layerIDs
+     *
+     * @param {Immutable.Iterable.<number>} layerIDs
+     * @param {object | Immutable.Iterable.<object>} strokeStyleDescriptor
+     * @return {LayerStructure}
+     */
+    LayerStructure.prototype.addStroke = function (layerIDs, strokeStyleDescriptor) {
+        var isList = Immutable.List.isList(strokeStyleDescriptor);
+       
+        var getStroke = function (index) {
+            return isList ?
+                Stroke.fromStrokeStyleDescriptor(strokeStyleDescriptor.get(index)) :
+                Stroke.fromStrokeStyleDescriptor(strokeStyleDescriptor);
+        };
+       
+        var nextLayers = Immutable.Map(layerIDs.reduce(function (map, layerID, index) {
+            var layer = this.byID(layerID),
+                nextStroke = getStroke(index),
+                nextLayer = layer.set("stroke", nextStroke);
+
+            return map.set(layerID, nextLayer);
+        }, new Map(), this));
+       
         return this.mergeDeep({
             layers: nextLayers
         });

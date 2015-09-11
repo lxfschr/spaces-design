@@ -56,6 +56,13 @@ define(function (require, exports, module) {
          */
         _postScriptMap: Immutable.Map(),
 
+        /**
+         * List of typefaces for populating datalists
+         *
+         * @type {Immutable.List.<{id: string, font: string}>}
+         */
+        _typefaces: Immutable.List(),
+
         initialize: function () {
             this.bindActions(
                 events.RESET, this._handleReset,
@@ -84,7 +91,8 @@ define(function (require, exports, module) {
             return {
                 initialized: this._initialized,
                 familyMap: this._familyMap,
-                postScriptMap: this._postScriptMap
+                postScriptMap: this._postScriptMap,
+                typefaces: this._typefaces
             };
         },
 
@@ -138,48 +146,47 @@ define(function (require, exports, module) {
                 psName = textStyle.postScriptName,
                 fontObj = this._postScriptMap.get(psName, null);
                 
-            if (!fontObj) {
-                // FIXME: What about missing fonts?
-                throw new Error("The font for layer is not available!");
+            // If it's mixed, or there is no fontObj, we skip adding these values to the type object
+            // adbeFont, fontFamily, fontStyle, fontWeight
+            if (fontObj) {
+                var family = fontObj.family,
+                    fontRecord = this._familyMap.get(family),
+                    psObj = fontRecord.get(fontObj.font, null);
+
+                if (!psObj) {
+                    log.warn("The font for layer is not available!");
+                } else {
+                    obj.adbeFont = {
+                        family: fontObj.family,
+                        name: fontObj.font,
+                        postScriptName: psObj.postScriptName,
+                        style: psObj.style
+                    };
+
+                    obj.fontFamily = fontObj.family;
+
+                    var style = psObj.style.toLowerCase();
+                    if (style.indexOf("italic") !== -1) {
+                        obj.fontStyle = "italic";
+                    } else if (style.indexOf("oblique") !== -1) {
+                        obj.fontStyle = "oblique";
+                    }
+
+                    if (style.indexOf("bold") !== -1) {
+                        obj.fontWeight = "bold";
+                    }
+
+                    if (style.indexOf("light") !== -1 || style.indexOf("thin") !== -1) {
+                        obj.fontWeight = "lighter";
+                    }
+                }
             }
-
-            var family = fontObj.family,
-                fontRecord = this._familyMap.get(family),
-                psObj = fontRecord.get(fontObj.font, null);
-
-            if (!psObj) {
-                throw new Error("The font for layer is not available!");
-            }
-
-            obj.adbeFont = {
-                family: fontObj.family,
-                name: fontObj.font,
-                postScriptName: psObj.postScriptName,
-                style: psObj.style
-            };
-
-            obj.fontFamily = fontObj.family;
 
             if (textStyle.textSize) {
                 obj.fontSize = {
                     "type": "pt",
                     "value": textStyle.textSize
                 };
-            }
-
-            var style = psObj.style.toLowerCase();
-            if (style.indexOf("italic") !== -1) {
-                obj.fontStyle = "italic";
-            } else if (style.indexOf("oblique") !== -1) {
-                obj.fontStyle = "oblique";
-            }
-
-            if (style.indexOf("bold") !== -1) {
-                obj.fontWeight = "bold";
-            }
-
-            if (style.indexOf("light") !== -1 || style.indexOf("thin") !== -1) {
-                obj.fontWeight = "lighter";
             }
 
             if (textStyle.color) {
@@ -210,7 +217,7 @@ define(function (require, exports, module) {
                 };
             }
 
-            if (textStyle.leading) {
+            if (textStyle.leading >= 0) {
                 obj.lineHeight = {
                     type: "pt",
                     value: textStyle.leading
@@ -277,6 +284,23 @@ define(function (require, exports, module) {
                     font: fontName
                 }));
             }, new Map()));
+
+            // The list of all selectable type faces
+            this._typefaces = this._postScriptMap
+                .entrySeq()
+                .sortBy(function (entry) {
+                    return entry[0];
+                })
+                .map(function (entry) {
+                    var psName = entry[0],
+                        fontObj = entry[1];
+
+                    return {
+                        id: psName,
+                        title: fontObj.font
+                    };
+                })
+                .toList();
 
             this._initialized = true;
             this.emit("change");

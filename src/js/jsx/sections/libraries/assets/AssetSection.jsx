@@ -158,8 +158,9 @@ define(function (require, exports, module) {
                         <TextInput
                             ref="input"
                             editable={true}
+                            title={this.props.title}
                             value={this.props.title}
-                            size={this.props.title.length}
+                            preventHorizontalScrolling={true}
                             onClick={this._handleClickTitle}
                             onChange={this._handleRename}/>
                         {subTitle}

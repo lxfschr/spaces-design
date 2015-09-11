@@ -41,23 +41,24 @@ define(function (require, exports) {
         documentActions = require("./documents"),
         historyActions = require("./history"),
         searchActions = require("./search/layers"),
+        exportActions = require("./export"),
         log = require("js/util/log"),
         events = require("../events"),
         shortcuts = require("./shortcuts"),
+        guides = require("./guides"),
         tools = require("./tools"),
         layerActionsUtil = require("js/util/layeractions"),
         locks = require("js/locks"),
         locking = require("js/util/locking"),
         headlights = require("js/util/headlights"),
         strings = require("i18n!nls/strings"),
+        global = require("js/util/global"),
         Bounds = require("js/models/bounds");
 
     var templatesJSON = require("text!static/templates.json"),
         templates = JSON.parse(templatesJSON);
 
     var PS_MAX_NEST_DEPTH = 9;
-
-    var EXTENSION_DATA_NAMESPACE = "designSpace";
 
     /**
      * Properties to be included when requesting layer
@@ -156,13 +157,15 @@ define(function (require, exports) {
         // Always start with index 1 because when a document consists only of a background layer (index 0), 
         // the photoshop action will fail.
         // And it is safe to ignore ALL bg layers because we don't use extension data on them
-        var indexRange = _.range(1, startIndex + numberOfLayers),
+        var nameSpace = global.EXTENSION_DATA_NAMESPACE,
+            indexRange = _.range(1, startIndex + numberOfLayers),
             extensionPlayObjects = indexRange.map(function (i) {
-                return layerLib.getExtensionData(docRef, layerLib.referenceBy.index(i), EXTENSION_DATA_NAMESPACE);
+                var layerRef = layerLib.referenceBy.index(i);
+                return layerLib.getExtensionData(docRef, layerRef, nameSpace);
             }),
             extensionPromise = descriptor.batchPlayObjects(extensionPlayObjects)
                 .map(function (extensionData) {
-                    var extensionDataRoot = extensionData[EXTENSION_DATA_NAMESPACE];
+                    var extensionDataRoot = extensionData[nameSpace];
                     return (extensionDataRoot && extensionDataRoot.exportsMetadata) || {};
                 })
                 .then(function (extensionDataArray) {
@@ -342,6 +345,7 @@ define(function (require, exports) {
                 return nextLayerCount !== naiveLayerCount;
             });
     };
+    addLayers.modal = true;
     addLayers.reads = [locks.PS_DOC];
     addLayers.writes = [locks.JS_DOC];
     addLayers.post = [_verifyLayerIndex, _verifyLayerSelection];
@@ -486,13 +490,17 @@ define(function (require, exports) {
                 } else {
                     this.dispatch(events.document.history.nonOptimistic.RESET_BOUNDS, payload);
                 }
-            }).then(function () {
+            })
+            .then(function () {
+                return this.transfer(guides.queryCurrentGuides);
+            })
+            .then(function () {
                 return this.transfer(tools.resetBorderPolicies);
             });
     };
     resetBounds.reads = [locks.PS_DOC];
     resetBounds.writes = [locks.JS_DOC];
-    resetBounds.transfers = [tools.resetBorderPolicies];
+    resetBounds.transfers = [tools.resetBorderPolicies, guides.queryCurrentGuides];
 
     /** 
      * Transfers to reset bounds, but if there is a failure, quietly fails instead of 
@@ -1584,7 +1592,8 @@ define(function (require, exports) {
             }),
             layerRef = layerLib.referenceBy.none,
             boundsAndLayerRef,
-            finalBounds;
+            finalBounds,
+            artboardLayerId;
 
         if (boundsOrSpecs instanceof Bounds) {
             finalBounds = boundsOrSpecs.toJS();
@@ -1623,6 +1632,8 @@ define(function (require, exports) {
                     finalBounds = result.artboardRect;
                 }
 
+                artboardLayerId = result.layerSectionStart;
+
                 var payload = {
                     documentID: document.id,
                     groupID: result.layerSectionStart,
@@ -1634,14 +1645,19 @@ define(function (require, exports) {
                     suppressChange: true
                 };
 
-                this.dispatch(events.document.history.optimistic.GROUP_SELECTED, payload);
+                return this.dispatchAsync(events.document.history.optimistic.GROUP_SELECTED, payload);
+            })
+            .then(function () {
                 return this.transfer(resetIndex, document, true, true);
+            })
+            .then(function () {
+                return this.transfer(exportActions.addDefaultAsset, document.id, artboardLayerId);
             });
     };
 
     createArtboard.reads = [locks.JS_APP];
     createArtboard.writes = [locks.PS_DOC, locks.JS_DOC];
-    createArtboard.transfers = [resetIndex, addLayers];
+    createArtboard.transfers = [resetIndex, addLayers, exportActions.addDefaultAsset];
     createArtboard.post = [_verifyLayerIndex, _verifyLayerSelection];
 
     /**
@@ -1723,6 +1739,30 @@ define(function (require, exports) {
     duplicate.reads = [locks.JS_DOC];
     duplicate.writes = [locks.PS_DOC];
     duplicate.transfers = ["documents.updateDocument", addLayers, select];
+
+    /**
+     * Dispatches a layer translate for all layers in the document
+     *
+     * @param {object} event Action Descriptor of autoCanvasResizeShift event
+     * @return {Promise}
+     */
+    var handleCanvasShift = function (event) {
+        var applicationStore = this.flux.store("application"),
+            currentDocument = applicationStore.getCurrentDocument(),
+            payload = {
+                documentID: currentDocument.id,
+                layerIDs: collection.pluck(currentDocument.layers.all, "id"),
+                position: {
+                    x: event.to.horizontal,
+                    y: event.to.vertical
+                }
+            };
+        
+        return this.dispatchAsync(events.document.TRANSLATE_LAYERS, payload);
+    };
+    handleCanvasShift.reads = [];
+    handleCanvasShift.writes = [locks.JS_DOC];
+    handleCanvasShift.transfers = [];
 
     /**
      * Reveal and select the vector mask of the selected layer. 
@@ -1818,8 +1858,9 @@ define(function (require, exports) {
                     log.warn("Received layer set event without a current document", event);
                     return;
                 }
-
-                this.flux.actions.layers.resetLayers(currentDocument, currentDocument.layers.selected);
+                
+                // reset layers, and AMEND history
+                this.flux.actions.layers.resetLayers(currentDocument, currentDocument.layers.selected, true);
                 break;
             }
         }.bind(this);
@@ -1840,21 +1881,7 @@ define(function (require, exports) {
         // Listens to layer shift events caused by auto canvas resize feature of artboards
         // and shifts all the layers correctly
         _autoCanvasResizeShiftHandler = function (event) {
-            var applicationStore = this.flux.store("application"),
-                currentDocument = applicationStore.getCurrentDocument();
-            
-            if (currentDocument !== null) {
-                var payload = {
-                    documentID: applicationStore.getCurrentDocumentID(),
-                    layerIDs: collection.pluck(currentDocument.layers.all, "id"),
-                    position: {
-                        x: event.to.horizontal,
-                        y: event.to.vertical
-                    }
-                };
-
-                this.dispatch(events.document.TRANSLATE_LAYERS, payload);
-            }
+            this.flux.actions.layers.handleCanvasShift(event);
         }.bind(this);
         descriptor.addListener("autoCanvasResizeShift", _autoCanvasResizeShiftHandler);
 
@@ -2015,6 +2042,7 @@ define(function (require, exports) {
     exports.setGroupExpansion = setGroupExpansion;
     exports.revealLayers = revealLayers;
     exports.resetIndex = resetIndex;
+    exports.handleCanvasShift = handleCanvasShift;
     exports.editVectorMask = editVectorMask;
 
     exports.beforeStartup = beforeStartup;

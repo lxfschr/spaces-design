@@ -260,8 +260,6 @@ define(function (require, exports, module) {
 
         /**
          * Draws sampler HUD if there is one available from the store
-         *
-         * @return {[type]} [description]
          */
         drawSamplerHUD: function () {
             if (!this.state.sampleTypes || !this.state.samplePoint) {
@@ -390,7 +388,7 @@ define(function (require, exports, module) {
                         .attr("height", iconSize)
                         .on("click", function () {
                             // Apply the color to selected layers
-                            fluxActions.sampler.applyColor(this.state.document, null, sample.value);
+                            fluxActions.sampler.applyStroke(this.state.document, null, stroke);
                             d3.event.stopPropagation();
                         }.bind(this));
                     
@@ -412,7 +410,7 @@ define(function (require, exports, module) {
                 } else if (sample.type === "typeStyle") {
                     this._hudGroup
                         .append("use")
-                        .attr("xlink:href", "img/ico-sampler-charStyle.svg")
+                        .attr("xlink:href", "img/ico-sampler-charStyle.svg#sampler-charStyle")
                         .attr("x", iconLeft)
                         .attr("y", iconTop)
                         .attr("width", iconSize)
@@ -458,7 +456,7 @@ define(function (require, exports, module) {
                 } else if (sample.type === "graphic") {
                     this._hudGroup
                         .append("use")
-                        .attr("xlink:href", "img/ico-sampler-graphics.svg")
+                        .attr("xlink:href", "img/ico-sampler-graphics.svg#sampler-graphics")
                         .attr("x", iconLeft)
                         .attr("y", iconTop)
                         .attr("width", iconSize)

@@ -25,13 +25,13 @@ define(function (require, exports, module) {
     "use strict";
 
     var React = require("react"),
+        Fluxxor = require("fluxxor"),
+        FluxMixin = Fluxxor.FluxMixin(React),
         Immutable = require("immutable"),
         classnames = require("classnames"),
         _ = require("lodash");
 
-    var Fluxxor = require("fluxxor"),
-        FluxMixin = Fluxxor.FluxMixin(React),
-        Focusable = require("../mixin/Focusable");
+    var Focusable = require("../mixin/Focusable");
 
     var _typeToClass = {
         simple: "column-4",
@@ -64,7 +64,12 @@ define(function (require, exports, module) {
             onFocus: React.PropTypes.func,
             editable: React.PropTypes.bool,
             placeholderText: React.PropTypes.string,
-            neverSelectAll: React.PropTypes.bool // never highlight text, regardless of this.state.selectDisabled
+            
+            // prevent the text input from scrolling horizontally when it is not editable.
+            preventHorizontalScrolling: React.PropTypes.bool,
+            
+            // never highlight text, regardless of this.state.selectDisabled
+            neverSelectAll: React.PropTypes.bool
         },
 
         getDefaultProps: function () {
@@ -203,7 +208,10 @@ define(function (require, exports, module) {
             });
 
             event.stopPropagation();
-            this.props.onChange(event, nextValue);
+
+            if (nextValue !== this.props.value) {
+                this.props.onChange(event, nextValue);
+            }
 
             if (!this.state.editing) {
                 this._releaseFocus();
@@ -347,6 +355,29 @@ define(function (require, exports, module) {
                 this._suppressMouseUp = false;
             }
         },
+        
+        /**
+         * When TextInput is not editable, prevent it from scrolling horizontally 
+         * by preventing the default wheel action if there is a non-zero deltaX 
+         * and instead firing a new wheel action with deltaX set to 0.
+         *
+         * @private
+         * @param {SyntheticEvent} event
+         */
+        _handleWheel: function (event) {
+            if (this.props.preventHorizontalScrolling) {
+                if (event.deltaX) {
+                    var nativeEvent = event.nativeEvent,
+                        domEvent = new window.WheelEvent(event.type, {
+                            deltaX: 0.0,
+                            deltaY: nativeEvent.deltaY
+                        });
+
+                    event.preventDefault();
+                    event.target.dispatchEvent(domEvent);
+                }
+            }
+        },
 
         render: function () {
             var className = classnames(_typeToClass[this.props.valueType], this.props.className, this.props.size);
@@ -385,7 +416,8 @@ define(function (require, exports, module) {
                         readOnly={true}
                         className={className}
                         onDoubleClick={this._handleDoubleClick}
-                        onClick={this._handleClick}>
+                        onClick={this._handleClick}
+                        onWheel={this._handleWheel}>
                     </input>
                 );
             }

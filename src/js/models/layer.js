@@ -266,17 +266,17 @@ define(function (require, exports, module) {
          * @type {Immutable.Map.<string, *>}
          */
         face: function () {
-            var self = this;
             return new Immutable.Map({
-                id: self.id,
-                name: self.name,
-                kind: self.kind,
-                visible: self.visible,
-                locked: self.locked,
-                expanded: self.expanded,
-                selected: self.selected,
-                isArtboard: self.isArtboard,
-                isBackground: self.isBackground
+                id: this.id,
+                name: this.name,
+                kind: this.kind,
+                visible: this.visible,
+                locked: this.locked,
+                expanded: this.expanded,
+                selected: this.selected,
+                isArtboard: this.isArtboard,
+                isBackground: this.isBackground,
+                isLinked: this.isLinked
             });
         },
         /**
@@ -326,7 +326,7 @@ define(function (require, exports, module) {
      * Static method to generate the appropriate LayerEffect based on a provided type
      *
      * @param {string} layerEffectType
-     * @return {LayerEffect}  instance of a layer effect such as a Shadow
+     * @return {Shadow}  instance of a layer effect such as a Shadow
      */
     Layer.newLayerEffectByType = function (layerEffectType) {
         if (layerEffectType === "dropShadow" || layerEffectType === "innerShadow") {
@@ -584,6 +584,24 @@ define(function (require, exports, module) {
         } else {
             return smartObjectTypes.LOCAL_LINKED;
         }
+    };
+    
+    /**
+     * Return true if the layer is a smart object that links to a CC Libiraries element.
+     * 
+     * @return {boolean}
+     */
+    Layer.prototype.isCloudLinkedSmartObject = function () {
+        return this.smartObjectType() === smartObjectTypes.CLOUD_LINKED;
+    };
+    
+    /**
+     * Return the reference of the layer's linked CC Libraries element. 
+     * 
+     * @return {?string}
+     */
+    Layer.prototype.getLibraryElementReference = function () {
+        return this.isCloudLinkedSmartObject() ? this.smartObject.link.elementReference : null;
     };
 
     module.exports = Layer;

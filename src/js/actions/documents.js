@@ -38,6 +38,7 @@ define(function (require, exports) {
         layerActions = require("./layers"),
         toolActions = require("./tools"),
         searchActions = require("./search/documents"),
+        libraryActions = require("./libraries"),
         application = require("./application"),
         preferencesActions = require("./preferences"),
         ui = require("./ui"),
@@ -45,7 +46,8 @@ define(function (require, exports) {
         locks = require("js/locks"),
         pathUtil = require("js/util/path"),
         log = require("js/util/log"),
-        headlights = require("js/util/headlights");
+        headlights = require("js/util/headlights"),
+        global = require("js/util/global");
 
     var templatesJSON = require("text!static/templates.json"),
         templates = JSON.parse(templatesJSON);
@@ -126,9 +128,18 @@ define(function (require, exports) {
         var documentPropertiesPromise = descriptor.multiGetProperties(reference, properties),
             optionalPropertiesPromise = descriptor.multiGetOptionalProperties(reference, optionalProperties);
 
-        return Promise.join(documentPropertiesPromise, optionalPropertiesPromise,
-            function (properties, optionalProperties) {
-                return _.merge(properties, optionalProperties);
+        // fetch exports metadata via document extension data
+        var nameSpace = global.EXTENSION_DATA_NAMESPACE,
+            extensionPlayObject = documentLib.getExtensionData(reference, nameSpace),
+            extensionPromise = descriptor.playObject(extensionPlayObject)
+                .then(function (extensionData) {
+                    var extensionDataRoot = extensionData[nameSpace];
+                    return (extensionDataRoot && extensionDataRoot.exportsMetadata) || {};
+                });
+
+        return Promise.join(documentPropertiesPromise, optionalPropertiesPromise, extensionPromise,
+            function (properties, optionalProperties, extensionProperties) {
+                return _.merge(properties, optionalProperties, extensionProperties);
             });
     };
 
@@ -395,16 +406,19 @@ define(function (require, exports) {
                 var newDocument = this.flux.store("application").getCurrentDocument(),
                     resetLinkedPromise = this.transfer(layerActions.resetLinkedLayers, newDocument),
                     recentFilesPromise = this.transfer(application.updateRecentFiles),
-                    updateTransformPromise = this.transfer(ui.updateTransform);
+                    updateTransformPromise = this.transfer(ui.updateTransform),
+                    deleteTempFilesPromise = this.transfer(libraryActions.deleteGraphicTempFiles, documentID);
 
                 return Promise.join(resetLinkedPromise,
                         updateTransformPromise,
-                        recentFilesPromise);
+                        recentFilesPromise,
+                        deleteTempFilesPromise);
             });
     };
     disposeDocument.reads = [];
     disposeDocument.writes = [locks.JS_DOC, locks.JS_APP];
-    disposeDocument.transfers = [layerActions.resetLinkedLayers, application.updateRecentFiles, ui.updateTransform];
+    disposeDocument.transfers = ["layers.resetLinkedLayers", application.updateRecentFiles, ui.updateTransform,
+        "libraries.deleteGraphicTempFiles"];
     disposeDocument.lockUI = true;
 
     /**
@@ -490,16 +504,19 @@ define(function (require, exports) {
      * Opens the document in the given path
      *
      * @param {string} filePath
+     * @param {object=} settings - params accepted by the Adapter function documents#openDocument
      * @return {Promise}
      */
-    var open = function (filePath) {
+    var open = function (filePath, settings) {
+        settings = settings || {};
+        
         this.dispatch(events.ui.TOGGLE_OVERLAYS, { enabled: false });
 
         var documentRef = {
             _path: filePath
         };
 
-        return descriptor.playObject(documentLib.open(documentRef, {}))
+        return descriptor.playObject(documentLib.open(documentRef, settings))
             .bind(this)
             .then(function () {
                 var initPromise = this.transfer(initActiveDocument),
@@ -605,7 +622,7 @@ define(function (require, exports) {
     };
     selectDocument.reads = [locks.JS_TOOL];
     selectDocument.writes = [locks.JS_APP];
-    selectDocument.transfers = [layerActions.resetLinkedLayers, historyActions.queryCurrentHistory,
+    selectDocument.transfers = ["layers.resetLinkedLayers", historyActions.queryCurrentHistory,
         ui.updateTransform, toolActions.select, ui.cloak, guideActions.queryCurrentGuides];
     selectDocument.lockUI = true;
     selectDocument.post = [_verifyActiveDocument];
@@ -622,8 +639,6 @@ define(function (require, exports) {
         if (!nextDocument) {
             return Promise.resolve();
         }
-
-        this.dispatch(events.ui.TOGGLE_OVERLAYS, { enabled: false });
 
         return this.transfer(selectDocument, nextDocument);
     };
@@ -644,8 +659,6 @@ define(function (require, exports) {
         if (!previousDocument) {
             return Promise.resolve();
         }
-
-        this.dispatch(events.ui.TOGGLE_OVERLAYS, { enabled: false });
 
         return this.transfer(selectDocument, previousDocument);
     };
@@ -723,6 +736,38 @@ define(function (require, exports) {
     };
     toggleSmartGuidesVisibility.reads = [locks.JS_DOC, locks.JS_APP];
     toggleSmartGuidesVisibility.writes = [locks.JS_DOC, locks.PS_DOC];
+
+    /**
+     * Handler for the placeEvent notification. If the event contains
+     * the layer ID of a layer not in the model, calls addLayers on
+     * that layerID.
+     *
+     * @param {{ID: number}} event
+     * @return {Promise}
+     */
+    var handlePlaceEvent = function (event) {
+        var applicationStore = this.flux.store("application"),
+            document = applicationStore.getCurrentDocument();
+
+        if (!document) {
+            var error = new Error("Place event received without a current document");
+            return Promise.reject(error);
+        }
+
+        var layerID = event.ID;
+        if (!layerID) {
+            return this.transfer(updateDocument);
+        }
+
+        if (document.layers.byID(layerID)) {
+            return Promise.resolve();
+        }
+
+        return this.transfer(layerActions.addLayers, document, layerID);
+    };
+    handlePlaceEvent.reads = [locks.JS_APP];
+    handlePlaceEvent.writes = [];
+    handlePlaceEvent.transfers = [updateDocument, "layers.addLayers"];
 
     /**
      * Event handlers initialized in beforeStartup.
@@ -824,10 +869,13 @@ define(function (require, exports) {
             }
 
             this.flux.actions.application.updateRecentFilesThrottled();
+            this.flux.actions.libraries.updateGraphicContent(documentID);
 
             this.dispatch(events.document.SAVE_DOCUMENT, {
-                documentID: documentID
+                documentID: documentID,
+                path: event.in._path
             });
+            
 
             if (!saveAs) {
                 return;
@@ -860,15 +908,7 @@ define(function (require, exports) {
         // This event is triggered when a new smart object layer is placed,
         // e.g., by dragging an image into an open document.
         _placeEventHandler = function (event) {
-            var document = applicationStore.getCurrentDocument(),
-                layerID = event.ID;
-
-            if (document && layerID) {
-                this.flux.actions.layers.addLayers(document, layerID);
-            } else {
-                log.warn("Place event received without a current document", event);
-                this.flux.actions.documents.updateDocument();
-            }
+            this.flux.actions.documents.handlePlaceEvent(event);
         }.bind(this);
         descriptor.addListener("placeEvent", _placeEventHandler);
 
@@ -945,6 +985,7 @@ define(function (require, exports) {
     exports.packageDocument = packageDocument;
     exports.toggleGuidesVisibility = toggleGuidesVisibility;
     exports.toggleSmartGuidesVisibility = toggleSmartGuidesVisibility;
+    exports.handlePlaceEvent = handlePlaceEvent;
 
     exports.beforeStartup = beforeStartup;
     exports.afterStartup = afterStartup;
