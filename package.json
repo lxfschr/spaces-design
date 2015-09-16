@@ -12,6 +12,9 @@
   "bugs": {
     "url": "https://github.com/adobe-photoshop/spaces-design/issues"
   },
+  "dependencies": {
+    "noflo": "^0.5.9"
+  },
   "homepage": "https://github.com/adobe-photoshop/spaces-design",
   "devDependencies": {
     "esprima-fb": "^15001.1.0-dev-harmony-fb",

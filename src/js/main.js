@@ -137,5 +137,9 @@ define(function (require, exports) {
 
     window.addEventListener("beforeunload", _shutdown);
 
+    define(["noflo"], function (noflo) {
+        return noflo;
+    });
+
     exports.getController = getController;
 });

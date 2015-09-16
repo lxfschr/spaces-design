@@ -30,7 +30,8 @@ define(function (require, exports, module) {
         SceneTreeNode = require("./scenetreenode"),
         Bounds = require("./bounds"),
         Fill = require("./Fill"),
-        Element = require("./element");
+        Element = require("./element"),
+        SceneGraph = require("./scenegraph");
 
     var objUtil = require("js/util/object"),
         collection = require("js/util/collection");
@@ -278,6 +279,7 @@ define(function (require, exports, module) {
             }, sceneNodes);
             sceneNodes = Immutable.Map(sceneNodes);
             index = Immutable.List(indexes.reverse());
+            var sceneGraph = SceneGraph.fromSceneNodes(sceneNodes);
         }
         return new SceneTree({
             elements: sceneNodes,
