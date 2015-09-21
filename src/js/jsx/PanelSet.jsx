@@ -48,7 +48,7 @@ define(function (require, exports, module) {
         collection = require("js/util/collection"),
         menu = require("i18n!nls/menu"),
         strings = require("i18n!nls/strings");
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     var UI = {
         LAYERS_LIBRARY_COL: "layersLibrariesVisible",
@@ -120,7 +120,6 @@ define(function (require, exports, module) {
         },
         
         shouldComponentUpdate: function (nextProps, nextState) {
-
             // Don't re-render if we're just going temporarily inactive so that
             // the UI doesn't blink unnecessarily.
             if (this.props.active && !nextProps.active) {

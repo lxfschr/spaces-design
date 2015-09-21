@@ -89,7 +89,7 @@ define(function (require, exports, module) {
                 events.document.history.optimistic.SET_LAYERS_PROPORTIONAL, this._updateMenuItems,
                 events.document.history.optimistic.RESIZE_DOCUMENT, this._updateMenuItems,
                 events.document.history.optimistic.RADII_CHANGED, this._updateMenuItems,
-                events.document.history.optimistic.MATERIAL_MAP_PROPERTY_CHANGED, this._updateMenuItems,
+                events.document.history.optimistic.MAP_PROPERTY_CHANGED, this._updateMenuItems,
                 events.document.history.optimistic.FILL_COLOR_CHANGED, this._updateMenuItems,
                 events.document.history.optimistic.FILL_OPACITY_CHANGED, this._updateMenuItems,
                 events.document.STROKE_ALIGNMENT_CHANGED, this._updateMenuItems,

@@ -40,7 +40,7 @@ define(function (require, exports, module) {
         collection = require("js/util/collection"),
         synchronization = require("js/util/synchronization");
 
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     var PS_MAX_NEST_DEPTH = 10;
 
@@ -58,7 +58,7 @@ define(function (require, exports, module) {
             return null;
         }
         var selectedLayer = document.layers.selectedWith3D.first();
-        if(!selectedLayer) {
+        if (!selectedLayer) {
             return;
         }
         var sceneNodes = selectedLayer.sceneTree.allVisible;
@@ -314,7 +314,7 @@ define(function (require, exports, module) {
          * @param {{DOMElement: node, target: Layer}} dropInfo
          * @param {Immutable.List.<Layer>} draggedLayers Currently dragged layers
          * @param {{x: number, y: number}} point Point where drop event would occur
-         * @return {boolean} Whether the aforementioned drop may occur
+         * @return {Object} Whether the aforementioned drop may occur
          */
         _validDropTarget: function (dropInfo, draggedLayers, point) {
             var dropNode = dropInfo.node,
@@ -535,11 +535,10 @@ define(function (require, exports, module) {
                 dragTargets = this.state.pastDragTargets;
             }
 
-            var panel3dRef = this;
             var selectedLayer = doc.layers.allSelected.first();
-
-            if(selectedLayer && selectedLayer.sceneTree.elements.size > 0) {
-                var elementComponents = selectedLayer.sceneTree.allVisibleReversed
+            var elementComponents;
+            if (selectedLayer && selectedLayer.sceneTree.elements.size > 0) {
+                elementComponents = selectedLayer.sceneTree.allVisibleReversed
                     .filter(function (element) {
                         // Do not render descendants of collapsed layers unless
                         // they have been mounted previously

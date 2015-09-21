@@ -31,7 +31,7 @@ define(function (require, exports, module) {
     var Document = require("../models/document"),
         Guide = require("../models/guide"),
         events = require("../events");
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     var DocumentStore = Fluxxor.createStore({
 
@@ -81,7 +81,7 @@ define(function (require, exports, module) {
                 events.document.history.optimistic.RESIZE_DOCUMENT, this._handleDocumentResized,
                 events.document.LAYER_BOUNDS_CHANGED, this._handleLayerBoundsChanged,
                 events.document.history.optimistic.RADII_CHANGED, this._handleRadiiChanged,
-                events.document.history.optimistic.MATERIAL_MAP_PROPERTY_CHANGED, this._handleMaterialMapPropertyChanged,
+                events.document.history.optimistic.MAP_PROPERTY_CHANGED, this._handleMapPropertyChanged,
                 events.document.history.optimistic.FILL_COLOR_CHANGED, this._handleFillPropertiesChanged,
                 events.document.history.optimistic.FILL_OPACITY_CHANGED, this._handleFillPropertiesChanged,
                 events.document.STROKE_ALIGNMENT_CHANGED, this._handleStrokePropertiesChanged,
@@ -453,10 +453,9 @@ define(function (require, exports, module) {
                 layerID = payload.layerID,
                 layerIDs = Immutable.List.of(layerID),
                 sceneNodeID = payload.sceneNodeID,
-                sceneNodeName = payload.sceneNodeName,
                 newName = payload.newName;
             var selectedLayer = document.layers.byID(layerID);
-            var nextSceneTree = selectedLayer.sceneTree.setProperties(Immutable.List([sceneNodeID]), {name: newName});
+            var nextSceneTree = selectedLayer.sceneTree.setProperties(Immutable.List([sceneNodeID]), { name: newName });
             this._updateLayerProperties(documentID, layerIDs, { sceneTree: nextSceneTree });
         },
 
@@ -582,8 +581,9 @@ define(function (require, exports, module) {
          */
         _updateSceneNodeSelection: function (document, layerID, selectedIndicies) {
             var selectedLayer = document.layers.byID(layerID);
-            var nextSceneNodes = selectedLayer.sceneTree.updateSelection(selectedIndicies),
-                nextLayers = document.layers.setProperties(Immutable.List([selectedLayer.id]), {sceneTree: nextSceneNodes}),
+            var nextSceneTree = selectedLayer.sceneTree.updateSelection(selectedIndicies),
+                nextLayers = document.layers.setProperties(Immutable.List([selectedLayer.id]),
+                                                           { sceneTree: nextSceneTree }),
                 nextDocument = document.set("layers", nextLayers);
             this.setDocument(nextDocument, true);
         },
@@ -593,6 +593,7 @@ define(function (require, exports, module) {
          *
          * @private
          * @param {Document} document
+         * @param {number} layerID
          * @param {Immutable.Set<number>} selectedIndices
          */
         _updateSceneNodeSelectionByIndices: function (document, layerID, selectedIndices) {
@@ -764,24 +765,23 @@ define(function (require, exports, module) {
          * @private
          * @param {{documentID: number, layerIDs: Array.<number>, radii: object}} payload
          */
-        _handleMaterialMapPropertyChanged: function (payload) {
+        _handleMapPropertyChanged: function (payload) {
             var documentID = payload.documentID,
                 layerID = payload.layerID,
-                materialIDs = payload.materialIDs,
-                materialNames = payload.materialNames,
+                materialNames = payload.materialNames.toList(),
                 property = payload.property,
                 value = payload.value,
                 document = this._openDocuments[documentID],
                 selectedLayer = document.layers.byID(layerID),
-                //nextSceneTree = selectedLayer.sceneTree.setMaterialProperty(materialIDs, property, value),
-                selectedMaterialProperties = materialNames.map(function(name) {
+                // nextSceneTree = selectedLayer.sceneTree.setMaterialProperty(materialIDs, property, value),
+                materialProperties = materialNames.map(function (name) {
                     var selectedMaterial = selectedLayer.sceneTree.materials.get(name);
-                    selectedMaterial  = selectedMaterial.set(property, value);
+                    selectedMaterial = selectedMaterial.set(property, value);
 
                     return selectedMaterial;
                 }, this),
-                nextSceneTree = selectedLayer.sceneTree.setMaterialProperties(materialNames.toList(), selectedMaterialProperties);
-                this._updateLayerProperties(documentID, Immutable.List([layerID]), { sceneTree: nextSceneTree });
+                nextSceneTree = selectedLayer.sceneTree.setMaterialProperties(materialNames, materialProperties);
+            this._updateLayerProperties(documentID, Immutable.List([layerID]), { sceneTree: nextSceneTree });
         },
 
         /**

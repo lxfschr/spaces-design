@@ -31,7 +31,7 @@ define(function (require, exports, module) {
 
     var NumberInput = require("jsx!js/jsx/shared/NumberInput"),
         collection = require("js/util/collection");
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     var Opacity = React.createClass({
         mixins: [FluxMixin],

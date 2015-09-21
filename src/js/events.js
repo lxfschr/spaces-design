@@ -61,7 +61,7 @@ define(function (require, exports, module) {
                     LAYER_EFFECT_DELETED: "layerEffectDeleted",
                     LAYER_EFFECTS_BATCH_CHANGED: "layerEffectsBatchChanged",
                     RADII_CHANGED: "radiiChanged",
-                    MATERIAL_MAP_PROPERTY_CHANGED: "materialMapPropertyChanged",
+                    MAP_PROPERTY_CHANGED: "materialMapPropertyChanged",
                     TYPE_COLOR_CHANGED: "typeColorChanged"
                 },
                 nonOptimistic: {

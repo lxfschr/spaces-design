@@ -27,19 +27,12 @@ define(function (require, exports, module) {
     var React = require("react"),
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React),
-        Immutable = require("immutable"),
-        elementLib = require("adapter/lib/element"),
-        classnames = require("classnames"),
-        _ = require("lodash");
-
-    var contentLayerLib = require("adapter/lib/contentLayer");
+        Immutable = require("immutable");
 
     var strings = require("i18n!nls/strings"),
         ColorProperty = require("jsx!./ColorProperty"),
-        Fill = require("jsx!js/jsx/sections/style/Fill"),
-        Slider = require("jsx!./Slider"),
-        collection = require("js/util/collection");
-    var log = require("js/util/log");
+        Slider = require("jsx!./Slider");
+    // var log = require("js/util/log");
 
     /**
      * Material Component displays information of a single fill for a given layer or
@@ -48,7 +41,7 @@ define(function (require, exports, module) {
     var Material = React.createClass({
         mixins: [FluxMixin],
 
-        shouldComponentUpdate: function (nextProps, nextState) {
+        shouldComponentUpdate: function (nextProps) {
             return !Immutable.is(this.state.materials, nextProps.materials) ||
                 this.props.disabled !== nextProps.disabled;
         },
@@ -80,21 +73,49 @@ define(function (require, exports, module) {
         },
 
         render: function () {
-            var materials = this.state.materials;
-
-
             var containerContents = this.props.document && this.props.visible && !this.props.disabled && (
                     <div>
-                        <ColorProperty {...this.props} title={strings.PROPERTIES.DIFFUSE} onFocus={this._handleFocus}/>
-                        <ColorProperty {...this.props} title={strings.PROPERTIES.SPECULAR} onFocus={this._handleFocus}/>
-                        <ColorProperty {...this.props} title={strings.PROPERTIES.EMISSIVE} onFocus={this._handleFocus}/>
-                        <ColorProperty {...this.props} title={strings.PROPERTIES.AMBIENT} onFocus={this._handleFocus}/>
-                        <Slider {...this.props} title={strings.PROPERTIES.SHINE} onFocus={this._handleFocus}/>
-                        <Slider {...this.props} title={strings.PROPERTIES.REFLECTION} onFocus={this._handleFocus}/>
-                        <Slider {...this.props} title={strings.PROPERTIES.ROUGHNESS} onFocus={this._handleFocus}/>
-                        <Slider {...this.props} title={strings.PROPERTIES.BUMP} onFocus={this._handleFocus}/>
-                        <Slider {...this.props} title={strings.PROPERTIES.OPACITY} onFocus={this._handleFocus}/>
-                        <Slider {...this.props} title={strings.PROPERTIES.REFRACTION} maxValue={3} onFocus={this._handleFocus}/>
+                        <ColorProperty
+                            {...this.props}
+                            title={strings.PROPERTIES.DIFFUSE}
+                            onFocus={this._handleFocus}/>
+                        <ColorProperty
+                            {...this.props}
+                            title={strings.PROPERTIES.SPECULAR}
+                            onFocus={this._handleFocus}/>
+                        <ColorProperty
+                            {...this.props}
+                            title={strings.PROPERTIES.EMISSIVE}
+                            onFocus={this._handleFocus}/>
+                        <ColorProperty
+                            {...this.props}
+                            title={strings.PROPERTIES.AMBIENT}
+                            onFocus={this._handleFocus}/>
+                        <Slider
+                            {...this.props}
+                            title={strings.PROPERTIES.SHINE}
+                            onFocus={this._handleFocus}/>
+                        <Slider
+                            {...this.props}
+                            title={strings.PROPERTIES.REFLECTION}
+                            onFocus={this._handleFocus}/>
+                        <Slider
+                            {...this.props}
+                            title={strings.PROPERTIES.ROUGHNESS}
+                            onFocus={this._handleFocus}/>
+                        <Slider
+                            {...this.props}
+                            title={strings.PROPERTIES.BUMP}
+                            onFocus={this._handleFocus}/>
+                        <Slider
+                            {...this.props}
+                            title={strings.PROPERTIES.OPACITY}
+                            onFocus={this._handleFocus}/>
+                        <Slider
+                            {...this.props}
+                            title={strings.PROPERTIES.REFRACTION}
+                            maxValue={3}
+                            onFocus={this._handleFocus}/>
                     </div>
                 );
 

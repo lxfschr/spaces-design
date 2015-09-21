@@ -29,7 +29,7 @@ define(function (require, exports, module) {
     var elementLib = require("adapter/lib/element");
 
     var object = require("js/util/object");
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     /**
      * A model of Photoshop 3D element.
@@ -138,18 +138,6 @@ define(function (require, exports, module) {
                    this.kind !== this.elementKinds.GROUPEND;
         }
     }));
-
-    /**
-     * Determine whether the given element is expanded or collapsed.
-     *
-     * @param {object} sceneDescriptor
-     * @return {boolean}
-     */
-    var _extractExpanded = function (sceneDescriptor) {
-        return !sceneDescriptor.hasOwnProperty("elementSectionExpanded") ||
-            sceneDescriptor.elementSectionExpanded;
-    };
-
 
     /**
      * Create a new Element object from the given layer descriptor.

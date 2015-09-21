@@ -854,8 +854,7 @@ define(function (require, exports) {
      * @return {Promise}
      */
     var afterStartup = function () {
-        return Promise.resolve();
-// helper function to wait for the service init, and set the service "available" in our store
+        // helper function to wait for the service init, and set the service "available" in our store
         var _initService = function () {
             return _exportService.init()
                 .bind(this)

@@ -35,7 +35,7 @@ define(function (require, exports, module) {
 
     var objUtil = require("js/util/object"),
         collection = require("js/util/collection");
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     /**
      * A model of the Photoshop layer structure.
@@ -43,6 +43,13 @@ define(function (require, exports, module) {
      * @constructor
      */
     var SceneTree = Immutable.Record({
+        /**
+         * Scene Graph.
+         *
+         * @type {SceneGraph}
+         */
+        sceneGraph: null,
+
         /**
          * All Element objects indexed by element id.
          *
@@ -72,9 +79,15 @@ define(function (require, exports, module) {
         maps: null
     });
 
-    var _extractMapsFromMaterial = function(material) {
+    /**
+     * Extracts the map properties from photoshop key names to more readable names.
+     * @param {Object} material
+     * @returns {List<Object>}
+     * @private
+     */
+    var _extractMapsFromMaterial = function (material) {
         var mapList = material.$mapl;
-        var maps =  mapList.reduce(function(maps, map) {
+        var maps = mapList.reduce(function (maps, map) {
             var model = {
                 name: map.name,
                 objectName: map.$ObjN,
@@ -107,11 +120,11 @@ define(function (require, exports, module) {
         }, new Map());
         maps = Immutable.Map(maps);
         return maps;
-    }
+    };
 
     /**
      * Extract the relevant 3d scene elements.
-     * @param  {object} sceneDescriptor
+     * @param  {object} materialsList
      * @return {object}
      */
     var _extractMaterials = function (materialsList) {
@@ -141,24 +154,31 @@ define(function (require, exports, module) {
         return materials;
     };
 
-    var _extractID = function(element, frameList, meshList, maps) {
+    /**
+     * Extracts id for various element types.
+     * @param {Element} element
+     * @param {List<Object>} frameList
+     * @param {List<Object>} meshList
+     * @returns {number}
+     * @private
+     */
+    var _extractID = function (element, frameList, meshList) {
         var i;
-        if(element.key3DNodeType === elementLib.elementKinds.MAP) {
+        if (element.key3DNodeType === elementLib.elementKinds.MAP) {
             return element.id;
         }
 
-
-        for(i = 0; i < frameList.length; i++) {
+        for (i = 0; i < frameList.length; i++) {
             var frame = frameList[i];
-            if(frame.name === element.key3DTreeParamName) {
+            if (frame.name === element.key3DTreeParamName) {
                 return frame.$NoID;
             }
         }
-        if(meshList) {
+        if (meshList) {
             for (i = 0; i < meshList.length; i++) {
                 var mesh = meshList[i];
                 if (mesh.meshExtraData) {
-                    var constraintList = meshList[i].meshExtraData.internalConstraints
+                    var constraintList = meshList[i].meshExtraData.internalConstraints;
                     for (var j = 0; j < constraintList.length; j++) {
                         var constraint = constraintList[j];
                         if (constraint.name === element.key3DTreeParamName) {
@@ -171,12 +191,18 @@ define(function (require, exports, module) {
         return Math.floor((Math.random() * 150) + 100);
     };
 
-    var _getInsertionIndex = function(list, count) {
-        var idx = 0;
+    /**
+     * Finds the index at which to insert a group end node.
+     * @param {List<Object>} list
+     * @param {number} count
+     * @returns {number}
+     * @private
+     */
+    var _getInsertionIndex = function (list, count) {
         var children = 0;
         var i = 0;
-        while(i < list.length) {
-            while(list[i].key3DChildCount > 0) {
+        while (i < list.length) {
+            while (list[i].key3DChildCount > 0) {
                 i += list[i].key3DChildCount;
             }
             i++;
@@ -187,12 +213,18 @@ define(function (require, exports, module) {
         }
     };
 
-    var _insertGroupEnds = function(sceneTree){
-        for(var i = 0; i < sceneTree.length; i++) {
+    /**
+     * Inserts ground end nodes to signify end of group.
+     * @param {List<Object>} sceneTree
+     * @returns {List<Object>}
+     * @private
+     */
+    var _insertGroupEnds = function (sceneTree) {
+        for (var i = 0; i < sceneTree.length; i++) {
             var node = sceneTree[i];
             var numChildren = node.key3DChildCount;
-            if(numChildren > 0 && node.key3DIsParent) {
-                var groupEndIndex = _getInsertionIndex(sceneTree.slice(i+1), numChildren);
+            if (numChildren > 0 && node.key3DIsParent) {
+                var groupEndIndex = _getInsertionIndex(sceneTree.slice(i + 1), numChildren);
                 var model = {
                     key3DChildCount: 0,
                     key3DExpansion: false,
@@ -202,20 +234,29 @@ define(function (require, exports, module) {
                     key3DTreeParamName: "</" + node.key3DTreeParamName + " group>"
 
                 };
-                sceneTree.splice(i+1+groupEndIndex, 0, model);
+                sceneTree.splice(i + 1 + groupEndIndex, 0, model);
             }
         }
         return sceneTree;
     };
 
-    var _insertTextures = function(sceneTree, materials){
-        for(var i = 0; i < sceneTree.length; i++) {
+    /**
+     * Insert map nodes in correct location.
+     * @param {List<Object>} sceneTree
+     * @param {List<Object>} materials
+     * @returns {List<Object>}
+     * @private
+     */
+    var _insertTextures = function (sceneTree, materials) {
+        for (var i = 0; i < sceneTree.length; i++) {
             var node = sceneTree[i];
-            if(node.key3DNodeType === elementLib.elementKinds.MATERIAL) {
+            if (node.key3DNodeType === elementLib.elementKinds.MATERIAL) {
                 var material = materials.get(node.key3DTreeParamName);
                 var numChildren = 0;
-                material.get("maps").forEach(function(map) {
-                    if(map.name) {
+                var maps = material.get("maps");
+                for (var j = 0; j < maps.size; j++) {
+                    var map = maps[j];
+                    if (map.name) {
                         numChildren++;
                         var model = {
                             key3DChildCount: 0,
@@ -227,19 +268,25 @@ define(function (require, exports, module) {
                             id: map.id
 
                         };
-                        sceneTree.splice(i+numChildren, 0, model);
+                        sceneTree.splice(i + numChildren, 0, model);
                     }
                     node.key3DIsParent = true;
-                });
+                }
                 node.key3DChildCount = numChildren;
             }
         }
         return sceneTree;
     };
 
-    var _extractMaps = function(materials) {
+    /**
+     * Extracts map parameters from raw photoshop data.
+     * @param {List<Object>} materials
+     * @returns {Immutable.Map<number, Object>}
+     * @private
+     */
+    var _extractMaps = function (materials) {
         var maps = materials.reduce(function (maps, material) {
-            material.get("maps").forEach(function(map) {
+            material.get("maps").forEach(function (map) {
                 maps.set(map.id, map);
             });
             return maps;
@@ -260,7 +307,8 @@ define(function (require, exports, module) {
         var index = new Immutable.List();
         var materials = new Map();
         var maps = new Map();
-        if(layer3D) {
+        var sceneGraph;
+        if (layer3D) {
             var scene = layer3D.key3DScene;
             var sceneTree = scene.key3DSceneTree[0].key3DTreeClassList;
             materials = _extractMaterials(scene.$mtll);
@@ -279,9 +327,10 @@ define(function (require, exports, module) {
             }, sceneNodes);
             sceneNodes = Immutable.Map(sceneNodes);
             index = Immutable.List(indexes.reverse());
-            var sceneGraph = SceneGraph.fromSceneNodes(sceneNodes);
+            sceneGraph = SceneGraph.fromSceneNodes(sceneNodes);
         }
         return new SceneTree({
+            sceneGraph: sceneGraph,
             elements: sceneNodes,
             index: index,
             materials: materials,
@@ -996,7 +1045,7 @@ define(function (require, exports, module) {
                 } else if (layerIndex < nextIndex.size) {
                     nextIndex = nextIndex.delete(replaceIndex).splice(layerIndex, 0, layerID);
                 } else {
-                    throw new Error ("Replacing a layer but the new layer's index seems out of bounds");
+                    throw new Error("Replacing a layer but the new layer's index seems out of bounds");
                 }
             } else {
                 nextIndex = nextIndex.splice(layerIndex, 0, layerID);
@@ -1132,8 +1181,9 @@ define(function (require, exports, module) {
     /**
      * Set the border value of the given layers.
      *
-     * @param {Immutable.Iteralble.<number>} materialNames
-     * @param {Radii} value
+     * @param {Immutable.Iterable.<string>} materialNames
+     * @param {string} property
+     * @param {number} value
      * @return {SceneTree}
      */
     SceneTree.prototype.setMaterialProperty = function (materialNames, property, value) {
@@ -1151,7 +1201,7 @@ define(function (require, exports, module) {
     /**
      * Update basic properties of the given layers.
      *
-     * @param {Immutable.Iterable.<number>} sceneNodeIDs
+     * @param {Immutable.Iterable.<string>} materialNames
      * @param {object} properties
      * @return {SceneTree}
      */
@@ -1244,7 +1294,6 @@ define(function (require, exports, module) {
         return this._updateBounds(allBounds);
     };
 
-
     /**
      * Repositions and resizes the given layers, setting both their positions and dimensions to be passed in values.
      *
@@ -1266,10 +1315,8 @@ define(function (require, exports, module) {
             return allBounds;
         }.bind(this), new Map()));
 
-
         return this._updateBounds(allBounds);
     };
-
 
     /**
      * Translate the given layers, updating their top and left by passed in values.
@@ -1479,42 +1526,6 @@ define(function (require, exports, module) {
                 nextLayer = layer.setIn(["strokes", strokeIndex], nextStroke);
 
             return map.set(layerID, nextLayer);
-        }, new Map(), this));
-
-        return this.mergeDeep({
-            layers: nextLayers
-        });
-    };
-
-    /**
-     * Add a new stroke, described by a Photoshop descriptor, to the given layers.
-     * If strokeStyleDescriptor is a single object, it will be applied to all layers
-     * otherwise it should be a List of descriptors which corresponds by index to the provided layerIDs
-     *
-     * @param {Immutable.Iterable.<number>} layerIDs
-     * @param {number} strokeIndex
-     * @param {object | Immutable.Iterable.<object>} strokeStyleDescriptor
-     * @return {SceneTree}
-     */
-    SceneTree.prototype.addStroke = function (layerIDs, strokeIndex, strokeStyleDescriptor) {
-        var isList = Immutable.List.isList(strokeStyleDescriptor);
-
-        var getStroke = function (index) {
-            return isList ?
-                Stroke.fromStrokeStyleDescriptor(strokeStyleDescriptor.get(index)) :
-                Stroke.fromStrokeStyleDescriptor(strokeStyleDescriptor);
-        };
-
-        var nextLayers = Immutable.Map(layerIDs.reduce(function (map, layerID, index) {
-            var layer = this.byID(layerID),
-                nextStroke = getStroke(index),
-                nextStrokes = layer.strokes ?
-                    layer.strokes.set(strokeIndex, nextStroke) :
-                    Immutable.List.of(nextStroke);
-
-            return map.set(layerID, Immutable.Map({
-                strokes: nextStrokes
-            }));
         }, new Map(), this));
 
         return this.mergeDeep({

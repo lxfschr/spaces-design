@@ -113,9 +113,16 @@ define(function (require, exports, module) {
         return new Color(tiny.toRgb());
     };
 
-    Color.fromFloats = function(r,g,b) {
-        return new Color({r: r*255, g: g*255, b: b*255});
-    }
+    /**
+     * Construct a new Color object from float values.
+     * @param {number} r
+     * @param {number} g
+     * @param {number} b
+     * @returns {Color}
+     */
+    Color.fromFloats = function (r, g, b) {
+        return new Color({ r: r * 255, g: g * 255, b: b * 255 });
+    };
 
     Object.defineProperties(Color.prototype, objUtil.cachedGetSpecs({
         /**

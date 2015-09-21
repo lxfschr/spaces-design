@@ -27,7 +27,7 @@ define(function (require, exports, module) {
     var Immutable = require("immutable");
 
     var elementLib = require("adapter/lib/element");
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     /**
      * A node in the layer tree structure.

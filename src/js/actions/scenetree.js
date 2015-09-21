@@ -305,7 +305,7 @@ define(function (require, exports) {
      * @param {Document} document
      * @param {number|Array.<number>} layerSpec
      * @param {boolean=} selected Default is true
-     * @param {boolean= | number=} replace replace the layer with this ID, or use default logic if undefined
+     * @param {boolean=} replace replace the layer with this ID, or use default logic if undefined
      * @return {Promise.<boolean>} Resolves with true if some layers were replaced, and false otherwise.
      */
     var addLayers = function (document, layerSpec, selected, replace) {
@@ -348,7 +348,6 @@ define(function (require, exports) {
     addLayers.writes = [locks.JS_DOC];
     addLayers.post = [_verifyLayerIndex, _verifyLayerSelection];
 
-
     /**
      * Get a list of selected scene node indexes from photoshop, based on the provided document
      *
@@ -371,6 +370,7 @@ define(function (require, exports) {
      * Resets the list of selected scene nodes by asking photoshop for targetLayers
      *
      * @param {Document} document document of which to reset layers
+     * @param {Layer} layer
      * @return {Promise}
      */
     var resetSelection = function (document, layer) {
@@ -628,7 +628,8 @@ define(function (require, exports) {
      * are expanded.
      *
      * @param {Document} document
-     * @param {Immutable.Iterable.<Layer>} sceneNodes
+     * @param {Layer} layer
+     * @param {Immutable.Iterable.<Element>} sceneNodes
      * @return {Promise}
      */
     var revealSceneNodes = function (document, layer, sceneNodes) {
@@ -661,12 +662,14 @@ define(function (require, exports) {
      * active document.
      *
      * @param {Document} document
+     * @param {number} layerID
      * @param {Immutable.Iterable.<Layer>} materials
+     * @param {string} property
      * @param {number} value New uniform border value in pixels
      * @param {boolean} coalesce Whether this history state should be coalesce with the previous one
      */
     var setMaterialProperty = function (document, layerID, materials, property, value, coalesce) {
-        var dispatchPromise = this.dispatchAsync(events.document.history.optimistic.MATERIAL_MAP_PROPERTY_CHANGED, {
+        var dispatchPromise = this.dispatchAsync(events.document.history.optimistic.MAP_PROPERTY_CHANGED, {
             documentID: document.id,
             layerID: layerID,
             materialNames: collection.pluck(materials, "name"),
@@ -676,9 +679,9 @@ define(function (require, exports) {
             value: value
         });
 
-        var materialMapDescriptor = elementLib.setMaterialProperty(property, value),
-            radiusPromise = Promise.resolve();
-            //radiusPromise = locking.playWithLockOverride(document, materials, materialMapDescriptor, options);
+        // var materialMapDescriptor = elementLib.setMaterialProperty(property, value);
+        var radiusPromise = Promise.resolve();
+        // radiusPromise = locking.playWithLockOverride(document, materials, materialMapDescriptor, options);
 
         return Promise.join(dispatchPromise, radiusPromise);
     };
@@ -689,6 +692,7 @@ define(function (require, exports) {
      * Selects the given layer with given modifiers
      *
      * @param {Document} document Owner document
+     * @param {Layer} layer
      * @param {Layer|Immutable.Iterable.<Layer>} sceneNodeSpec Either a single layer that
      *  the selection is based on, or an array of such layers
      * @param {string} modifier Way of modifying the selection. Possible values
@@ -763,13 +767,14 @@ define(function (require, exports) {
             sceneNodeName: sceneNode.name,
             newName: newName
         };
-        var dispatchPromise = this.dispatchAsync(events.document.history.optimistic.RENAME_SCENE_NODE, payload),
-            sceneNodeRef = [
+        var dispatchPromise = this.dispatchAsync(events.document.history.optimistic.RENAME_SCENE_NODE, payload);
+        /* var sceneNodeRef = [
                 documentLib.referenceBy.id(document.id),
                 elementLib.referenceBy.id(sceneNode.id)
-            ],
-            renameObj = elementLib.rename(sceneNodeRef, newName),
-            renamePromise = Promise.resolve(); // descriptor.playObject(renameObj); // ToDo: add rename scene node to ps api. -Alex
+            ];*/
+        // var renameObj = elementLib.rename(sceneNodeRef, newName),
+        var renamePromise = Promise.resolve(); // descriptor.playObject(renameObj);
+        // ToDo: add rename scene node to ps api. -Alex
 
         return Promise.join(dispatchPromise, renamePromise);
     };
@@ -910,7 +915,6 @@ define(function (require, exports) {
     deleteSelected.writes = [locks.PS_DOC];
     deleteSelected.transfers = [removeLayers];
     deleteSelected.post = [_verifyLayerIndex, _verifyLayerSelection];
-
 
     /**
      * Groups the currently active layers
@@ -1981,7 +1985,6 @@ define(function (require, exports) {
     beforeStartup.reads = [];
     beforeStartup.writes = [locks.JS_SHORTCUT, locks.JS_POLICY, locks.PS_APP];
     beforeStartup.transfers = [shortcuts.addShortcut];
-
 
     /**
      * Send info about layers to search store

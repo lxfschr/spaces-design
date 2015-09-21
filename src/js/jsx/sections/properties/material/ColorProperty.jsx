@@ -27,27 +27,18 @@ define(function (require, exports, module) {
     var React = require("react"),
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React),
-        Immutable = require("immutable"),
-        classnames = require("classnames"),
-        _ = require("lodash");
+        Immutable = require("immutable");
 
-    var contentLayerLib = require("adapter/lib/contentLayer"),
-        elementLib = require("adapter/lib/element");
+    var contentLayerLib = require("adapter/lib/contentLayer");
 
-    var BlendMode = require("jsx!js/jsx/sections/style/BlendMode"),
-        Opacity = require("jsx!js/jsx/sections/style/Opacity"),
-        Color = require("js/models/color"),
-        Gutter = require("jsx!js/jsx/shared/Gutter"),
+    var Opacity = require("jsx!js/jsx/sections/style/Opacity"),
         Label = require("jsx!js/jsx/shared/Label"),
         Fill = require("jsx!js/jsx/sections/style/Fill"),
         FillColor = Fill.FillColor,
         FillVisiblity = Fill.FillVisibility,
-        NumberInput = require("jsx!js/jsx/shared/NumberInput"),
-        ColorInput = require("jsx!js/jsx/shared/ColorInput"),
-        ToggleButton = require("jsx!js/jsx/shared/ToggleButton"),
         strings = require("i18n!nls/strings"),
         collection = require("js/util/collection");
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     /**
      * ColorProperty Component displays information of a single fill for a given layer or
@@ -68,9 +59,7 @@ define(function (require, exports, module) {
          * @param {Object} props
          */
         _setFillState: function (props) {
-            var document = props.document,
-            // We only care about vector materials.  If at least one exists, then this component should render
-                materials = props.materials,
+            var materials = props.materials,
                 fills = collection.pluck(materials, this.props.title).toList(),
                 downsample = this._downsampleFills(fills);
 
@@ -121,7 +110,6 @@ define(function (require, exports, module) {
         },
 
         render: function () {
-            var materials = this.state.materials;
             var title = this.props.title;
             // If there are no vector layers, hide the component
             if (!this.state.fill || this.state.materials.isEmpty()) {

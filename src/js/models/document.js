@@ -30,7 +30,7 @@ define(function (require, exports, module) {
         LayerStructure = require("./layerstructure"),
         Guide = require("./guide"),
         Bounds = require("./bounds");
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     /**
      * Model for a Photoshop document

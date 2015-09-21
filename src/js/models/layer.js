@@ -255,7 +255,6 @@ define(function (require, exports, module) {
         unsupported: function () {
             switch (this.kind) {
             case layerLib.layerKinds.VIDEO:
-            // case layerLib.layerKinds["3D"]:
                 return true;
             default:
                 return false;

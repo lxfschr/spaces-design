@@ -25,13 +25,8 @@ define(function (require, exports, module) {
     "use strict";
 
     var Immutable = require("immutable");
-
-    var elementLib = require("adapter/lib/element"),
-        Element = require("./element");
     var noflo = require("noflo");
 
-    var objUtil = require("js/util/object"),
-        collection = require("js/util/collection");
     var log = require("js/util/log");
 
     /**
@@ -72,12 +67,13 @@ define(function (require, exports, module) {
     /**
      * Construct a SceneGraph model from Photoshop document and layer descriptor.
      *
-     * @param {object} layerDescriptor
-     * @return {SceneTree}
+     * @param {List<Element>} sceneNodes
+     * @return {SceneGraph}
      */
     SceneGraph.fromSceneNodes = function (sceneNodes) {
         log.debug("Immutable: " + Immutable);
         log.debug("noflo: " + noflo);
+        log.debug("sceneNodes: " + sceneNodes);
         /*var graph;
 
         graph = noflo.graph.createGraph("linecount");
@@ -198,13 +194,13 @@ define(function (require, exports, module) {
                 }
             ]
         };
-        noflo.graph.loadJSON(countJSON, function(graph) {
-            console.log("Graph loaded");
-            console.log(graph);
-            noflo.createNetwork(graph, function(network) {
-                console.log("Network loaded");
-                console.log(network);
-            })
+        noflo.graph.loadJSON(countJSON, function (graph) {
+            log.debug(" Graph loaded");
+            log.debug(graph);
+            noflo.createNetwork(graph, function (network) {
+                log.debug(" Network loaded");
+                log.debug(network);
+            });
         });
 
         return new SceneGraph({

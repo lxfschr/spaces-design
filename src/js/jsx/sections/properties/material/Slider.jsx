@@ -37,7 +37,7 @@ define(function (require, exports, module) {
         math = require("js/util/math"),
         strings = require("i18n!nls/strings"),
         collection = require("js/util/collection");
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     var Slider = React.createClass({
         mixins: [FluxMixin, Coalesce],
@@ -54,7 +54,6 @@ define(function (require, exports, module) {
         /**
          * Update the radius of the selected materials in response to user input.
          *
-         * @param {Immutable.Iterable.<Layer>} materials
          * @param {SyntheticEvent} event
          * @param {number=} value
          */
@@ -66,7 +65,8 @@ define(function (require, exports, module) {
 
             var coalesce = this.shouldCoalesce();
             this.getFlux().actions.scenetree
-                .setMaterialPropertyThrottled(this.props.document, this.props.layer.id, this.props.materials, this.props.title, value, coalesce);
+                .setMaterialPropertyThrottled(this.props.document, this.props.layer.id, this.props.materials,
+                                              this.props.title, value, coalesce);
         },
 
         render: function () {

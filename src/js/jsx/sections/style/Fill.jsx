@@ -35,7 +35,7 @@ define(function (require, exports, module) {
         ToggleButton = require("jsx!js/jsx/shared/ToggleButton"),
         strings = require("i18n!nls/strings"),
         collection = require("js/util/collection");
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     /**
      * FillColor Component displays color information of a single fill for a given layer or 
@@ -125,7 +125,7 @@ define(function (require, exports, module) {
             };
 
             var colorInputID;
-            if(this.props.title) {
+            if (this.props.title) {
                 colorInputID = this.props.title + "-" + this.props.document.id;
             } else {
                 colorInputID = "fill-" + this.props.document.id;

@@ -40,7 +40,6 @@ define(function (require, exports, module) {
         system = require("js/util/system"),
         svgUtil = require("js/util/svg"),
         strings = require("i18n!nls/strings");
-    var log = require("js/util/log");
 
     /**
      * Function for checking whether React component should update

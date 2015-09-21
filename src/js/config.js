@@ -48,7 +48,7 @@ require.config({
         "noflo": "../build/noflo"
     },
     wrapShim: true,
-    //enforceDefine: true,
+    // enforceDefine: true,
     shim: {
         "noflo": {
             exports: "noflo"

@@ -27,7 +27,7 @@ define(function (require, exports) {
     var _ = require("lodash"),
         elementLib = require("adapter/lib/element"),
         layerLib = require("adapter/lib/layer");
-   var log = require("js/util/log");
+    // var log = require("js/util/log");
     /**
      * Get the class name for the layer face icon for the given layer
      *
@@ -67,9 +67,9 @@ define(function (require, exports) {
             iconID += "mesh-folder";
         } else if (element.kind === element.elementKinds.GEOMETRY) {
             iconID += "mesh-";
-            if(element.subType === elementLib.meshTypes.REPOUSSE) {
+            if (element.subType === elementLib.meshTypes.REPOUSSE) {
                 iconID += "repousse";
-            } else if(element.subType === 2) {
+            } else if (element.subType === 2) {
                 iconID += "text";
             } else {
                 iconID += "object";
@@ -86,7 +86,7 @@ define(function (require, exports) {
         } else {
             iconID += element.kind;
         }
-        //log.debug("iconID: " + iconID);
+        // log.debug("iconID: " + iconID);
         return iconID;
     };
 

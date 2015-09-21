@@ -116,13 +116,19 @@ define(function (require, exports, module) {
         return null;
     };
 
-    Fill.fromFloats = function(r, g, b) {
-
+    /**
+     * Construct a new Fill object from float values.
+     * @param {number} r
+     * @param {number} g
+     * @param {number} b
+     * @returns {Fill}
+     */
+    Fill.fromFloats = function (r, g, b) {
         return new Fill({
-            color: Color.fromFloats(r,g,b),
+            color: Color.fromFloats(r, g, b),
             type: contentLayerLib.contentTypes.SOLID_COLOR
         });
-    }
+    };
 
     /**
      * Construct a Fill model from a Photoshop "set" descriptor.

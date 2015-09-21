@@ -40,13 +40,7 @@ define(function (require, exports, module) {
         strings = require("i18n!nls/strings"),
         elementLib = require("adapter/lib/element"),
         synchronization = require("js/util/synchronization");
-    var log = require("js/util/log");
-
-    /**
-     * @const
-     * @type {number} The maximum allowed number of effects of a given kind per layer
-     */
-    var MAX_EFFECT_COUNT = 10;
+    // var log = require("js/util/log");
 
     var PropertiesPanel = React.createClass({
         mixins: [FluxMixin, StoreWatchMixin("style")],
@@ -155,16 +149,9 @@ define(function (require, exports, module) {
             });
 
             var copyStyleDisabled = !(this.props.document && this.props.document.layers.selected.size === 1),
-                pasteStyleDisabled = !(this.state.clipboard &&
-                    this.props.document &&
-                    this.props.document.layers.selected.size > 0),
                 copyStyleClasses = classnames({
                     "style-button": true,
                     "style-button__disabled": copyStyleDisabled
-                }),
-                pasteStyleClasses = classnames({
-                    "style-button": true,
-                    "style-button__disabled": pasteStyleDisabled
                 });
 
             var selectedLayers = this.props.document.layers.selectedWith3D;
@@ -175,19 +162,19 @@ define(function (require, exports, module) {
             var selectedSceneNodes = new Immutable.List();
             var materials = new Immutable.Map(),
                 maps = new Immutable.Map();
-            if(selectedLayers.size == 1) {
+            if (selectedLayers.size === 1) {
                 selectedLayer = selectedLayers.first();
                 selectedSceneNodes = selectedLayer.sceneTree.selected;
-                if(selectedSceneNodes.size > 0) {
+                if (selectedSceneNodes.size > 0) {
                     var selectedSceneNodesKind = selectedSceneNodes.first().kind;
-                    if(selectedSceneNodesKind == elementLib.elementKinds.MATERIAL) {
+                    if (selectedSceneNodesKind === elementLib.elementKinds.MATERIAL) {
                         sceneNodeKindName = "material";
-                        names = selectedSceneNodes.map(function(node) {return node.name});
-                        materials = selectedLayer.sceneTree.materials.filter(function(e) {
-                            return names.contains(e.get("name"))});
-                    } else if(selectedSceneNodesKind == elementLib.elementKinds.MAP) {
+                        names = selectedSceneNodes.map(function (node) { return node.name; });
+                        materials = selectedLayer.sceneTree.materials.filter(function (e) {
+                            return names.contains(e.get("name"));});
+                    } else if (selectedSceneNodesKind === elementLib.elementKinds.MAP) {
                         sceneNodeKindName = "map";
-                        maps = selectedSceneNodes.map(function(node) {
+                        maps = selectedSceneNodes.map(function (node) {
                             return selectedLayer.sceneTree.maps.get(node.id);
                         });
                     }

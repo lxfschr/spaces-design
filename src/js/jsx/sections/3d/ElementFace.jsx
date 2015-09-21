@@ -24,8 +24,6 @@
 define(function (require, exports, module) {
     "use strict";
 
-    var UI = require("adapter/ps/ui");
-    
     var React = require("react"),
         Fluxxor = require("fluxxor"),
         FluxMixin = Fluxxor.FluxMixin(React),
@@ -42,7 +40,7 @@ define(function (require, exports, module) {
         system = require("js/util/system"),
         svgUtil = require("js/util/svg"),
         strings = require("i18n!nls/strings");
-    var log = require("js/util/log");
+    // var log = require("js/util/log");
 
     /**
      * Function for checking whether React component should update
@@ -119,8 +117,8 @@ define(function (require, exports, module) {
                 modifierState = modifierStore.getState(),
                 descendants = modifierState.alt;
 
-            this.getFlux().actions.scenetree.setGroupExpansion(this.props.document, layer,
-                !layer.expanded, descendants);
+            this.getFlux().actions.scenetree.setGroupExpansion(this.props.document, element,
+                !element.expanded, descendants);
         },
 
         /**
@@ -168,7 +166,8 @@ define(function (require, exports, module) {
                 }
             }
 
-            this.getFlux().actions.scenetree.select(this.props.document, this.props.layer, this.props.element, modifier);
+            this.getFlux().actions.scenetree.select(this.props.document, this.props.layer,
+                                                    this.props.element, modifier);
         },
 
         /**
@@ -388,9 +387,11 @@ define(function (require, exports, module) {
 
     // Create a Droppable from a Draggable from a ElementFace.
     var draggedVersion = Draggable.createWithComponent(ElementFace, "y"),
+        /** @ignore */
         isEqual = function (layerA, layerB) {
             return layerA.key === layerB.key;
         },
+        /** @ignore */
         droppableSettings = function (props) {
             return {
                 zone: props.zone,

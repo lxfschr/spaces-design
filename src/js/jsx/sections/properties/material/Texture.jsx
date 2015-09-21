@@ -28,8 +28,6 @@ define(function (require, exports, module) {
 
     var Gutter = require("jsx!js/jsx/shared/Gutter"),
         strings = require("i18n!nls/strings"),
-        Combine = require("jsx!./Combine"),
-        strings = require("i18n!nls/strings"),
         Slider = require("jsx!./Slider");
 
     var Texture = React.createClass({
