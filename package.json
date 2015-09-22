@@ -13,7 +13,6 @@
     "url": "https://github.com/adobe-photoshop/spaces-design/issues"
   },
   "dependencies": {
-    "noflo": "^0.5.9"
   },
   "homepage": "https://github.com/adobe-photoshop/spaces-design",
   "devDependencies": {
@@ -28,12 +27,9 @@
     "grunt-jsonlint": "^1.0.4",
     "grunt-jsxhint": "^0.6.0",
     "grunt-lintspaces": "^0.7.0",
-    "grunt-noflo-browser": "^0.1.11",
     "jscs-jsdoc": "shaoshing/jscs-jsdoc#v1.1.0.x",
     "jscs-trailing-whitespace-in-source": "0.0.1",
     "lodash": "^3.10.1",
-    "react-tools": "^0.13.1",
-    "grunt-browserify": "~3.0.0",
-    "coffeeify": "^0.7.0"
+    "react-tools": "^0.13.1"
   }
 }

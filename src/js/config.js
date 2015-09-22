@@ -44,15 +44,7 @@ require.config({
         "tinycolor": "../bower_components/tinycolor/tinycolor",
         "d3": "../bower_components/d3/d3",
         "immutable": "../bower_components/immutable/dist/immutable",
-        "classnames": "../bower_components/classnames/index",
-        "noflo": "../build/noflo"
-    },
-    wrapShim: true,
-    // enforceDefine: true,
-    shim: {
-        "noflo": {
-            exports: "noflo"
-        }
+        "classnames": "../bower_components/classnames/index"
     },
     jsx: {
         fileExtension: ".jsx"

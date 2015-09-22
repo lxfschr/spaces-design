@@ -137,19 +137,6 @@ module.exports = function (grunt) {
                     "build/style/style.css": "src/style/main.less"
                 }
             }
-        },
-        browserify: {
-            libs: {
-                files: {
-                    "build/noflo.js": ["index.js"]
-                },
-                options: {
-                    transform: ["coffeeify"]
-                },
-                browserifyOptions: {
-                    require: "noflo"
-                }
-            }
         }
     });
 
@@ -163,10 +150,10 @@ module.exports = function (grunt) {
     grunt.loadNpmTasks("grunt-contrib-copy");
     grunt.loadNpmTasks("grunt-contrib-requirejs");
     grunt.loadNpmTasks("grunt-contrib-less");
-    this.loadNpmTasks("grunt-browserify");
+    grunt.loadNpmTasks("grunt-browserify");
 
     grunt.registerTask("test", ["jshint", "jscs", "jsdoc", "jsonlint", "lintspaces"]);
     grunt.registerTask("compile", ["clean", "copy:requirejs", "copy:html", "copy:img", "less", "requirejs"]);
-    grunt.registerTask("build", ["test", "compile", "browserify:libs"]);
+    grunt.registerTask("build", ["test", "compile"]);
     grunt.registerTask("default", ["test"]);
 };

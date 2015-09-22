@@ -1,3 +1,0 @@
-'6' -> MULTIPLICAND Multiply(math/Multiply)
-'7' -> MULTIPLIER Multiply
-Multiply PRODUCT -> IN Display(core/Output)

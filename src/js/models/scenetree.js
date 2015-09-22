@@ -30,8 +30,7 @@ define(function (require, exports, module) {
         SceneTreeNode = require("./scenetreenode"),
         Bounds = require("./bounds"),
         Fill = require("./Fill"),
-        Element = require("./element"),
-        SceneGraph = require("./scenegraph");
+        Element = require("./element");
 
     var objUtil = require("js/util/object"),
         collection = require("js/util/collection");
@@ -43,13 +42,6 @@ define(function (require, exports, module) {
      * @constructor
      */
     var SceneTree = Immutable.Record({
-        /**
-         * Scene Graph.
-         *
-         * @type {SceneGraph}
-         */
-        sceneGraph: null,
-
         /**
          * All Element objects indexed by element id.
          *
@@ -307,7 +299,6 @@ define(function (require, exports, module) {
         var index = new Immutable.List();
         var materials = new Map();
         var maps = new Map();
-        var sceneGraph;
         if (layer3D) {
             var scene = layer3D.key3DScene;
             var sceneTree = scene.key3DSceneTree[0].key3DTreeClassList;
@@ -327,10 +318,8 @@ define(function (require, exports, module) {
             }, sceneNodes);
             sceneNodes = Immutable.Map(sceneNodes);
             index = Immutable.List(indexes.reverse());
-            sceneGraph = SceneGraph.fromSceneNodes(sceneNodes);
         }
         return new SceneTree({
-            sceneGraph: sceneGraph,
             elements: sceneNodes,
             index: index,
             materials: materials,
