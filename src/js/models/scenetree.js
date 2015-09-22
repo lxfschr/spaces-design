@@ -247,7 +247,7 @@ define(function (require, exports, module) {
                 var numChildren = 0;
                 var maps = material.get("maps");
                 for (var j = 0; j < maps.size; j++) {
-                    var map = maps[j];
+                    var map = maps.get(j);
                     if (map.name) {
                         numChildren++;
                         var model = {
